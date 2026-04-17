@@ -41,7 +41,7 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-3. Configure database using Supabase session pooler values (see section below).
+3. Configure database using Supabase session pooler values (see [Supabase Database Setup](#supabase-database-setup)).
 
 4. Build frontend assets and run migrations:
 
