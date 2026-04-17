@@ -10,6 +10,9 @@ Laravel 13 + Inertia + React (JSX) application for BRICS Education.
 - Inertia.js + React 18
 - Vite 8
 
+## Clone
+`git clone https://github.com/Calvinismee/brics-education.git`
+
 ## Quick Start
 
 1. Install backend and frontend dependencies:
