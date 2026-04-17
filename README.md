@@ -2,6 +2,15 @@
 
 Laravel 13 + Inertia + React (JSX) application for BRICS Education.
 
+## Prerequisites
+
+Install these first:
+
+- PHP 8.3+
+- Composer 2+
+- Node.js 20+ and npm 10+
+- PostgreSQL PHP extension (pgsql and pdo_pgsql)
+
 ## Tech Stack
 
 - PHP 8.3
@@ -11,8 +20,9 @@ Laravel 13 + Inertia + React (JSX) application for BRICS Education.
 - Vite 8
 
 ## Clone
-``` 
+```bash
 git clone https://github.com/Calvinismee/brics-education.git
+cd brics-education
 ```
 
 ## Quick Start
@@ -41,12 +51,25 @@ php artisan config:clear
 php artisan migrate
 ```
 
-5. Start development servers:
+5. Start development servers in two separate terminals:
 
 ```bash
+# Terminal 1
 php artisan serve
+```
+
+```bash
+# Terminal 2
 npm run dev
 ```
+
+6. Verify setup:
+
+```bash
+php artisan migrate:status
+```
+
+Then open http://localhost:8000 in your browser.
 
 ## Supabase Database Setup
 
@@ -102,6 +125,8 @@ Verify installation:
 ```bash
 php -m | grep -E "pgsql|pdo_pgsql"
 ```
+
+If this command returns nothing, install the extension first before running migrations.
 
 ## JSX Notes
 
