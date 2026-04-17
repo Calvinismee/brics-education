@@ -87,9 +87,8 @@ DB_CONNECTION=pgsql
 DB_HOST=aws-1-ap-south-1.pooler.supabase.com
 DB_PORT=5432
 DB_DATABASE=postgres
-DB_USERNAME=postgres.<project-ref>
-DB_PASSWORD=<your-supabase-db-password>
-DB_SSLMODE=require
+DB_USERNAME=postgres
+DB_PASSWORD=<supabase-db-password>
 ```
 
 Important:
