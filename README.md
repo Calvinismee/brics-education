@@ -1,10 +1,19 @@
 # BRICS Education
 
-Laravel 13 + Inertia + React (JSX) application for BRICS Education.
+### Software Engineering KOM1231 Even Semester 2025/2026
+
+Web-based SNBT preparation tutoring management platform that integrates independent learning with automated transaction management. Designed to provide a structured and accessible learning experience for prospective university students.
+
+
+Developed by:
+
+| Name                           | Student ID  |
+|--------------------------------|-------------|
+| Nasywa Azzahra Naadhirah       | M0403241032 |
+| Julius Calvin Kurniadi         | M0403241082 |
+| Azalia Noverizqy Aqila Pramono | M0403241123 |
 
 ## Prerequisites
-
-Install these first:
 
 - PHP 8.3+
 - Composer 2+
@@ -12,7 +21,6 @@ Install these first:
 - PostgreSQL PHP extension (pgsql and pdo_pgsql)
 
 ## Tech Stack
-
 - PHP 8.3
 - Laravel 13
 - PostgreSQL (Supabase)
@@ -24,6 +32,40 @@ Install these first:
 git clone https://github.com/Calvinismee/brics-education.git
 cd brics-education
 ```
+
+## GitHub Workflow (Feature Development)
+
+1. Pull from `main`:
+
+```bash
+git checkout main
+git pull origin main
+```
+
+2. Checkout a new branch:
+
+```bash
+git checkout -b feature/your-feature-name
+```
+
+3. Make the feature:
+
+```bash
+# implement your feature
+```
+
+4. Push the branch:
+
+```bash
+git add .
+git commit -m "feat: short description"
+git push -u origin feature/your-feature-name
+```
+
+5. Request merge:
+
+- Open a Pull Request from `feature/your-feature-name` to `main`.
+- Ask for review, then merge after approval.
 
 ## Quick Start
 
@@ -95,53 +137,5 @@ Important:
 
 - Do not commit real database credentials.
 - Supabase direct host is often IPv6-only. Use Session Pooler for IPv4-compatible access.
-
-## Required PHP Extension
-
-Laravel PostgreSQL connections require both pgsql and pdo_pgsql.
-
-Ubuntu/Debian:
-
-```bash
-sudo apt update
-sudo apt install php8.3-pgsql
-```
-
-Fedora:
-
-```bash
-sudo dnf install php-pgsql
-```
-
-Arch Linux:
-
-```bash
-sudo pacman -S php-pgsql
-```
-
-Verify installation:
-
-```bash
-php -m | grep -E "pgsql|pdo_pgsql"
-```
-
-If this command returns nothing, install the extension first before running migrations.
-
-## JSX Notes
-
-- Vite entry is resources/js/app.jsx.
-- Inertia pages are resolved from resources/js/Pages/**/*.jsx.
-- resources/js/bootstrap.js must exist and be imported by app.jsx.
-
-If you hit a manifest mismatch error, rebuild assets:
-
-```bash
-rm -rf public/build
-npm run build
-php artisan optimize:clear
-```
-
-## Technical Documentation
-
-- Supabase onboarding and connection details: [docs/SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md)
-- Developer troubleshooting guide: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+#
+### Happy Engineering, y'all !!
