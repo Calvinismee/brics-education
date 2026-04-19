@@ -119,17 +119,19 @@ Use the Session Pooler connection details from Supabase dashboard:
 
 1. Open Supabase project.
 2. Go to Connect.
-3. Under Connection string, choose Session pooler.
-4. Copy host, port, user, and password.
+3. Choose 'Direct - Connection string'
+3. In Connection Method, choose Session pooler.
+4. Copy host, port, database, and user.
+5. Ask database owner for password
 
 Required .env values:
 
 ```env
 DB_CONNECTION=pgsql
-DB_HOST=aws-1-ap-south-1.pooler.supabase.com
+DB_HOST=aws-1-ap-south-1.pooler.supabase.com (example)
 DB_PORT=5432
-DB_DATABASE=postgres
-DB_USERNAME=postgres
+DB_DATABASE=<database-name>
+DB_USERNAME=<username>
 DB_PASSWORD=<supabase-db-password>
 ```
 
