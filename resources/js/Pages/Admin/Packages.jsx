@@ -3,42 +3,7 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { useState } from 'react';
 import { Plus, Edit, Trash2, Package, Users, Check } from 'lucide-react';
 
-const packages = [
-    {
-        id: 1,
-        name: 'Paket Dasar',
-        price: 'Rp 99.000/bln',
-        features: ['5 kursus akses', 'Modul PDF', 'Forum diskusi'],
-        students: 450,
-        popular: false,
-    },
-    {
-        id: 2,
-        name: 'Paket Intensif',
-        price: 'Rp 299.000/bln',
-        features: ['Semua kursus', 'Video HD', 'Live Q&A', 'Mentor 1-on-1'],
-        students: 820,
-        popular: true,
-    },
-    {
-        id: 3,
-        name: 'Paket Premium',
-        price: 'Rp 499.000/bln',
-        features: ['Semua fitur Intensif', 'Garansi kelulusan', 'Private class', 'Sertifikat resmi'],
-        students: 215,
-        popular: false,
-    },
-    {
-        id: 4,
-        name: 'Paket SNBT 2025',
-        price: 'Rp 750.000',
-        features: ['Persiapan SNBT lengkap', 'Simulasi tryout', 'Pembahasan video', 'Analisis nilai'],
-        students: 340,
-        popular: false,
-    },
-];
-
-export default function Packages() {
+export default function Packages({ packages = [], stats = {} }) {
     const [showForm, setShowForm] = useState(false);
 
     return (

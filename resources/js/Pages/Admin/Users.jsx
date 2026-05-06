@@ -1,38 +1,70 @@
-import { Head } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { useMemo, useState } from 'react';
-import { Search, Filter, Eye, Edit, UserPlus, Download, CheckSquare, ChevronDown, MoreVertical } from 'lucide-react';
+import { Search, UserPlus, Download, CheckSquare, MoreVertical, Edit, X, ArrowUpDown } from 'lucide-react';
 
-const initialStudents = [
-    { id: 1, name: 'Andi Pratama', email: 'andi@email.com', enrolled: 3, status: 'Aktif', joined: '15 Jan 2025' },
-    { id: 2, name: 'Budi Santosa', email: 'budi@email.com', enrolled: 2, status: 'Aktif', joined: '20 Feb 2025' },
-    { id: 3, name: 'Citra Dewi', email: 'citra@email.com', enrolled: 5, status: 'Tidak Aktif', joined: '10 Des 2024' },
-    { id: 4, name: 'Dimas Arya', email: 'dimas@email.com', enrolled: 1, status: 'Aktif', joined: '5 Mar 2025' },
-    { id: 5, name: 'Eka Putri', email: 'eka@email.com', enrolled: 4, status: 'Aktif', joined: '28 Jan 2025' },
-];
+const roleLabels = {
+    student: 'Siswa',
+    tutor: 'Tutor/Mentor',
+    admin: 'Admin',
+};
 
-const initialTutors = [
-    { id: 1, name: 'Dr. Ahmad Fauzi', email: 'ahmad@email.com', courses: 3, students: 145, status: 'Aktif', joined: '1 Sep 2024' },
-    { id: 2, name: 'Prof. Dewi Rahayu', email: 'dewi@email.com', courses: 2, students: 98, status: 'Aktif', joined: '15 Okt 2024' },
-    { id: 3, name: 'Budi Santoso, M.Kom', email: 'budi.t@email.com', courses: 4, students: 186, status: 'Aktif', joined: '20 Agu 2024' },
-    { id: 4, name: 'Sarah Johnson, MA', email: 'sarah@email.com', courses: 1, students: 52, status: 'Tidak Aktif', joined: '10 Jan 2025' },
-];
+const roleColors = {
+    student: '#691D1B',
+    tutor: '#8B2523',
+    admin: '#CD9B1D',
+};
 
-export default function Users() {
-    const [userType, setUserType] = useState('students');
+const emptyForm = {
+    name: '',
+    email: '',
+    password: '',
+    role: 'student',
+};
+
+export default function Users({ users = { data: [] }, totalUsers = 0, stats = {} }) {
     const [selectedUsers, setSelectedUsers] = useState([]);
     const [search, setSearch] = useState('');
+    const [selectedRole, setSelectedRole] = useState('all');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
+    const [sortOrder, setSortOrder] = useState('desc');
+    const [showForm, setShowForm] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
 
-    const data = userType === 'students' ? initialStudents : initialTutors;
-    const filtered = useMemo(
-        () =>
-            data.filter(
-                (user) =>
-                    user.name.toLowerCase().includes(search.toLowerCase()) ||
-                    user.email.toLowerCase().includes(search.toLowerCase()),
-            ),
-        [data, search],
-    );
+    const form = useForm(emptyForm);
+
+    const userData = users.data || [];
+
+    const filtered = useMemo(() => {
+        let result = userData.filter((user) => {
+            const matchesSearch =
+                user.name.toLowerCase().includes(search.toLowerCase()) ||
+                user.email.toLowerCase().includes(search.toLowerCase());
+            const matchesRole = selectedRole === 'all' || user.role === selectedRole;
+            
+            const userDate = user.created_at ? new Date(user.created_at) : null;
+            let matchesDateFrom = true;
+            let matchesDateTo = true;
+            
+            if (dateFrom && userDate) {
+                matchesDateFrom = userDate >= new Date(dateFrom);
+            }
+            if (dateTo && userDate) {
+                matchesDateTo = userDate <= new Date(dateTo + 'T23:59:59');
+            }
+
+            return matchesSearch && matchesRole && matchesDateFrom && matchesDateTo;
+        });
+        
+        result.sort((a, b) => {
+            const dateA = a.created_at ? new Date(a.created_at) : new Date(0);
+            const dateB = b.created_at ? new Date(b.created_at) : new Date(0);
+            return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+        });
+        
+        return result;
+    }, [userData, search, selectedRole, dateFrom, dateTo, sortOrder]);
 
     const toggleSelect = (id) => {
         setSelectedUsers((previous) =>
@@ -40,6 +72,67 @@ export default function Users() {
                 ? previous.filter((item) => item !== id)
                 : [...previous, id],
         );
+    };
+
+    const getRoleDisplay = (role) => roleLabels[role] || role;
+
+    const getStatusColor = (role) => roleColors[role] || '#6b7280';
+
+    const openCreate = () => {
+        setEditingUser(null);
+        form.setData(emptyForm);
+        form.clearErrors();
+        setShowForm(true);
+    };
+
+    const openEdit = (user) => {
+        setEditingUser(user);
+        form.setData({
+            name: user.name || '',
+            email: user.email || '',
+            password: '',
+            role: user.role || 'student',
+        });
+        form.clearErrors();
+        setShowForm(true);
+    };
+
+    const closeForm = () => {
+        setShowForm(false);
+        setEditingUser(null);
+        form.reset();
+        form.clearErrors();
+    };
+
+    const handleSubmit = (event) => {
+        event.preventDefault();
+
+        if (editingUser) {
+            form.transform((data) => ({
+                ...data,
+                password: data.password || undefined,
+            })).put(route('admin.users.update', editingUser.id), {
+                preserveScroll: true,
+                onSuccess: closeForm,
+            });
+            return;
+        }
+
+        form.post(route('admin.users.store'), {
+            preserveScroll: true,
+            onSuccess: closeForm,
+        });
+    };
+
+    const handleExport = () => {
+        const params = new URLSearchParams();
+        if (selectedRole !== 'all') params.append('role', selectedRole);
+        if (search) params.append('search', search);
+        if (dateFrom) params.append('dateFrom', dateFrom);
+        if (dateTo) params.append('dateTo', dateTo);
+        
+        const href = route('admin.users.export') + (params.toString() ? '?' + params.toString() : '');
+        window.location.href = href;
     };
 
     return (
@@ -53,6 +146,7 @@ export default function Users() {
                         <p className="text-sm text-gray-500">Kelola data siswa dan tutor platform</p>
                     </div>
                     <button
+                        onClick={openCreate}
                         className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm text-white transition-colors hover:bg-[#4A1412]"
                         style={{ background: '#691D1B', fontWeight: 600 }}
                     >
@@ -63,14 +157,14 @@ export default function Users() {
 
                 <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
                     {[
-                        { label: 'Total Siswa', value: '1.234', color: '#691D1B' },
-                        { label: 'Total Tutor', value: '56', color: '#8B2523' },
-                        { label: 'Pengguna Aktif', value: '940', color: '#691D1B' },
-                        { label: 'Tidak Aktif', value: '350', color: '#6b7280' },
+                        { label: 'Total Siswa', value: stats.student || 0, color: '#691D1B' },
+                        { label: 'Total Tutor', value: stats.tutor || 0, color: '#8B2523' },
+                        { label: 'Total Admin', value: stats.admin || 0, color: '#CD9B1D' },
+                        { label: 'Total Pengguna', value: totalUsers || 0, color: '#6b7280' },
                     ].map((stat) => (
                         <div key={stat.label} className="rounded-2xl border border-[#D8D7BE] bg-white p-5 shadow-sm">
                             <div className="mb-1 text-2xl font-extrabold" style={{ color: stat.color }}>
-                                {stat.value}
+                                {Number(stat.value).toLocaleString()}
                             </div>
                             <div className="text-sm text-gray-500">{stat.label}</div>
                         </div>
@@ -78,26 +172,6 @@ export default function Users() {
                 </div>
 
                 <div className="overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
-                    <div className="flex border-b border-[#D8D7BE]">
-                        {[
-                            { key: 'students', label: 'Siswa' },
-                            { key: 'tutors', label: 'Tutor/Mentor' },
-                        ].map((tab) => (
-                            <button
-                                key={tab.key}
-                                onClick={() => setUserType(tab.key)}
-                                className={`px-6 py-4 text-sm transition-all ${
-                                    userType === tab.key
-                                        ? 'border-b-2 border-[#691D1B] text-[#691D1B]'
-                                        : 'text-gray-500 hover:text-gray-700'
-                                }`}
-                                style={userType === tab.key ? { fontWeight: 700 } : {}}
-                            >
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
-
                     <div className="flex flex-col items-start justify-between gap-3 border-b border-[#F7F2E7] p-5 sm:flex-row sm:items-center">
                         <div className="flex items-center gap-2 rounded-lg border border-[#D8D7BE] bg-[#F7F2E7] px-3 py-2">
                             <Search className="h-4 w-4 text-gray-400" />
@@ -109,13 +183,48 @@ export default function Users() {
                                 className="w-48 bg-transparent text-sm outline-none"
                             />
                         </div>
-                        <div className="flex items-center gap-2">
-                            <button className="flex items-center gap-1.5 rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm text-gray-600 transition-colors hover:border-[#691D1B]">
-                                <Filter className="h-4 w-4" />
-                                Filter
-                                <ChevronDown className="h-4 w-4" />
+                        <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-2 rounded-lg border border-[#D8D7BE] bg-white px-2 py-1.5">
+                                {['all', 'student', 'tutor', 'admin'].map((role) => (
+                                    <button
+                                        key={role}
+                                        onClick={() => setSelectedRole(role)}
+                                        className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                            selectedRole === role ? 'text-white' : 'text-gray-600 hover:bg-[#F7F2E7]'
+                                        }`}
+                                        style={selectedRole === role ? { background: '#691D1B' } : {}}
+                                    >
+                                        {role === 'all' ? 'Semua' : getRoleDisplay(role)}
+                                    </button>
+                                ))}
+                            </div>
+                            <input
+                                type="date"
+                                value={dateFrom}
+                                onChange={(event) => setDateFrom(event.target.value)}
+                                className="rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm outline-none focus:border-[#691D1B]"
+                                title="Dari tanggal"
+                            />
+                            <span className="text-sm text-gray-500">s/d</span>
+                            <input
+                                type="date"
+                                value={dateTo}
+                                onChange={(event) => setDateTo(event.target.value)}
+                                className="rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm outline-none focus:border-[#691D1B]"
+                                title="Sampai tanggal"
+                            />
+                            <button
+                                onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                                className="flex items-center gap-1.5 rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm text-gray-600 transition-colors hover:border-[#691D1B]"
+                                title={`Urutkan ${sortOrder === 'desc' ? 'Terbaru dulu' : 'Terlama dulu'}`}
+                            >
+                                <ArrowUpDown className="h-4 w-4" />
+                                {sortOrder === 'desc' ? 'Terbaru' : 'Terlama'}
                             </button>
-                            <button className="flex items-center gap-1.5 rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm text-gray-600 transition-colors hover:border-[#691D1B]">
+                            <button
+                                onClick={handleExport}
+                                className="flex items-center gap-1.5 rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm text-gray-600 transition-colors hover:border-[#691D1B]"
+                            >
                                 <Download className="h-4 w-4" />
                                 Export
                             </button>
@@ -134,23 +243,27 @@ export default function Users() {
                                     <th className="w-10 px-5 py-3">
                                         <CheckSquare className="h-4 w-4 cursor-pointer text-gray-400" />
                                     </th>
-                                    {['Pengguna', userType === 'students' ? 'Kursus' : 'Kursus Diajar', userType === 'students' ? 'Status' : 'Siswa', 'Bergabung', 'Status', 'Aksi'].map(
-                                        (heading) => (
-                                            <th
-                                                key={heading}
-                                                className="px-5 py-3 text-left text-xs uppercase tracking-wide text-gray-500"
-                                                style={{ fontWeight: 700 }}
-                                            >
-                                                {heading}
-                                            </th>
-                                        ),
-                                    )}
+                                    {['Pengguna', 'Email', 'Peran', 'Bergabung', 'Aksi'].map((heading) => (
+                                        <th
+                                            key={heading}
+                                            className="px-5 py-3 text-left text-xs uppercase tracking-wide text-gray-500"
+                                            style={{ fontWeight: 700 }}
+                                        >
+                                            {heading}
+                                        </th>
+                                    ))}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#F7F2E7]">
                                 {filtered.map((user) => {
-                                    const isActive = user.status === 'Aktif';
                                     const isSelected = selectedUsers.includes(user.id);
+                                    const joinDate = user.created_at
+                                        ? new Date(user.created_at).toLocaleDateString('id-ID', {
+                                            day: 'numeric',
+                                            month: 'short',
+                                            year: 'numeric',
+                                        })
+                                        : '-';
 
                                     return (
                                         <tr key={user.id} className={`transition-colors ${isSelected ? 'bg-[#691D1B05]' : 'hover:bg-[#F7F2E7]'}`}>
@@ -164,7 +277,10 @@ export default function Users() {
                                             </td>
                                             <td className="px-5 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#691D1B] text-xs font-extrabold text-[#FFE882]">
+                                                    <div
+                                                        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white"
+                                                        style={{ background: getStatusColor(user.role) }}
+                                                    >
                                                         {user.name
                                                             .split(' ')
                                                             .map((part) => part[0])
@@ -173,56 +289,38 @@ export default function Users() {
                                                     </div>
                                                     <div>
                                                         <p className="text-sm font-semibold text-gray-800">{user.name}</p>
-                                                        <p className="text-xs text-gray-400">{user.email}</p>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-5 py-4">
-                                                <span className="text-sm text-gray-700">
-                                                    {(user.enrolled ?? user.courses)} kursus
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                {userType === 'tutors' ? (
-                                                    <span className="text-sm text-gray-700">{user.students} siswa</span>
-                                                ) : (
-                                                    <span
-                                                        className="rounded-full px-2 py-1 text-xs"
-                                                        style={{
-                                                            background: isActive ? '#22c55e15' : '#ef444415',
-                                                            color: isActive ? '#16a34a' : '#ef4444',
-                                                            fontWeight: 600,
-                                                        }}
-                                                    >
-                                                        {user.status}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <span className="text-sm text-gray-500">{user.joined}</span>
+                                                <span className="text-sm text-gray-700">{user.email}</span>
                                             </td>
                                             <td className="px-5 py-4">
                                                 <span
                                                     className="rounded-full px-2 py-1 text-xs"
                                                     style={{
-                                                        background: isActive ? '#22c55e15' : '#ef444415',
-                                                        color: isActive ? '#16a34a' : '#ef4444',
+                                                        background: `${getStatusColor(user.role)}15`,
+                                                        color: getStatusColor(user.role),
                                                         fontWeight: 600,
                                                     }}
                                                 >
-                                                    {user.status}
+                                                    {getRoleDisplay(user.role)}
                                                 </span>
                                             </td>
                                             <td className="px-5 py-4">
-                                                <div className="flex items-center gap-1">
-                                                    <button className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-[#691D1B15] hover:text-[#691D1B]">
-                                                        <Eye className="h-4 w-4" />
+                                                <span className="text-sm text-gray-500">{joinDate}</span>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => openEdit(user)}
+                                                        className="flex items-center justify-center rounded-lg p-2 transition-colors hover:bg-[#F7F2E7]"
+                                                        title="Edit pengguna"
+                                                    >
+                                                        <Edit className="h-4 w-4 text-gray-400" />
                                                     </button>
-                                                    <button className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-[#691D1B15] hover:text-[#691D1B]">
-                                                        <Edit className="h-4 w-4" />
-                                                    </button>
-                                                    <button className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-[#691D1B15] hover:text-[#691D1B]">
-                                                        <MoreVertical className="h-4 w-4" />
+                                                    <button className="flex items-center justify-center rounded-lg p-2 transition-colors hover:bg-[#F7F2E7]">
+                                                        <MoreVertical className="h-4 w-4 text-gray-400" />
                                                     </button>
                                                 </div>
                                             </td>
@@ -233,23 +331,125 @@ export default function Users() {
                         </table>
                     </div>
 
-                    <div className="flex items-center justify-between border-t border-[#D8D7BE] bg-[#F7F2E7] p-4">
-                        <span className="text-xs text-gray-500">
-                            Menampilkan {filtered.length} dari {data.length} pengguna
-                        </span>
-                        <div className="flex items-center gap-2">
-                            {[1, 2, 3].map((page) => (
-                                <button
-                                    key={page}
-                                    className={`h-8 w-8 rounded-lg text-xs transition-colors ${page === 1 ? 'text-white' : 'text-gray-600 hover:bg-[#691D1B15]'}`}
-                                    style={page === 1 ? { background: '#691D1B', fontWeight: 700 } : {}}
-                                >
-                                    {page}
+                    {filtered.length === 0 && (
+                        <div className="flex items-center justify-center py-12">
+                            <div className="text-center">
+                                <p className="text-sm text-gray-500">Tidak ada pengguna ditemukan</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {users.links && users.links.length > 0 && (
+                    <div className="mt-6 flex flex-wrap justify-center gap-2">
+                        {users.links.map((link, idx) => (
+                            <a
+                                key={idx}
+                                href={link.url || '#'}
+                                className={`rounded px-3 py-2 text-sm ${
+                                    link.active
+                                        ? 'bg-[#691D1B] text-white'
+                                        : link.url
+                                        ? 'border border-[#D8D7BE] text-gray-700 hover:bg-[#F7F2E7]'
+                                        : 'text-gray-400'
+                                }`}
+                                dangerouslySetInnerHTML={{ __html: link.label }}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {showForm && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+                        <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl">
+                            <div className="mb-6 flex items-start justify-between gap-4">
+                                <div>
+                                    <h2 className="text-xl font-extrabold text-gray-900">
+                                        {editingUser ? 'Edit Pengguna' : 'Tambah Pengguna'}
+                                    </h2>
+                                    <p className="text-sm text-gray-500">
+                                        {editingUser ? 'Perbarui data pengguna yang dipilih' : 'Tambahkan pengguna baru ke sistem'}
+                                    </p>
+                                </div>
+                                <button onClick={closeForm} className="rounded-full p-2 text-gray-400 hover:bg-[#F7F2E7]">
+                                    <X className="h-5 w-5" />
                                 </button>
-                            ))}
+                            </div>
+
+                            <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+                                <label className="space-y-2">
+                                    <span className="text-sm font-semibold text-gray-700">Nama</span>
+                                    <input
+                                        type="text"
+                                        value={form.data.name}
+                                        onChange={(event) => form.setData('name', event.target.value)}
+                                        className="w-full rounded-xl border border-[#D8D7BE] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
+                                        placeholder="Nama lengkap"
+                                    />
+                                    {form.errors.name && <p className="text-xs text-red-500">{form.errors.name}</p>}
+                                </label>
+
+                                <label className="space-y-2">
+                                    <span className="text-sm font-semibold text-gray-700">Email</span>
+                                    <input
+                                        type="email"
+                                        value={form.data.email}
+                                        onChange={(event) => form.setData('email', event.target.value)}
+                                        className="w-full rounded-xl border border-[#D8D7BE] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
+                                        placeholder="email@domain.com"
+                                    />
+                                    {form.errors.email && <p className="text-xs text-red-500">{form.errors.email}</p>}
+                                </label>
+
+                                <label className="space-y-2">
+                                    <span className="text-sm font-semibold text-gray-700">Peran</span>
+                                    <select
+                                        value={form.data.role}
+                                        onChange={(event) => form.setData('role', event.target.value)}
+                                        className="w-full rounded-xl border border-[#D8D7BE] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
+                                    >
+                                        <option value="student">Siswa</option>
+                                        <option value="tutor">Tutor</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                    {form.errors.role && <p className="text-xs text-red-500">{form.errors.role}</p>}
+                                </label>
+
+                                <label className="space-y-2">
+                                    <span className="text-sm font-semibold text-gray-700">
+                                        {editingUser ? 'Password Baru' : 'Password'}
+                                    </span>
+                                    <input
+                                        type="password"
+                                        value={form.data.password}
+                                        onChange={(event) => form.setData('password', event.target.value)}
+                                        className="w-full rounded-xl border border-[#D8D7BE] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
+                                        placeholder={editingUser ? 'Kosongkan jika tidak diubah' : 'Minimal 8 karakter'}
+                                    />
+                                    {form.errors.password && <p className="text-xs text-red-500">{form.errors.password}</p>}
+                                </label>
+
+                                <div className="md:col-span-2 mt-2 flex items-center justify-end gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={closeForm}
+                                        className="rounded-xl border border-[#D8D7BE] px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-[#F7F2E7]"
+                                    >
+                                        Batal
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={form.processing}
+                                        className="rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#4A1412] disabled:opacity-60"
+                                        style={{ background: '#691D1B' }}
+                                    >
+                                        {form.processing ? 'Menyimpan...' : editingUser ? 'Simpan Perubahan' : 'Tambah Pengguna'}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
         </AdminLayout>
     );

@@ -3,25 +3,15 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { useState } from 'react';
 import { Search, Filter, Download, CheckCircle, XCircle, Clock, ChevronDown } from 'lucide-react';
 
-const transactions = [
-    { id: 'TRX-2025-0047', student: 'Andi Pratama', course: 'Matematika UTBK Intensif', amount: 'Rp 299.000', method: 'BCA Virtual Account', status: 'success', date: '28 Apr 2025, 14:32' },
-    { id: 'TRX-2025-0046', student: 'Citra Dewi', course: 'Pemrograman Web Full Stack', amount: 'Rp 399.000', method: 'GoPay', status: 'success', date: '28 Apr 2025, 11:18' },
-    { id: 'TRX-2025-0045', student: 'Budi Santosa', course: 'Bahasa Inggris Bisnis', amount: 'Rp 249.000', method: 'BNI Virtual Account', status: 'pending', date: '27 Apr 2025, 16:45' },
-    { id: 'TRX-2025-0044', student: 'Dimas Arya', course: 'Persiapan SNBT Komprehensif', amount: 'Rp 499.000', method: 'Mandiri Transfer', status: 'failed', date: '27 Apr 2025, 09:22' },
-    { id: 'TRX-2025-0043', student: 'Eka Putri', course: 'Matematika UTBK Intensif', amount: 'Rp 299.000', method: 'OVO', status: 'success', date: '26 Apr 2025, 20:14' },
-    { id: 'TRX-2025-0042', student: 'Fajar Nugroho', course: 'Data Science & AI Dasar', amount: 'Rp 449.000', method: 'DANA', status: 'success', date: '26 Apr 2025, 15:30' },
-    { id: 'TRX-2025-0041', student: 'Gita Amelia', course: 'Fisika & Kimia UTBK', amount: 'Rp 329.000', method: 'BCA Virtual Account', status: 'pending', date: '25 Apr 2025, 13:08' },
-];
-
-const statusConfig = {
-    success: { label: 'Berhasil', bg: '#22c55e15', color: '#16a34a', icon: <CheckCircle className="h-4 w-4" /> },
-    pending: { label: 'Pending', bg: '#f59e0b15', color: '#d97706', icon: <Clock className="h-4 w-4" /> },
-    failed: { label: 'Gagal', bg: '#ef444415', color: '#ef4444', icon: <XCircle className="h-4 w-4" /> },
-};
-
-export default function Transactions() {
+export default function Transactions({ transactions = [], stats = {} }) {
     const [statusFilter, setStatusFilter] = useState('all');
     const [search, setSearch] = useState('');
+
+    const statusConfig = {
+        success: { label: 'Berhasil', bg: '#22c55e15', color: '#16a34a', icon: <CheckCircle className="h-4 w-4" /> },
+        pending: { label: 'Pending', bg: '#f59e0b15', color: '#d97706', icon: <Clock className="h-4 w-4" /> },
+        failed: { label: 'Gagal', bg: '#ef444415', color: '#ef4444', icon: <XCircle className="h-4 w-4" /> },
+    };
 
     const filtered = transactions.filter((transaction) => {
         const matchStatus = statusFilter === 'all' || transaction.status === statusFilter;

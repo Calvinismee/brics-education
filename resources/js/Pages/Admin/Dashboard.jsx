@@ -11,46 +11,7 @@ import {
     ArrowUpRight,
 } from 'lucide-react';
 
-const userStats = [
-    { label: 'Total Pengguna', value: '1.290', change: '+8.2%', icon: <Users className="h-6 w-6" />, color: 'var(--brics-maroon)' },
-    { label: 'Registrasi Baru', value: '145', change: '+12.5%', icon: <UserPlus className="h-6 w-6" />, color: 'var(--brics-maroon)' },
-    { label: 'Pengguna Aktif', value: '940', change: '+5.1%', icon: <Activity className="h-6 w-6" />, color: 'var(--brics-maroon)' },
-    { label: 'Tidak Aktif', value: '350', change: '-2.3%', icon: <UserX className="h-6 w-6" />, color: '#6b7280' },
-];
-
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'];
-const growthData = [620, 750, 820, 900, 980, 1290];
-const maxVal = Math.max(...growthData);
-
-const studentStats = [
-    { label: 'Total Siswa', value: '1.234' },
-    { label: 'Siswa Aktif', value: '892' },
-    { label: 'Siswa Baru (Bulan Ini)', value: '145' },
-    { label: 'Tingkat Kelulusan', value: '94%' },
-];
-
-const tutorStats = [
-    { label: 'Total Tutor', value: '56' },
-    { label: 'Tutor Aktif', value: '48' },
-    { label: 'Tutor Baru (Bulan Ini)', value: '8' },
-    { label: 'Rata-rata Kelas/Tutor', value: '4.2' },
-];
-
-const activityStats = [
-    { label: 'Pengguna Aktif Harian', value: '542' },
-    { label: 'Pengguna Aktif Mingguan', value: '1.089' },
-    { label: 'Pengguna Aktif Bulanan', value: '1.234' },
-    { label: 'Rata-rata Waktu Sesi', value: '25 mnt' },
-];
-
-const topUsers = [
-    { name: 'Andi Pratama', role: 'Siswa', courses: 3, progress: 85, status: 'Aktif' },
-    { name: 'Budi Santoso', role: 'Tutor', courses: 4, progress: 92, status: 'Aktif' },
-    { name: 'Citra Dewi', role: 'Siswa', courses: 2, progress: 97, status: 'Aktif' },
-    { name: 'Dimas Arya', role: 'Siswa', courses: 1, progress: 45, status: 'Tidak Aktif' },
-    { name: 'Eka Putri', role: 'Siswa', courses: 3, progress: 78, status: 'Aktif' },
-    { name: 'Fajar Nugroho', role: 'Tutor', courses: 3, progress: 88, status: 'Aktif' },
-];
 
 function StatCard({ label, value, change, icon, color }) {
     const isPositive = change.startsWith('+');
@@ -93,7 +54,20 @@ function InfoCard({ title, icon, stats }) {
     );
 }
 
-export default function Dashboard() {
+export default function Dashboard({ userStats = [], growthData = [], studentStats = [], tutorStats = [], activityStats = [], topUsers = [], distributionData = [] }) {
+    const maxVal = growthData.length > 0 ? Math.max(...growthData) : 1;
+    const totalFromDistribution = distributionData.reduce((sum, d) => sum + (d.value || 0), 0) || 1;
+
+    const statsWithIcons = (userStats || []).map((stat, idx) => {
+        const iconMap = [
+            { icon: <Users className="h-6 w-6" />, color: 'var(--brics-maroon)' },
+            { icon: <UserPlus className="h-6 w-6" />, color: 'var(--brics-maroon)' },
+            { icon: <Activity className="h-6 w-6" />, color: 'var(--brics-maroon)' },
+            { icon: <UserX className="h-6 w-6" />, color: '#6b7280' },
+        ];
+        return { ...stat, ...iconMap[idx] || iconMap[0] };
+    });
+
     return (
         <AdminLayout title="Dashboard Admin" subtitle="Ringkasan data pengguna platform BRICS Education.">
             <Head title="Dashboard Admin" />
@@ -105,7 +79,7 @@ export default function Dashboard() {
                 </div>
 
                 <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
-                    {userStats.map((stat) => (
+                    {statsWithIcons.map((stat) => (
                         <StatCard key={stat.label} {...stat} />
                     ))}
                 </div>
@@ -123,14 +97,14 @@ export default function Dashboard() {
                             </div>
                         </div>
                         <div className="flex h-48 items-end justify-between gap-2">
-                            {growthData.map((value, index) => (
+                            {(growthData || []).map((value, index) => (
                                 <div key={index} className="flex flex-1 flex-col items-center gap-2">
                                     <span className="text-xs text-gray-500">{value.toLocaleString()}</span>
                                     <div
                                         className="w-full rounded-t-lg transition-all"
                                         style={{
                                             height: `${(value / maxVal) * 140}px`,
-                                            background: index === growthData.length - 1 ? 'var(--brics-maroon)' : 'var(--brics-beige)',
+                                            background: index === (growthData || []).length - 1 ? 'var(--brics-maroon)' : 'var(--brics-beige)',
                                         }}
                                     />
                                     <span className="text-xs text-gray-400">{months[index]}</span>
@@ -151,27 +125,23 @@ export default function Dashboard() {
                                 </svg>
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <div className="text-center">
-                                        <div className="text-xl font-extrabold" style={{ color: 'var(--brics-maroon)' }}>1.290</div>
+                                        <div className="text-xl font-extrabold" style={{ color: 'var(--brics-maroon)' }}>{totalFromDistribution}</div>
                                         <div className="text-xs text-gray-400">Total</div>
                                     </div>
                                 </div>
                             </div>
                             <div className="flex-1 space-y-3">
-                                {[
-                                    { label: 'Siswa', value: '880', pct: '68%', color: 'var(--brics-maroon)' },
-                                    { label: 'Tutor/Mentor', value: '322', pct: '25%', color: 'var(--brics-yellow)' },
-                                    { label: 'Admin', value: '88', pct: '7%', color: 'var(--brics-beige)' },
-                                ].map((item) => (
+                                {(distributionData || []).map((item) => (
                                     <div key={item.label}>
                                         <div className="mb-1 flex justify-between text-sm">
                                             <div className="flex items-center gap-2">
                                                 <div className="h-3 w-3 rounded-sm" style={{ background: item.color }} />
                                                 <span className="text-gray-600">{item.label}</span>
                                             </div>
-                                            <span className="font-bold" style={{ color: 'var(--brics-maroon)' }}>{item.pct}</span>
+                                            <span className="font-bold" style={{ color: 'var(--brics-maroon)' }}>{item.pct}%</span>
                                         </div>
                                         <div className="h-1.5 w-full rounded-full" style={{ background: 'var(--brics-cream)' }}>
-                                            <div className="h-1.5 rounded-full" style={{ width: item.pct, background: item.color }} />
+                                            <div className="h-1.5 rounded-full" style={{ width: `${item.pct}%`, background: item.color }} />
                                         </div>
                                     </div>
                                 ))}
@@ -181,9 +151,9 @@ export default function Dashboard() {
                 </div>
 
                 <div className="mb-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
-                    <InfoCard title="Statistik Siswa" icon={<GraduationCap className="h-5 w-5" />} stats={studentStats} />
-                    <InfoCard title="Statistik Tutor" icon={<UserCheck className="h-5 w-5" />} stats={tutorStats} />
-                    <InfoCard title="Aktivitas Pengguna" icon={<Activity className="h-5 w-5" />} stats={activityStats} />
+                    <InfoCard title="Statistik Siswa" icon={<GraduationCap className="h-5 w-5" />} stats={studentStats || []} />
+                    <InfoCard title="Statistik Tutor" icon={<UserCheck className="h-5 w-5" />} stats={tutorStats || []} />
+                    <InfoCard title="Aktivitas Pengguna" icon={<Activity className="h-5 w-5" />} stats={activityStats || []} />
                 </div>
 
                 <div className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: 'var(--brics-beige)' }}>
@@ -202,7 +172,7 @@ export default function Dashboard() {
                                 </tr>
                             </thead>
                             <tbody style={{ borderColor: 'var(--brics-beige)' }} className="divide-y">
-                                {topUsers.map((user) => (
+                                {(topUsers || []).map((user) => (
                                     <tr key={user.name} className="transition-colors" style={{ '&:hover': { background: 'var(--brics-beige)' } }}>
                                         <td className="px-5 py-4">
                                             <div className="flex items-center gap-3">

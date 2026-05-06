@@ -3,15 +3,6 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { useState } from 'react';
 import { Video, FileText, HelpCircle, CheckCircle, XCircle, Clock, Eye, Search } from 'lucide-react';
 
-const contents = [
-    { id: 1, title: 'Intro_Matematika_UTBK_Sesi1.mp4', tutor: 'Dr. Ahmad Fauzi', type: 'video', size: '245 MB', submitted: '27 Apr 2025', status: 'pending' },
-    { id: 2, title: 'Modul_Bab2_Kalkulus.pdf', tutor: 'Prof. Dewi Rahayu', type: 'module', size: '4.2 MB', submitted: '26 Apr 2025', status: 'approved' },
-    { id: 3, title: 'Quiz_Aljabar_Linear.xlsx', tutor: 'Dr. Ahmad Fauzi', type: 'quiz', size: '0.9 MB', submitted: '25 Apr 2025', status: 'rejected' },
-    { id: 4, title: 'React_Hooks_Tutorial.mp4', tutor: 'Budi Santoso', type: 'video', size: '312 MB', submitted: '24 Apr 2025', status: 'pending' },
-    { id: 5, title: 'Modul_Fisika_Dasar.pdf', tutor: 'Prof. Dewi Rahayu', type: 'module', size: '6.8 MB', submitted: '23 Apr 2025', status: 'approved' },
-    { id: 6, title: 'Bank_Soal_SNBT.json', tutor: 'Tim BRICS', type: 'quiz', size: '2.1 MB', submitted: '22 Apr 2025', status: 'pending' },
-];
-
 const typeIcon = {
     video: <Video className="h-4 w-4" />,
     module: <FileText className="h-4 w-4" />,
@@ -24,21 +15,21 @@ const statusConfig = {
     rejected: { label: 'Ditolak', bg: '#ef444415', color: '#ef4444', icon: <XCircle className="h-4 w-4" /> },
 };
 
-export default function Content() {
+export default function Content({ contents = [] }) {
     const [filter, setFilter] = useState('all');
     const [search, setSearch] = useState('');
 
-    const filtered = contents.filter((content) => {
+    const filtered = (contents || []).filter((content) => {
         const matchFilter = filter === 'all' || content.status === filter;
         const matchSearch = content.title.toLowerCase().includes(search.toLowerCase()) || content.tutor.toLowerCase().includes(search.toLowerCase());
         return matchFilter && matchSearch;
     });
 
     const counts = {
-        all: contents.length,
-        pending: contents.filter((content) => content.status === 'pending').length,
-        approved: contents.filter((content) => content.status === 'approved').length,
-        rejected: contents.filter((content) => content.status === 'rejected').length,
+        all: (contents || []).length,
+        pending: (contents || []).filter((content) => content.status === 'pending').length,
+        approved: (contents || []).filter((content) => content.status === 'approved').length,
+        rejected: (contents || []).filter((content) => content.status === 'rejected').length,
     };
 
     return (
@@ -105,33 +96,26 @@ export default function Content() {
                                             <span>{content.submitted}</span>
                                         </div>
                                     </div>
-                                    <div className="flex flex-shrink-0 items-center gap-3">
-                                        <span className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs" style={{ background: status.bg, color: status.color, fontWeight: 600 }}>
-                                            {status.icon}
-                                            {status.label}
-                                        </span>
-                                        <button className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-[#691D1B15] hover:text-[#691D1B]">
-                                            <Eye className="h-4 w-4" />
+                                    <div className="flex items-center gap-3">
+                                        <div className="rounded-full px-2 py-1" style={{ background: status.bg }}>
+                                            <div className="flex items-center gap-1.5" style={{ color: status.color }}>
+                                                {status.icon}
+                                                <span className="text-xs font-semibold">{status.label}</span>
+                                            </div>
+                                        </div>
+                                        <button className="flex items-center justify-center rounded-lg p-2 transition-colors hover:bg-[#F7F2E7]">
+                                            <Eye className="h-4 w-4 text-gray-400" />
                                         </button>
-                                        {content.status === 'pending' && (
-                                            <>
-                                                <button className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#4A1412]" style={{ background: '#691D1B' }}>
-                                                    <CheckCircle className="h-3.5 w-3.5" />
-                                                    Setujui
-                                                </button>
-                                                <button className="flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 transition-colors hover:bg-red-50">
-                                                    <XCircle className="h-3.5 w-3.5" />
-                                                    Tolak
-                                                </button>
-                                            </>
-                                        )}
                                     </div>
                                 </div>
                             );
                         })}
                     </div>
+
                     {filtered.length === 0 && (
-                        <div className="p-12 text-center text-sm text-gray-400">Tidak ada konten yang cocok dengan filter.</div>
+                        <div className="flex items-center justify-center py-12">
+                            <p className="text-sm text-gray-500">Tidak ada konten ditemukan</p>
+                        </div>
                     )}
                 </div>
             </div>
