@@ -1,0 +1,179 @@
+import { Link, usePage } from '@inertiajs/react';
+
+const navigationGroups = [
+    {
+        title: 'Overview',
+        items: [
+            { label: 'Dashboard', href: route('admin.dashboard'), badge: 'DA' },
+            { label: 'Pengguna', href: route('admin.users'), badge: 'US' },
+            { label: 'Paket', href: route('admin.packages'), badge: 'PK' },
+            { label: 'Konten', href: route('admin.content'), badge: 'CT' },
+        ],
+    },
+    {
+        title: 'Operasional',
+        items: [
+            { label: 'Jadwal', href: route('admin.schedule'), badge: 'SC' },
+            { label: 'Transaksi', href: route('admin.transactions'), badge: 'TR' },
+            {
+                label: 'Statistik Transaksi',
+                href: route('admin.transaction-stats'),
+                badge: 'ST',
+            },
+            { label: 'Notifikasi', href: route('admin.notifications'), badge: 'NT' },
+        ],
+    },
+    {
+        title: 'Sistem',
+        items: [
+            { label: 'Export Laporan', href: route('admin.reports.export'), badge: 'RP' },
+            { label: 'Pengaturan', href: route('admin.settings'), badge: 'SG' },
+            {
+                label: 'Notif. Sistem',
+                href: route('admin.settings.notifications'),
+                badge: 'SN',
+            },
+        ],
+    },
+];
+
+export default function AdminLayout({ children, title, subtitle }) {
+    const page = usePage();
+    const user = page.props.auth?.user;
+    const currentPath = page.url.split('?')[0];
+
+    const isActive = (href) => {
+        const path = new URL(href, window.location.origin).pathname;
+        return currentPath === path || currentPath.startsWith(`${path}/`);
+    };
+
+    return (
+        <div className="min-h-screen bg-[#F7F2E7] text-[#111827]">
+            <div className="flex min-h-screen">
+                <aside className="hidden w-72 shrink-0 flex-col border-r border-white/10 bg-[#691D1B] text-white lg:flex">
+                    <div className="border-b border-white/10 p-5">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <div className="text-xs uppercase tracking-[0.25em] text-[#FFE882]/80">
+                                    BRICS Education
+                                </div>
+                                <div className="mt-1 text-lg font-bold text-white">
+                                    Admin Panel
+                                </div>
+                            </div>
+                            <div className="rounded-2xl border border-[#FFE882]/30 bg-[#FFE882]/10 px-3 py-1 text-xs font-semibold text-[#FFE882]">
+                                LIVE
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="border-b border-white/10 p-5">
+                        <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FFE882] text-sm font-extrabold text-[#691D1B]">
+                                {(user?.name || 'Admin')
+                                    .split(' ')
+                                    .map((part) => part[0])
+                                    .join('')
+                                    .slice(0, 2)
+                                    .toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                                <div className="truncate text-sm font-semibold text-white">
+                                    {user?.name || 'Admin User'}
+                                </div>
+                                <div className="text-xs text-white/60">Administrator</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <nav className="flex-1 space-y-5 overflow-y-auto p-4">
+                        {navigationGroups.map((group) => (
+                            <div key={group.title}>
+                                <div className="px-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/45">
+                                    {group.title}
+                                </div>
+                                <div className="mt-2 space-y-1">
+                                    {group.items.map((item) => {
+                                        const active = isActive(item.href);
+
+                                        return (
+                                            <Link
+                                                key={item.label}
+                                                href={item.href}
+                                                className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-all ${
+                                                    active
+                                                        ? 'bg-[#FFE882] text-[#000000] shadow-sm'
+                                                        : 'text-white/80 hover:bg-white/10 hover:text-white'
+                                                }`}
+                                            >
+                                                <span
+                                                    className={`flex h-8 w-8 items-center justify-center rounded-xl text-[11px] font-bold ${
+                                                        active
+                                                            ? 'bg-[#691D1B] text-white'
+                                                            : 'bg-white/10 text-[#FFE882]'
+                                                    }`}
+                                                >
+                                                    {item.badge}
+                                                </span>
+                                                <span className="text-sm font-medium">
+                                                    {item.label}
+                                                </span>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
+                    </nav>
+
+                    <div className="border-t border-white/10 p-4">
+                        <Link
+                            href={route('logout')}
+                            method="post"
+                            as="button"
+                            className="flex w-full items-center justify-center rounded-2xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
+                        >
+                            Keluar
+                        </Link>
+                    </div>
+                </aside>
+
+                <div className="flex min-w-0 flex-1 flex-col">
+                    <header className="sticky top-0 z-20 border-b border-[#D8D7BE] bg-white/95 px-4 py-4 backdrop-blur lg:px-6">
+                        <div className="flex items-center justify-between gap-4">
+                            <div>
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#691D1B]/70">
+                                    Admin Workspace
+                                </div>
+                                <h1 className="mt-1 text-xl font-bold text-gray-900">
+                                    {title || 'Admin Panel'}
+                                </h1>
+                                <p className="mt-1 text-sm text-gray-500">
+                                    {subtitle || 'Kelola operasional platform dari satu panel.'}
+                                </p>
+                            </div>
+
+                            <div className="hidden items-center gap-3 md:flex">
+                                <div className="rounded-2xl border border-[#D8D7BE] bg-[#F7F2E7] px-4 py-2">
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">
+                                        Admin
+                                    </div>
+                                    <div className="text-sm font-semibold text-gray-800">
+                                        {user?.email || 'admin@brics-education.test'}
+                                    </div>
+                                </div>
+                                <div className="rounded-2xl bg-[#691D1B] px-4 py-2 text-sm font-semibold text-[#FFE882] shadow-sm">
+                                    Online
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="flex-1 overflow-y-auto">
+                        {children}
+                    </main>
+                </div>
+            </div>
+        </div>
+    );
+}

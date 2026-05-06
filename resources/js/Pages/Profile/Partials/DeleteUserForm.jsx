@@ -6,6 +6,8 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
 import { useForm } from '@inertiajs/react';
 import { useRef, useState } from 'react';
+import { LoadingButton } from '@/Components/ui/LoadingStates';
+import { toast } from 'sonner';
 
 export default function DeleteUserForm({ className = '' }) {
     const [confirmingUserDeletion, setConfirmingUserDeletion] = useState(false);
@@ -32,8 +34,14 @@ export default function DeleteUserForm({ className = '' }) {
 
         destroy(route('profile.destroy'), {
             preserveScroll: true,
-            onSuccess: () => closeModal(),
-            onError: () => passwordInput.current.focus(),
+            onSuccess: () => {
+                toast.success('Akun berhasil dihapus.');
+                closeModal();
+            },
+            onError: (errors) => {
+                toast.error(Object.values(errors)[0] || 'Gagal menghapus akun.');
+                passwordInput.current.focus();
+            },
             onFinish: () => reset(),
         });
     };
@@ -109,9 +117,15 @@ export default function DeleteUserForm({ className = '' }) {
                             Cancel
                         </SecondaryButton>
 
-                        <DangerButton className="ms-3" disabled={processing}>
-                            Delete Account
-                        </DangerButton>
+                        {processing ? (
+                            <div className="ms-3">
+                                <LoadingButton label="Menghapus..." variant="primary" />
+                            </div>
+                        ) : (
+                            <DangerButton className="ms-3" disabled={processing}>
+                                Delete Account
+                            </DangerButton>
+                        )}
                     </div>
                 </form>
             </Modal>
