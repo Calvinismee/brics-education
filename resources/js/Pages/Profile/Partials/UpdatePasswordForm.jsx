@@ -1,10 +1,11 @@
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import { Transition } from '@headlessui/react';
 import { useForm } from '@inertiajs/react';
 import { useRef } from 'react';
+import { LoadingButton } from '@/Components/ui/LoadingStates';
+import { toast } from 'sonner';
 
 export default function UpdatePasswordForm({ className = '' }) {
     const passwordInput = useRef();
@@ -29,8 +30,13 @@ export default function UpdatePasswordForm({ className = '' }) {
 
         put(route('password.update'), {
             preserveScroll: true,
-            onSuccess: () => reset(),
+            onSuccess: () => {
+                reset();
+                toast.success('Password berhasil diperbarui.');
+            },
             onError: (errors) => {
+                toast.error(Object.values(errors)[0] || 'Gagal memperbarui password.');
+
                 if (errors.password) {
                     reset('password', 'password_confirmation');
                     passwordInput.current.focus();
@@ -122,7 +128,16 @@ export default function UpdatePasswordForm({ className = '' }) {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <PrimaryButton disabled={processing}>Save</PrimaryButton>
+                    {processing ? (
+                        <LoadingButton label="Menyimpan..." variant="primary" />
+                    ) : (
+                        <button
+                            type="submit"
+                            className="inline-flex items-center rounded-md border border-transparent bg-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition duration-150 ease-in-out hover:bg-gray-700 focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        >
+                            Save
+                        </button>
+                    )}
 
                     <Transition
                         show={recentlySuccessful}
