@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import {
@@ -55,8 +56,12 @@ function InfoCard({ title, icon, stats }) {
 }
 
 export default function Dashboard({ userStats = [], growthData = [], studentStats = [], tutorStats = [], activityStats = [], topUsers = [], distributionData = [] }) {
+    const [roleFilter, setRoleFilter] = useState('All');
     const maxVal = growthData.length > 0 ? Math.max(...growthData) : 1;
     const totalFromDistribution = distributionData.reduce((sum, d) => sum + (d.value || 0), 0) || 1;
+
+    const roles = ['All', ...Array.from(new Set((topUsers || []).map((u) => u.role)))];
+    const filteredTopUsers = (topUsers || []).filter((u) => roleFilter === 'All' || u.role === roleFilter);
 
     const statsWithIcons = (userStats || []).map((stat, idx) => {
         const iconMap = [
@@ -157,14 +162,22 @@ export default function Dashboard({ userStats = [], growthData = [], studentStat
                 </div>
 
                 <div className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: 'var(--brics-beige)' }}>
-                    <div className="border-b p-5" style={{ borderColor: 'var(--brics-cream)' }}>
-                        <h3 className="font-bold text-gray-900">Pengguna Terbaru</h3>
-                    </div>
+                        <div className="flex items-center border-b p-5" style={{ borderColor: 'var(--brics-cream)' }}>
+                            <h3 className="font-bold text-gray-900">Pengguna Terbaru</h3>
+                            <div className="ml-auto">
+                                <label className="text-xs text-gray-500 mr-2" style={{ fontWeight: 600 }}>Filter:</label>
+                                <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="rounded-md border px-2 py-1 text-sm" style={{ borderColor: 'var(--brics-beige)' }}>
+                                    {roles.map((r) => (
+                                        <option key={r} value={r}>{r}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
                                 <tr className="bg-gray-50" style={{ borderColor: 'var(--brics-beige)' }}>
-                                    {['Nama', 'Peran', 'Kursus', 'Progres', 'Status'].map((heading) => (
+                                    {['Nama', 'Peran', 'Status'].map((heading) => (
                                         <th key={heading} className="px-5 py-3 text-left text-xs uppercase tracking-wide text-gray-500" style={{ fontWeight: 700 }}>
                                             {heading}
                                         </th>
@@ -172,7 +185,7 @@ export default function Dashboard({ userStats = [], growthData = [], studentStat
                                 </tr>
                             </thead>
                             <tbody style={{ borderColor: 'var(--brics-beige)' }} className="divide-y">
-                                {(topUsers || []).map((user) => (
+                                {filteredTopUsers.map((user) => (
                                     <tr key={user.name} className="transition-colors" style={{ '&:hover': { background: 'var(--brics-beige)' } }}>
                                         <td className="px-5 py-4">
                                             <div className="flex items-center gap-3">
@@ -191,20 +204,7 @@ export default function Dashboard({ userStats = [], growthData = [], studentStat
                                                 {user.role}
                                             </span>
                                         </td>
-                                        <td className="px-5 py-4">
-                                            <span className="text-sm text-gray-700">{user.courses} kursus</span>
-                                        </td>
-                                        <td className="px-5 py-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className="h-2 w-20 rounded-full" style={{ background: 'var(--brics-beige)' }}>
-                                                    <div
-                                                        className="h-2 rounded-full"
-                                                        style={{ width: `${user.progress}%`, background: user.progress >= 80 ? 'var(--brics-maroon)' : user.progress >= 60 ? '#f59e0b' : '#ef4444' }}
-                                                    />
-                                                </div>
-                                                <span className="text-xs text-gray-500">{user.progress}%</span>
-                                            </div>
-                                        </td>
+                                        {/* Kursus and Progres intentionally hidden for admin view */}
                                         <td className="px-5 py-4">
                                             <span className="rounded-full px-2 py-1 text-xs font-semibold" style={{ background: user.status === 'Aktif' ? '#22c55e15' : '#ef444415', color: user.status === 'Aktif' ? '#16a34a' : '#ef4444' }}>
                                                 {user.status}

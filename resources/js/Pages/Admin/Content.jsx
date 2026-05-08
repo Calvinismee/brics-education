@@ -1,12 +1,12 @@
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { useState } from 'react';
-import { Video, FileText, HelpCircle, CheckCircle, XCircle, Clock, Eye, Search } from 'lucide-react';
+import { Video, FileText, HelpCircle, CheckCircle, XCircle, Clock, Eye, Search, Check, X } from 'lucide-react';
 
 const typeIcon = {
     video: <Video className="h-4 w-4" />,
     module: <FileText className="h-4 w-4" />,
-    quiz: <HelpCircle className="h-4 w-4" />,
+    bank_soal: <HelpCircle className="h-4 w-4" />,
 };
 
 const statusConfig = {
@@ -15,13 +15,16 @@ const statusConfig = {
     rejected: { label: 'Ditolak', bg: '#ef444415', color: '#ef4444', icon: <XCircle className="h-4 w-4" /> },
 };
 
-export default function Content({ contents = [] }) {
+export default function Content({ contents = [], stats = {} }) {
     const [filter, setFilter] = useState('all');
     const [search, setSearch] = useState('');
+    const normalizedSearch = search.toLowerCase();
 
     const filtered = (contents || []).filter((content) => {
         const matchFilter = filter === 'all' || content.status === filter;
-        const matchSearch = content.title.toLowerCase().includes(search.toLowerCase()) || content.tutor.toLowerCase().includes(search.toLowerCase());
+        const title = String(content.title || '').toLowerCase();
+        const tutor = String(content.tutor || '').toLowerCase();
+        const matchSearch = title.includes(normalizedSearch) || tutor.includes(normalizedSearch);
         return matchFilter && matchSearch;
     });
 
@@ -40,6 +43,19 @@ export default function Content({ contents = [] }) {
                 <div className="mb-6">
                     <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Manajemen Konten</h1>
                     <p className="text-sm text-gray-500">Validasi dan kelola materi pembelajaran yang diunggah tutor</p>
+                </div>
+
+                <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                    {[
+                        { label: 'Total Konten', value: stats.totalContent ?? counts.all },
+                        { label: 'Menunggu Review', value: stats.pendingReview ?? counts.pending },
+                        { label: 'Dipublikasikan', value: stats.published ?? counts.approved },
+                    ].map((stat) => (
+                        <div key={stat.label} className="rounded-2xl border border-[#D8D7BE] bg-white p-4 shadow-sm">
+                            <div className="text-xs uppercase tracking-wide text-gray-400" style={{ fontWeight: 700 }}>{stat.label}</div>
+                            <div className="mt-1 text-2xl font-extrabold text-gray-900">{Number(stat.value).toLocaleString()}</div>
+                        </div>
+                    ))}
                 </div>
 
                 <div className="mb-6 flex flex-wrap gap-2">
@@ -79,7 +95,8 @@ export default function Content({ contents = [] }) {
                 <div className="overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
                     <div className="divide-y divide-[#F7F2E7]">
                         {filtered.map((content) => {
-                            const status = statusConfig[content.status];
+                            const status = statusConfig[content.status] ?? statusConfig.pending;
+                            const isPending = content.status === 'pending';
 
                             return (
                                 <div key={content.id} className="flex items-center gap-4 p-5 transition-colors hover:bg-[#F7F2E7]">
@@ -97,6 +114,28 @@ export default function Content({ contents = [] }) {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
+                                        {isPending && (
+                                            <>
+                                                <button
+                                                    onClick={() => router.post(route('admin.content.approve', content.id), {}, { preserveScroll: true })}
+                                                    className="flex items-center gap-1 rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
+                                                    type="button"
+                                                    title="Setujui konten"
+                                                >
+                                                    <Check className="h-3.5 w-3.5" />
+                                                    Approve
+                                                </button>
+                                                <button
+                                                    onClick={() => router.post(route('admin.content.reject', content.id), {}, { preserveScroll: true })}
+                                                    className="flex items-center gap-1 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50"
+                                                    type="button"
+                                                    title="Tolak konten"
+                                                >
+                                                    <X className="h-3.5 w-3.5" />
+                                                    Reject
+                                                </button>
+                                            </>
+                                        )}
                                         <div className="rounded-full px-2 py-1" style={{ background: status.bg }}>
                                             <div className="flex items-center gap-1.5" style={{ color: status.color }}>
                                                 {status.icon}

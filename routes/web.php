@@ -46,7 +46,12 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::put('/users/{user}', [UserController::class, 'update'])->whereNumber('user')->name('users.update');
         Route::get('/users/export', [UserController::class, 'export'])->name('users.export');
         Route::get('/packages', [PackageController::class, 'index'])->name('packages');
+        Route::post('/packages', [PackageController::class, 'store'])->name('packages.store');
+        Route::put('/packages/{package}', [PackageController::class, 'update'])->whereNumber('package')->name('packages.update');
+        Route::delete('/packages/{package}', [PackageController::class, 'destroy'])->whereNumber('package')->name('packages.destroy');
         Route::get('/content', [ContentController::class, 'index'])->name('content');
+        Route::post('/content/{content}/approve', [ContentController::class, 'approve'])->whereNumber('content')->name('content.approve');
+        Route::post('/content/{content}/reject', [ContentController::class, 'reject'])->whereNumber('content')->name('content.reject');
         Route::get('/schedule', [ScheduleController::class, 'index'])->name('schedule');
         Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions');
         Route::get('/transaction-stats', [TransactionController::class, 'stats'])->name('transaction-stats');

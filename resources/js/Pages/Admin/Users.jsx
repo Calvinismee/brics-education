@@ -409,7 +409,7 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                                         className="w-full rounded-xl border border-[#D8D7BE] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
                                     >
                                         <option value="student">Siswa</option>
-                                        <option value="tutor">Tutor</option>
+                                        <option value="tutor">Tutorx</option>
                                         <option value="admin">Admin</option>
                                     </select>
                                     {form.errors.role && <p className="text-xs text-red-500">{form.errors.role}</p>}

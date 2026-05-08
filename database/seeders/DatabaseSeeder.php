@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\Package;
+use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
@@ -16,33 +18,32 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Get role IDs
-        $studentRole = \Illuminate\Support\Facades\DB::table('roles')->where('name', 'student')->first()?->id ?? 1;
-        $tutorRole = \Illuminate\Support\Facades\DB::table('roles')->where('name', 'tutor')->first()?->id ?? 2;
-        $adminRole = \Illuminate\Support\Facades\DB::table('roles')->where('name', 'admin')->first()?->id ?? 3;
+        $studentRole = DB::table('roles')->where('name', 'student')->value('id') ?? 1;
+        $tutorRole = DB::table('roles')->where('name', 'mentor')->value('id') ?? 2;
+        $adminRole = DB::table('roles')->where('name', 'admin')->value('id') ?? 3;
 
-        // Create 3 users: student, tutor, and admin
-        User::create([
-            'name' => 'Siswa Brics',
-            'email' => 'siswa@bricsedu.id',
-            'password' => bcrypt('password123'),
-            'role_id' => $studentRole,
-            'role' => 'student',
-        ]);
+        // Seed core users and a few students for admin views
+        foreach ([
+            ['name' => 'Siswa Brics', 'email' => 'siswa@bricsedu.id', 'role_id' => $studentRole, 'role' => 'student'],
+            ['name' => 'Siswa Dua', 'email' => 'siswa2@bricsedu.id', 'role_id' => $studentRole, 'role' => 'student'],
+            ['name' => 'Siswa Tiga', 'email' => 'siswa3@bricsedu.id', 'role_id' => $studentRole, 'role' => 'student'],
+            ['name' => 'Tutor Brics', 'email' => 'tutor@bricsedu.id', 'role_id' => $tutorRole, 'role' => 'tutor'],
+            ['name' => 'Admin Brics', 'email' => 'admin@bricsedu.id', 'role_id' => $adminRole, 'role' => 'admin'],
+        ] as $userData) {
+            User::updateOrCreate(
+                ['email' => $userData['email']],
+                [
+                    'name' => $userData['name'],
+                    'password' => bcrypt('password123'),
+                    'role_id' => $userData['role_id'],
+                    'role' => $userData['role'],
+                ]
+            );
+        }
 
-        User::create([
-            'name' => 'Tutor Brics',
-            'email' => 'tutor@bricsedu.id',
-            'password' => bcrypt('password123'),
-            'role_id' => $tutorRole,
-            'role' => 'tutor',
-        ]);
-
-        User::create([
-            'name' => 'Admin Brics',
-            'email' => 'admin@bricsedu.id',
-            'password' => bcrypt('password123'),
-            'role_id' => $adminRole,
-            'role' => 'admin',
+        $this->call([
+            PackageSeeder::class,
+            ContentSeeder::class,
         ]);
     }
 }
