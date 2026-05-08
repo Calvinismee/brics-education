@@ -44,6 +44,9 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PackageSeeder::class,
             ContentSeeder::class,
+            ScheduleSeeder::class,
+            TransactionSeeder::class,
+            NotificationSeeder::class,
         ]);
     }
 }

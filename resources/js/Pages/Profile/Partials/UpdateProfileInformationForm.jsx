@@ -1,6 +1,7 @@
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
+import PrimaryButton from '@/Components/PrimaryButton';
 import { Transition } from '@headlessui/react';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { LoadingButton } from '@/Components/ui/LoadingStates';
@@ -58,16 +59,7 @@ export default function UpdateProfileInformation({
                     />
 
                     <InputError className="mt-2" message={errors.name} />
-                        {processing ? (
-                            <LoadingButton label="Menyimpan..." variant="primary" />
-                        ) : (
-                            <button
-                                type="submit"
-                                className="inline-flex items-center rounded-md border border-transparent bg-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition duration-150 ease-in-out hover:bg-gray-700 focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                            >
-                                Save
-                            </button>
-                        )}
+                </div>
 
                 <div>
                     <InputLabel htmlFor="email" value="Email" />

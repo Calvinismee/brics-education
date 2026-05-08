@@ -53,9 +53,14 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::post('/content/{content}/approve', [ContentController::class, 'approve'])->whereNumber('content')->name('content.approve');
         Route::post('/content/{content}/reject', [ContentController::class, 'reject'])->whereNumber('content')->name('content.reject');
         Route::get('/schedule', [ScheduleController::class, 'index'])->name('schedule');
+        Route::post('/schedule', [ScheduleController::class, 'store'])->name('schedule.store');
+        Route::put('/schedule/{schedule}', [ScheduleController::class, 'update'])->whereNumber('schedule')->name('schedule.update');
+        Route::delete('/schedule/{schedule}', [ScheduleController::class, 'destroy'])->whereNumber('schedule')->name('schedule.destroy');
         Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions');
         Route::get('/transaction-stats', [TransactionController::class, 'stats'])->name('transaction-stats');
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
+        Route::post('/notifications/{notification}/mark-as-read', [NotificationController::class, 'markAsRead'])->whereNumber('notification')->name('notifications.mark-as-read');
+        Route::post('/notifications/mark-all-as-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
         Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
         Route::get('/settings', [SettingController::class, 'index'])->name('settings');
         Route::get('/settings/notifications', fn () => Inertia::render('Admin/Settings', ['initialTab' => 'notifications']))->name('settings.notifications');

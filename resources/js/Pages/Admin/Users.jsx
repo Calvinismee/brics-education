@@ -42,11 +42,11 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                 user.name.toLowerCase().includes(search.toLowerCase()) ||
                 user.email.toLowerCase().includes(search.toLowerCase());
             const matchesRole = selectedRole === 'all' || user.role === selectedRole;
-            
+
             const userDate = user.created_at ? new Date(user.created_at) : null;
             let matchesDateFrom = true;
             let matchesDateTo = true;
-            
+
             if (dateFrom && userDate) {
                 matchesDateFrom = userDate >= new Date(dateFrom);
             }
@@ -56,13 +56,13 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
 
             return matchesSearch && matchesRole && matchesDateFrom && matchesDateTo;
         });
-        
+
         result.sort((a, b) => {
             const dateA = a.created_at ? new Date(a.created_at) : new Date(0);
             const dateB = b.created_at ? new Date(b.created_at) : new Date(0);
             return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
         });
-        
+
         return result;
     }, [userData, search, selectedRole, dateFrom, dateTo, sortOrder]);
 
@@ -130,21 +130,15 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
         if (search) params.append('search', search);
         if (dateFrom) params.append('dateFrom', dateFrom);
         if (dateTo) params.append('dateTo', dateTo);
-        
+
         const href = route('admin.users.export') + (params.toString() ? '?' + params.toString() : '');
         window.location.href = href;
     };
 
     return (
         <AdminLayout title="Manajemen Pengguna" subtitle="Kelola data siswa dan tutor platform.">
-            <Head title="Manajemen Pengguna" />
-
             <div className="p-4 lg:p-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 <div className="mb-6 flex items-center justify-between gap-4">
-                    <div>
-                        <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Manajemen Pengguna</h1>
-                        <p className="text-sm text-gray-500">Kelola data siswa dan tutor platform</p>
-                    </div>
                     <button
                         onClick={openCreate}
                         className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm text-white transition-colors hover:bg-[#4A1412]"
@@ -189,30 +183,31 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                                     <button
                                         key={role}
                                         onClick={() => setSelectedRole(role)}
-                                        className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
-                                            selectedRole === role ? 'text-white' : 'text-gray-600 hover:bg-[#F7F2E7]'
-                                        }`}
+                                        className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${selectedRole === role ? 'text-white' : 'text-gray-600 hover:bg-[#F7F2E7]'
+                                            }`}
                                         style={selectedRole === role ? { background: '#691D1B' } : {}}
                                     >
                                         {role === 'all' ? 'Semua' : getRoleDisplay(role)}
                                     </button>
                                 ))}
                             </div>
-                            <input
-                                type="date"
-                                value={dateFrom}
-                                onChange={(event) => setDateFrom(event.target.value)}
-                                className="rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm outline-none focus:border-[#691D1B]"
-                                title="Dari tanggal"
-                            />
-                            <span className="text-sm text-gray-500">s/d</span>
-                            <input
-                                type="date"
-                                value={dateTo}
-                                onChange={(event) => setDateTo(event.target.value)}
-                                className="rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm outline-none focus:border-[#691D1B]"
-                                title="Sampai tanggal"
-                            />
+                            <div className="flex flex-row gap-2">
+                                <input
+                                    type="date"
+                                    value={dateFrom}
+                                    onChange={(event) => setDateFrom(event.target.value)}
+                                    className="rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm outline-none focus:border-[#691D1B]"
+                                    title="Dari tanggal"
+                                />
+                                <p className="text-sm text-gray-500">s/d</p>
+                                <input
+                                    type="date"
+                                    value={dateTo}
+                                    onChange={(event) => setDateTo(event.target.value)}
+                                    className="rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm outline-none focus:border-[#691D1B]"
+                                    title="Sampai tanggal"
+                                />
+                            </div>
                             <button
                                 onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
                                 className="flex items-center gap-1.5 rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm text-gray-600 transition-colors hover:border-[#691D1B]"
@@ -346,13 +341,12 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                             <a
                                 key={idx}
                                 href={link.url || '#'}
-                                className={`rounded px-3 py-2 text-sm ${
-                                    link.active
+                                className={`rounded px-3 py-2 text-sm ${link.active
                                         ? 'bg-[#691D1B] text-white'
                                         : link.url
-                                        ? 'border border-[#D8D7BE] text-gray-700 hover:bg-[#F7F2E7]'
-                                        : 'text-gray-400'
-                                }`}
+                                            ? 'border border-[#D8D7BE] text-gray-700 hover:bg-[#F7F2E7]'
+                                            : 'text-gray-400'
+                                    }`}
                                 dangerouslySetInnerHTML={{ __html: link.label }}
                             />
                         ))}
