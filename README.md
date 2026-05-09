@@ -91,7 +91,6 @@ php artisan key:generate
 npm run build
 php artisan config:clear
 php artisan migrate
-php artisan db:seed
 ```
 
 5. Start development servers in two separate terminals:
