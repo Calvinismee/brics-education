@@ -1,21 +1,13 @@
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { useState } from 'react';
-import { Video, FileText, HelpCircle, CheckCircle, XCircle, Clock, Eye, Search } from 'lucide-react';
-
-const contents = [
-    { id: 1, title: 'Intro_Matematika_UTBK_Sesi1.mp4', tutor: 'Dr. Ahmad Fauzi', type: 'video', size: '245 MB', submitted: '27 Apr 2025', status: 'pending' },
-    { id: 2, title: 'Modul_Bab2_Kalkulus.pdf', tutor: 'Prof. Dewi Rahayu', type: 'module', size: '4.2 MB', submitted: '26 Apr 2025', status: 'approved' },
-    { id: 3, title: 'Quiz_Aljabar_Linear.xlsx', tutor: 'Dr. Ahmad Fauzi', type: 'quiz', size: '0.9 MB', submitted: '25 Apr 2025', status: 'rejected' },
-    { id: 4, title: 'React_Hooks_Tutorial.mp4', tutor: 'Budi Santoso', type: 'video', size: '312 MB', submitted: '24 Apr 2025', status: 'pending' },
-    { id: 5, title: 'Modul_Fisika_Dasar.pdf', tutor: 'Prof. Dewi Rahayu', type: 'module', size: '6.8 MB', submitted: '23 Apr 2025', status: 'approved' },
-    { id: 6, title: 'Bank_Soal_SNBT.json', tutor: 'Tim BRICS', type: 'quiz', size: '2.1 MB', submitted: '22 Apr 2025', status: 'pending' },
-];
+import { Video, FileText, HelpCircle, CheckCircle, XCircle, Clock, Eye, Search, Check, X } from 'lucide-react';
+import DeleteConfirmModal from '@/Components/DeleteConfirmModal';
 
 const typeIcon = {
     video: <Video className="h-4 w-4" />,
     module: <FileText className="h-4 w-4" />,
-    quiz: <HelpCircle className="h-4 w-4" />,
+    bank_soal: <HelpCircle className="h-4 w-4" />,
 };
 
 const statusConfig = {
@@ -24,21 +16,46 @@ const statusConfig = {
     rejected: { label: 'Ditolak', bg: '#ef444415', color: '#ef4444', icon: <XCircle className="h-4 w-4" /> },
 };
 
-export default function Content() {
+export default function Content({ contents = [], stats = {} }) {
+    const contentList = Array.isArray(contents?.data) ? contents.data : contents;
     const [filter, setFilter] = useState('all');
     const [search, setSearch] = useState('');
+    const [rejectTarget, setRejectTarget] = useState(null);
+    const normalizedSearch = search.toLowerCase();
 
-    const filtered = contents.filter((content) => {
+    const filtered = (contentList || []).filter((content) => {
         const matchFilter = filter === 'all' || content.status === filter;
-        const matchSearch = content.title.toLowerCase().includes(search.toLowerCase()) || content.tutor.toLowerCase().includes(search.toLowerCase());
+        const title = String(content.title || '').toLowerCase();
+        const tutor = String(content.tutor || '').toLowerCase();
+        const matchSearch = title.includes(normalizedSearch) || tutor.includes(normalizedSearch);
         return matchFilter && matchSearch;
     });
 
     const counts = {
-        all: contents.length,
-        pending: contents.filter((content) => content.status === 'pending').length,
-        approved: contents.filter((content) => content.status === 'approved').length,
-        rejected: contents.filter((content) => content.status === 'rejected').length,
+        all: (contentList || []).length,
+        pending: (contentList || []).filter((content) => content.status === 'pending').length,
+        approved: (contentList || []).filter((content) => content.status === 'approved').length,
+        rejected: (contentList || []).filter((content) => content.status === 'rejected').length,
+    };
+
+    const openRejectConfirm = (content) => {
+        setRejectTarget(content);
+    };
+
+    const closeRejectConfirm = () => {
+        setRejectTarget(null);
+    };
+
+    const handleReject = () => {
+        if (!rejectTarget) {
+            return;
+        }
+
+        router.post(route('admin.content.reject', rejectTarget.id), {}, {
+            preserveScroll: true,
+            onSuccess: closeRejectConfirm,
+            onError: closeRejectConfirm,
+        });
     };
 
     return (
@@ -49,6 +66,19 @@ export default function Content() {
                 <div className="mb-6">
                     <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Manajemen Konten</h1>
                     <p className="text-sm text-gray-500">Validasi dan kelola materi pembelajaran yang diunggah tutor</p>
+                </div>
+
+                <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                    {[
+                        { label: 'Total Konten', value: stats.totalContent ?? counts.all },
+                        { label: 'Menunggu Review', value: stats.pendingReview ?? counts.pending },
+                        { label: 'Dipublikasikan', value: stats.published ?? counts.approved },
+                    ].map((stat) => (
+                        <div key={stat.label} className="rounded-2xl border border-[#D8D7BE] bg-white p-4 shadow-sm">
+                            <div className="text-xs uppercase tracking-wide text-gray-400" style={{ fontWeight: 700 }}>{stat.label}</div>
+                            <div className="mt-1 text-2xl font-extrabold text-gray-900">{Number(stat.value).toLocaleString()}</div>
+                        </div>
+                    ))}
                 </div>
 
                 <div className="mb-6 flex flex-wrap gap-2">
@@ -88,7 +118,8 @@ export default function Content() {
                 <div className="overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
                     <div className="divide-y divide-[#F7F2E7]">
                         {filtered.map((content) => {
-                            const status = statusConfig[content.status];
+                            const status = statusConfig[content.status] ?? statusConfig.pending;
+                            const isPending = content.status === 'pending';
 
                             return (
                                 <div key={content.id} className="flex items-center gap-4 p-5 transition-colors hover:bg-[#F7F2E7]">
@@ -105,35 +136,66 @@ export default function Content() {
                                             <span>{content.submitted}</span>
                                         </div>
                                     </div>
-                                    <div className="flex flex-shrink-0 items-center gap-3">
-                                        <span className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs" style={{ background: status.bg, color: status.color, fontWeight: 600 }}>
-                                            {status.icon}
-                                            {status.label}
-                                        </span>
-                                        <button className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-[#691D1B15] hover:text-[#691D1B]">
-                                            <Eye className="h-4 w-4" />
-                                        </button>
-                                        {content.status === 'pending' && (
+                                    <div className="flex items-center gap-3">
+                                        {isPending && (
                                             <>
-                                                <button className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#4A1412]" style={{ background: '#691D1B' }}>
-                                                    <CheckCircle className="h-3.5 w-3.5" />
-                                                    Setujui
+                                                <button
+                                                    onClick={() => router.post(route('admin.content.approve', content.id), {}, { preserveScroll: true })}
+                                                    className="group flex items-center gap-1 rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-50 active:translate-y-0"
+                                                    type="button"
+                                                    title="Setujui konten"
+                                                >
+                                                    <Check className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110" />
+                                                    Approve
                                                 </button>
-                                                <button className="flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 transition-colors hover:bg-red-50">
-                                                    <XCircle className="h-3.5 w-3.5" />
-                                                    Tolak
+                                                <button
+                                                    onClick={() => openRejectConfirm(content)}
+                                                    className="group flex items-center gap-1 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-50 active:translate-y-0"
+                                                    type="button"
+                                                    title="Tolak konten"
+                                                >
+                                                    <X className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110" />
+                                                    Reject
                                                 </button>
                                             </>
                                         )}
+                                        <div className="rounded-full px-2 py-1" style={{ background: status.bg }}>
+                                            <div className="flex items-center gap-1.5" style={{ color: status.color }}>
+                                                {status.icon}
+                                                <span className="text-xs font-semibold">{status.label}</span>
+                                            </div>
+                                        </div>
+                                        <button className="group flex items-center justify-center rounded-lg p-2 transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#F7F2E7] active:translate-y-0" title="Lihat konten">
+                                            <Eye className="h-4 w-4 text-gray-400 transition-transform duration-200 group-hover:scale-110 group-hover:text-[#691D1B]" />
+                                        </button>
                                     </div>
                                 </div>
                             );
                         })}
                     </div>
+
                     {filtered.length === 0 && (
-                        <div className="p-12 text-center text-sm text-gray-400">Tidak ada konten yang cocok dengan filter.</div>
+                        <div className="flex items-center justify-center py-12">
+                            <p className="text-sm text-gray-500">Tidak ada konten ditemukan</p>
+                        </div>
                     )}
                 </div>
+
+                    <DeleteConfirmModal
+                        open={!!rejectTarget}
+                        title="Yakin menolak konten ini?"
+                        description={rejectTarget ? `${rejectTarget.title} akan dipindahkan ke status ditolak.` : ''}
+                        details={rejectTarget ? (
+                            <>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Tutor</p>
+                                <p className="mt-1 text-sm font-semibold text-gray-900">{rejectTarget.tutor}</p>
+                                <p className="mt-3 text-xs text-gray-500">Tipe: {rejectTarget.type}</p>
+                            </>
+                        ) : null}
+                        confirmLabel="Ya, tolak konten"
+                        onCancel={closeRejectConfirm}
+                        onConfirm={handleReject}
+                    />
             </div>
         </AdminLayout>
     );

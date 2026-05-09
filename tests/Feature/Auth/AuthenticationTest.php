@@ -20,6 +20,20 @@ test('users can authenticate using the login screen', function () {
     $response->assertRedirect(route('dashboard', absolute: false));
 });
 
+test('admin users can authenticate using the admin login screen', function () {
+    $user = User::factory()->create([
+        'role' => 'admin',
+    ]);
+
+    $response = $this->post('/login/admin', [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(route('admin.dashboard', absolute: false));
+});
+
 test('users can not authenticate with invalid password', function () {
     $user = User::factory()->create();
 

@@ -34,13 +34,35 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = auth()->user();
-        
+
         // Redirect admin users to admin dashboard
-        if ($user && $user->role === 'admin') {
-            return redirect('/admin/dashboard');
+        if ($user && $user->isAdmin()) {
+            return redirect()->route('admin.dashboard');
         }
 
-        return redirect()->intended(route('dashboard'));
+        return redirect()->intended(route('dashboard', absolute: false));
+    }
+
+    /**
+     * Handle an incoming admin authentication request.
+     */
+    public function storeAdmin(LoginRequest $request): RedirectResponse
+    {
+        $request->authenticate();
+
+        $request->session()->regenerate();
+
+        if (! auth()->user()?->isAdmin()) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login.admin')->withErrors([
+                'email' => 'Akun ini tidak memiliki akses admin.',
+            ]);
+        }
+
+        return redirect()->route('admin.dashboard');
     }
 
     /**
@@ -48,11 +70,17 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        $user = $request->user();
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
+
+        if ($user?->isAdmin()) {
+            return redirect()->route('login.admin');
+        }
 
         return redirect('/');
     }

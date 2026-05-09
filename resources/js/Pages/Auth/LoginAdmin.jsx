@@ -17,7 +17,7 @@ export default function LoginAdmin() {
 
   const submit = (e) => {
     e.preventDefault();
-    post(route('login'), {
+    post(route('login.admin.store'), {
       onFinish: () => reset('password'),
       onError: (formErrors) => {
         toast.error(Object.values(formErrors)[0] || 'Login admin gagal.');

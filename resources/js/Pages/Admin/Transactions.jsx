@@ -3,27 +3,18 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { useState } from 'react';
 import { Search, Filter, Download, CheckCircle, XCircle, Clock, ChevronDown } from 'lucide-react';
 
-const transactions = [
-    { id: 'TRX-2025-0047', student: 'Andi Pratama', course: 'Matematika UTBK Intensif', amount: 'Rp 299.000', method: 'BCA Virtual Account', status: 'success', date: '28 Apr 2025, 14:32' },
-    { id: 'TRX-2025-0046', student: 'Citra Dewi', course: 'Pemrograman Web Full Stack', amount: 'Rp 399.000', method: 'GoPay', status: 'success', date: '28 Apr 2025, 11:18' },
-    { id: 'TRX-2025-0045', student: 'Budi Santosa', course: 'Bahasa Inggris Bisnis', amount: 'Rp 249.000', method: 'BNI Virtual Account', status: 'pending', date: '27 Apr 2025, 16:45' },
-    { id: 'TRX-2025-0044', student: 'Dimas Arya', course: 'Persiapan SNBT Komprehensif', amount: 'Rp 499.000', method: 'Mandiri Transfer', status: 'failed', date: '27 Apr 2025, 09:22' },
-    { id: 'TRX-2025-0043', student: 'Eka Putri', course: 'Matematika UTBK Intensif', amount: 'Rp 299.000', method: 'OVO', status: 'success', date: '26 Apr 2025, 20:14' },
-    { id: 'TRX-2025-0042', student: 'Fajar Nugroho', course: 'Data Science & AI Dasar', amount: 'Rp 449.000', method: 'DANA', status: 'success', date: '26 Apr 2025, 15:30' },
-    { id: 'TRX-2025-0041', student: 'Gita Amelia', course: 'Fisika & Kimia UTBK', amount: 'Rp 329.000', method: 'BCA Virtual Account', status: 'pending', date: '25 Apr 2025, 13:08' },
-];
-
-const statusConfig = {
-    success: { label: 'Berhasil', bg: '#22c55e15', color: '#16a34a', icon: <CheckCircle className="h-4 w-4" /> },
-    pending: { label: 'Pending', bg: '#f59e0b15', color: '#d97706', icon: <Clock className="h-4 w-4" /> },
-    failed: { label: 'Gagal', bg: '#ef444415', color: '#ef4444', icon: <XCircle className="h-4 w-4" /> },
-};
-
-export default function Transactions() {
+export default function Transactions({ transactions = [], stats = {} }) {
+    const transactionList = Array.isArray(transactions?.data) ? transactions.data : transactions;
     const [statusFilter, setStatusFilter] = useState('all');
     const [search, setSearch] = useState('');
 
-    const filtered = transactions.filter((transaction) => {
+    const statusConfig = {
+        success: { label: 'Berhasil', bg: '#22c55e15', color: '#16a34a', icon: <CheckCircle className="h-4 w-4" /> },
+        pending: { label: 'Pending', bg: '#f59e0b15', color: '#d97706', icon: <Clock className="h-4 w-4" /> },
+        failed: { label: 'Gagal', bg: '#ef444415', color: '#ef4444', icon: <XCircle className="h-4 w-4" /> },
+    };
+
+    const filtered = transactionList.filter((transaction) => {
         const matchStatus = statusFilter === 'all' || transaction.status === statusFilter;
         const matchSearch = transaction.student.toLowerCase().includes(search.toLowerCase()) || transaction.id.toLowerCase().includes(search.toLowerCase());
         return matchStatus && matchSearch;
@@ -35,10 +26,6 @@ export default function Transactions() {
 
             <div className="p-4 lg:p-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 <div className="mb-6 flex items-center justify-between gap-4">
-                    <div>
-                        <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Monitoring Transaksi</h1>
-                        <p className="text-sm text-gray-500">Monitor semua transaksi dan pembayaran</p>
-                    </div>
                     <button className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#4A1412]" style={{ background: '#691D1B' }}>
                         <Download className="h-4 w-4" />
                         Export CSV
@@ -47,9 +34,9 @@ export default function Transactions() {
 
                 <div className="mb-6 grid grid-cols-3 gap-4">
                     {[
-                        { label: 'Berhasil Hari Ini', value: `${transactions.filter((transaction) => transaction.status === 'success').length}`, color: '#16a34a', bg: '#22c55e15' },
-                        { label: 'Menunggu Konfirmasi', value: `${transactions.filter((transaction) => transaction.status === 'pending').length}`, color: '#d97706', bg: '#f59e0b15' },
-                        { label: 'Gagal / Error', value: `${transactions.filter((transaction) => transaction.status === 'failed').length}`, color: '#ef4444', bg: '#ef444415' },
+                        { label: 'Transaksi Berhasil', value: `${stats.successToday ?? transactionList.filter((transaction) => transaction.status === 'success').length}`, color: '#16a34a', bg: '#22c55e15' },
+                        { label: 'Menunggu Konfirmasi', value: `${stats.pendingToday ?? transactionList.filter((transaction) => transaction.status === 'pending').length}`, color: '#d97706', bg: '#f59e0b15' },
+                        { label: 'Transaksi Gagal', value: `${stats.failedToday ?? transactionList.filter((transaction) => transaction.status === 'failed').length}`, color: '#ef4444', bg: '#ef444415' },
                     ].map((stat) => (
                         <div key={stat.label} className="rounded-2xl border border-[#D8D7BE] bg-white p-5 shadow-sm">
                             <div className="mb-1 text-2xl font-extrabold" style={{ color: stat.color }}>{stat.value}</div>
@@ -152,7 +139,7 @@ export default function Transactions() {
                     )}
 
                     <div className="flex items-center justify-between border-t border-[#D8D7BE] bg-[#F7F2E7] p-4">
-                        <span className="text-xs text-gray-500">Menampilkan {filtered.length} dari {transactions.length} transaksi</span>
+                        <span className="text-xs text-gray-500">Menampilkan {filtered.length} dari {transactionList.length} transaksi</span>
                         <div className="flex items-center gap-2">
                             {[1, 2, 3].map((page) => (
                                 <button key={page} className={`h-8 w-8 rounded-lg text-xs ${page === 1 ? 'text-white' : 'text-gray-600 hover:bg-[#691D1B15]'}`} style={page === 1 ? { background: '#691D1B', fontWeight: 700 } : {}}>
