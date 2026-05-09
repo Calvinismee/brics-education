@@ -4,8 +4,9 @@ import { TrendingUp, DollarSign, CreditCard, AlertCircle, ArrowUpRight, CheckCir
 
 export default function TransactionStats({ stats = [], summary = {}, paymentMethods = [], successRate = 0, recentTransactions = [] }) {
     const { monthlyRevenue = [], averageTransaction = 0, transactionGrowth = 0, totalRevenue = 0 } = summary;
+    const chartData = stats.length > 0 ? stats : monthlyRevenue;
 
-    const maxValue = stats.length > 0 ? Math.max(...stats.map(s => s.amount || 0), 1) : 1;
+    const maxValue = chartData.length > 0 ? Math.max(...chartData.map((item) => Number(item.amount) || 0), 1) : 1;
 
     const statusConfig = {
         success: { label: 'Berhasil', bg: '#22c55e15', color: '#16a34a', icon: <CheckCircle className="h-4 w-4" /> },
@@ -15,6 +16,23 @@ export default function TransactionStats({ stats = [], summary = {}, paymentMeth
 
     const formatCurrency = (value) => {
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
+    };
+
+    const formatChartAmount = (value) => {
+        const amount = Number(value) || 0;
+        const formatter = new Intl.NumberFormat('id-ID', {
+            maximumFractionDigits: amount >= 1000000 ? 1 : 0,
+        });
+
+        if (amount >= 1000000) {
+            return `Rp${formatter.format(amount / 1000000)} jt`;
+        }
+
+        if (amount >= 1000) {
+            return `Rp${formatter.format(amount / 1000)} rb`;
+        }
+
+        return formatCurrency(amount);
     };
 
     const overviewCards = [
@@ -29,11 +47,6 @@ export default function TransactionStats({ stats = [], summary = {}, paymentMeth
             <Head title="Statistik Transaksi" />
 
             <div className="p-4 lg:p-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                <div className="mb-6">
-                    <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Statistik Transaksi</h1>
-                    <p className="text-sm text-gray-500">Monitor keuangan dan pembayaran platform</p>
-                </div>
-
                 {/* Overview Cards */}
                 <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                     {overviewCards.map((card, idx) => (
@@ -69,16 +82,18 @@ export default function TransactionStats({ stats = [], summary = {}, paymentMeth
                             </div>
                         </div>
                         <div className="flex h-48 items-end justify-between gap-2">
-                            {(stats || []).map((item, i) => {
-                                const barHeight = maxValue > 0 ? (item.amount / maxValue) * 140 : 0;
+                            {(chartData || []).map((item, i) => {
+                                const amount = Number(item.amount) || 0;
+                                const barHeight = maxValue > 0 ? (amount / maxValue) * 140 : 0;
+
                                 return (
-                                    <div key={i} className="flex flex-1 flex-col items-center gap-1">
-                                        <span className="text-xs text-gray-400">{(item.amount / 1000000).toFixed(0)}Jt</span>
+                                    <div key={item.periodKey ?? item.period ?? i} className="flex flex-1 flex-col items-center gap-1">
+                                        <span className="text-xs text-gray-400">{formatChartAmount(amount)}</span>
                                         <div
                                             className="w-full rounded-t-lg"
                                             style={{
                                                 height: `${barHeight}px`,
-                                                background: i === (stats || []).length - 1 ? '#691D1B' : '#D8D7BE',
+                                                background: i === (chartData || []).length - 1 ? '#691D1B' : '#D8D7BE',
                                                 minHeight: '4px',
                                             }}
                                         />

@@ -65,6 +65,15 @@ class User extends Authenticatable
         return $roleIds[$normalizedRoleName] ?? null;
     }
 
+    public static function adminRoleIds(): array
+    {
+        return [
+            'student' => static::roleIdFor('student') ?? 1,
+            'tutor' => static::roleIdFor('tutor') ?? static::roleIdFor('mentor') ?? 2,
+            'admin' => static::roleIdFor('admin') ?? 3,
+        ];
+    }
+
     private static function cachedRoleMap(): array
     {
         return Cache::rememberForever(self::ROLE_MAP_CACHE_KEY, function () {

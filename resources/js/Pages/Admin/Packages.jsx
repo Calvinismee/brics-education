@@ -3,6 +3,8 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { useState } from 'react';
 import { Plus, Edit, Trash2, Package, Users, Check } from 'lucide-react';
 import DeleteConfirmModal from '@/Components/DeleteConfirmModal';
+import { Spinner } from '@/Components/ui/LoadingStates';
+import { showSuccessToast } from '@/utils/toast';
 
 const formatPriceInput = (value) => {
     const digits = String(value ?? '').replace(/\D/g, '');
@@ -75,14 +77,20 @@ export default function Packages({ packages = [], stats = {} }) {
         if (editingPkgId) {
             form.put(route('admin.packages.update', editingPkgId), {
                 preserveScroll: true,
-                onSuccess: closeForm,
+                onSuccess: () => {
+                    closeForm();
+                    showSuccessToast('Paket berhasil diperbarui.');
+                },
             });
             return;
         }
 
         form.post(route('admin.packages.store'), {
             preserveScroll: true,
-            onSuccess: closeForm,
+            onSuccess: () => {
+                closeForm();
+                showSuccessToast('Paket berhasil ditambahkan.');
+            },
         });
     };
 
@@ -91,7 +99,10 @@ export default function Packages({ packages = [], stats = {} }) {
 
         form.delete(route('admin.packages.destroy', deleteTarget.id), {
             preserveScroll: true,
-            onSuccess: closeDeleteConfirm,
+            onSuccess: () => {
+                closeDeleteConfirm();
+                showSuccessToast('Paket berhasil dihapus.');
+            },
             onError: closeDeleteConfirm,
         });
     };
@@ -255,8 +266,14 @@ export default function Packages({ packages = [], stats = {} }) {
                                     <button type="button" onClick={closeForm} className="rounded-xl border-2 border-[#D8D7BE] px-5 py-2.5 text-sm font-semibold text-gray-600 transition-colors hover:border-[#691D1B]">
                                         Batal
                                     </button>
-                                    <button type="submit" className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#4A1412] disabled:cursor-not-allowed disabled:opacity-60" style={{ background: '#691D1B' }} disabled={form.processing}>
-                                        {form.processing ? 'Menyimpan...' : 'Simpan'}
+                                    <button
+                                        type="submit"
+                                        className="flex min-w-32 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#4A1412] disabled:cursor-not-allowed disabled:opacity-70"
+                                        style={{ background: '#691D1B' }}
+                                        disabled={form.processing}
+                                    >
+                                        {form.processing && <Spinner size="xs" color="#FFE882" />}
+                                        {form.processing ? (editingPkgId ? 'Menyimpan perubahan...' : 'Menambahkan paket...') : 'Simpan'}
                                     </button>
                                 </div>
                             </form>

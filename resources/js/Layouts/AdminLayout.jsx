@@ -1,6 +1,7 @@
 import { Link, usePage, router } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { Bell, X, Check } from 'lucide-react';
+import { countUnreadNotifications, normalizeNotifications, sortNotifications } from '@/utils/notifications';
 
 const navigationGroups = [
     {
@@ -31,17 +32,11 @@ export default function AdminLayout({ children, title, subtitle, notifications =
     const user = page.props.auth?.user;
     const currentPath = page.url.split('?')[0];
     const [showNotifications, setShowNotifications] = useState(false);
-    // Prefer Inertia-shared `notifications` (available via middleware), fall back to prop
-    const initialNotifications = page.props?.notifications ?? notifications ?? [];
-    const [notificationList, setNotificationList] = useState(Array.isArray(initialNotifications) ? initialNotifications : []);
-
-    // Sync notification list when page props change
-    useEffect(() => {
-        const newNotifications = page.props?.notifications ?? notifications ?? [];
-        if (Array.isArray(newNotifications)) {
-            setNotificationList(newNotifications);
-        }
-    }, [page.props?.notifications, notifications]);
+    const sharedNotifications = page.props?.notifications ?? notifications;
+    const notificationList = useMemo(
+        () => normalizeNotifications(sharedNotifications),
+        [sharedNotifications],
+    );
 
     const isActive = (href) => {
         const path = new URL(href, window.location.origin).pathname;
@@ -51,26 +46,18 @@ export default function AdminLayout({ children, title, subtitle, notifications =
     const markAsRead = (notificationId) => {
         router.post(route('admin.notifications.mark-as-read', notificationId), {}, {
             preserveScroll: true,
-            only: ['notifications']
+            only: ['notifications'],
         });
     };
 
-    const sortedNotificationList = [...notificationList].sort((a, b) => {
-        // Unread notifications come first
-        if (a.is_read !== b.is_read) {
-            return a.is_read ? 1 : -1;
-        }
-
-        // For unread: sort by created_at descending (newest first)
-        if (!a.is_read && !b.is_read) {
-            return new Date(b.created_at) - new Date(a.created_at);
-        }
-
-        // For read: sort by created_at ascending (oldest first)
-        return new Date(a.created_at) - new Date(b.created_at);
-    });
-
-    const unreadCount = notificationList.filter(n => !n.is_read).length;
+    const sortedNotificationList = useMemo(
+        () => sortNotifications(notificationList),
+        [notificationList],
+    );
+    const unreadCount = useMemo(
+        () => countUnreadNotifications(notificationList),
+        [notificationList],
+    );
 
     return (
         <div className="min-h-screen bg-[#F7F2E7] text-[#111827]">
@@ -266,20 +253,6 @@ export default function AdminLayout({ children, title, subtitle, notifications =
                                             </div>
                                         </div>
                                     )}
-                                </div>
-
-                                <div className="hidden items-center gap-3 md:flex">
-                                    <div className="rounded-2xl border border-[#D8D7BE] bg-[#F7F2E7] px-4 py-2">
-                                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">
-                                            Admin
-                                        </div>
-                                        <div className="text-sm font-semibold text-gray-800">
-                                            {user?.email || 'admin@brics-education.test'}
-                                        </div>
-                                    </div>
-                                    <div className="rounded-2xl bg-[#691D1B] px-4 py-2 text-sm font-semibold text-[#FFE882] shadow-sm">
-                                        Online
-                                    </div>
                                 </div>
                             </div>
                         </div>

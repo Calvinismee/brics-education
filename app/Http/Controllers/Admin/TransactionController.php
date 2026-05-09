@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class TransactionController extends Controller
 {
@@ -37,7 +37,7 @@ class TransactionController extends Controller
                 'id' => $t->invoice_number ?? (string) $t->id,
                 'student' => $t->student ?? '-',
                 'course' => $t->course ?? '-',
-                'amount' => 'Rp ' . number_format((float) $t->amount, 0, ',', '.'),
+                'amount' => 'Rp '.number_format((float) $t->amount, 0, ',', '.'),
                 'method' => $t->payment_method ?? '-',
                 'status' => $mapped,
                 'date' => Carbon::parse($t->created_at)->format('Y-m-d H:i'),
@@ -79,15 +79,15 @@ class TransactionController extends Controller
         // Build list of last 6 months (oldest -> newest)
         $months = [];
         for ($i = 5; $i >= 0; $i--) {
-            $m = $now->copy()->subMonths($i);
+            $m = $now->copy()->subMonthsNoOverflow($i)->startOfMonth();
             $months[] = $m;
         }
 
-        $start = $now->copy()->subMonths(5)->startOfMonth();
+        $start = $now->copy()->subMonthsNoOverflow(5)->startOfMonth();
 
         // Monthly revenue data
         $rows = DB::table('transactions')
-            ->selectRaw("date_trunc('month', created_at) as month, COALESCE(SUM(amount),0) as total")
+            ->selectRaw("date_trunc('month', created_at) as month, COALESCE(SUM(CASE WHEN payment_status::text IN ('paid', 'success') THEN amount ELSE 0 END), 0) as total")
             ->where('created_at', '>=', $start)
             ->groupBy('month')
             ->orderBy('month')
@@ -101,7 +101,8 @@ class TransactionController extends Controller
             $key = $m->format('Y-m');
             $amount = isset($rows[$key]) ? (float) $rows[$key]->total : 0;
             $stats[] = [
-                'period' => $m->format('M Y'),
+                'period' => $m->copy()->locale('id')->translatedFormat('M Y'),
+                'periodKey' => $key,
                 'amount' => $amount,
             ];
         }
@@ -122,7 +123,7 @@ class TransactionController extends Controller
 
         // Payment methods breakdown
         $methodBreakdown = DB::table('transactions')
-            ->selectRaw("payment_method, COALESCE(SUM(amount), 0) as amount, COUNT(*) as count")
+            ->selectRaw('payment_method, COALESCE(SUM(amount), 0) as amount, COUNT(*) as count')
             ->groupBy('payment_method')
             ->orderByDesc('amount')
             ->get()
@@ -163,6 +164,7 @@ class TransactionController extends Controller
         $recentTransactions = $recentTx->map(function ($t) {
             $status = $t->payment_status;
             $mapped = in_array($status, ['paid', 'success'], true) ? 'success' : ($status === 'failed' ? 'failed' : 'pending');
+
             return [
                 'id' => $t->invoice_number ?? (string) $t->id,
                 'student' => $t->student ?? '-',
