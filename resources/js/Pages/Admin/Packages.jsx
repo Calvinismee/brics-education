@@ -2,6 +2,7 @@ import { Head, useForm } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { useState } from 'react';
 import { Plus, Edit, Trash2, Package, Users, Check } from 'lucide-react';
+import DeleteConfirmModal from '@/Components/DeleteConfirmModal';
 
 const formatPriceInput = (value) => {
     const digits = String(value ?? '').replace(/\D/g, '');
@@ -16,9 +17,11 @@ const formatPriceInput = (value) => {
 const normalizePriceValue = (value) => String(value ?? '').replace(/\D/g, '');
 
 export default function Packages({ packages = [], stats = {} }) {
+    const packageList = Array.isArray(packages?.data) ? packages.data : packages;
     const [showForm, setShowForm] = useState(false);
     const [editingPkgId, setEditingPkgId] = useState(null);
     const [featureInput, setFeatureInput] = useState('');
+    const [deleteTarget, setDeleteTarget] = useState(null);
     const form = useForm({ name: '', price: '', description: '', features: [], popular: false });
 
     const closeForm = () => {
@@ -51,6 +54,14 @@ export default function Packages({ packages = [], stats = {} }) {
         setShowForm(true);
     };
 
+    const openDeleteConfirm = (pkg) => {
+        setDeleteTarget(pkg);
+    };
+
+    const closeDeleteConfirm = () => {
+        setDeleteTarget(null);
+    };
+
     const handleSubmit = (event) => {
         event?.preventDefault();
 
@@ -75,11 +86,13 @@ export default function Packages({ packages = [], stats = {} }) {
         });
     };
 
-    const handleDelete = (pkg) => {
-        if (!confirm('Hapus paket ini?')) return;
+    const handleDelete = () => {
+        if (!deleteTarget) return;
 
-        form.delete(route('admin.packages.destroy', pkg.id), {
+        form.delete(route('admin.packages.destroy', deleteTarget.id), {
             preserveScroll: true,
+            onSuccess: closeDeleteConfirm,
+            onError: closeDeleteConfirm,
         });
     };
 
@@ -101,9 +114,9 @@ export default function Packages({ packages = [], stats = {} }) {
 
                 <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
                     {[
-                        { label: 'Total Paket', value: stats.totalPackages || packages.length || 0 },
-                        { label: 'Paket Populer', value: stats.activePackages || packages.filter((pkg) => pkg.popular).length || 0 },
-                        { label: 'Paket Aktif', value: packages.filter((pkg) => pkg.popular || pkg.name).length || 0 },
+                        { label: 'Total Paket', value: stats.totalPackages || packageList.length || 0 },
+                        { label: 'Paket Populer', value: stats.activePackages || packageList.filter((pkg) => pkg.popular).length || 0 },
+                        { label: 'Paket Aktif', value: stats.totalPackages || packageList.length || 0 },
                     ].map((stat) => (
                         <div key={stat.label} className="rounded-2xl border border-[#D8D7BE] bg-white p-4 shadow-sm">
                             <div className="text-xs uppercase tracking-wide text-gray-400" style={{ fontWeight: 700 }}>{stat.label}</div>
@@ -113,7 +126,7 @@ export default function Packages({ packages = [], stats = {} }) {
                 </div>
 
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
-                    {packages.map((pkg) => (
+                    {packageList.map((pkg) => (
                         <div
                             key={pkg.id}
                             className={`relative overflow-hidden rounded-2xl border bg-white shadow-sm transition-all hover:shadow-md ${
@@ -150,18 +163,33 @@ export default function Packages({ packages = [], stats = {} }) {
                                     ))}
                                 </ul>
                                 <div className="flex gap-2">
-                                        <button onClick={() => openEdit(pkg)} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#D8D7BE] py-2 text-xs text-gray-600 transition-colors hover:border-[#691D1B]">
-                                            <Edit className="h-3.5 w-3.5" />
+                                        <button onClick={() => openEdit(pkg)} className="group flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#D8D7BE] py-2 text-xs text-gray-600 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#691D1B] active:translate-y-0" title="Edit paket">
+                                            <Edit className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110 group-hover:text-[#691D1B]" />
                                             Edit
                                         </button>
-                                        <button onClick={() => handleDelete(pkg)} className="rounded-lg border border-red-200 p-2 text-red-400 transition-colors hover:bg-red-50">
-                                            <Trash2 className="h-4 w-4" />
+                                        <button onClick={() => openDeleteConfirm(pkg)} className="group rounded-lg border border-red-200 p-2 text-red-400 transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-50 active:translate-y-0" title="Hapus paket">
+                                            <Trash2 className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 group-hover:text-red-500" />
                                         </button>
                                 </div>
                             </div>
                         </div>
                     ))}
                 </div>
+
+                <DeleteConfirmModal
+                    open={!!deleteTarget}
+                    title="Yakin menghapus paket ini?"
+                    description={deleteTarget ? `${deleteTarget.name} akan dihapus permanen dan tidak bisa dibatalkan.` : ''}
+                    details={deleteTarget ? (
+                        <>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Harga</p>
+                            <p className="mt-1 text-sm font-semibold text-gray-900">Rp {formatPriceInput(deleteTarget.price)}</p>
+                        </>
+                    ) : null}
+                    confirmLabel="Ya, hapus paket"
+                    onCancel={closeDeleteConfirm}
+                    onConfirm={handleDelete}
+                />
 
                 {showForm && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

@@ -24,11 +24,11 @@ class DatabaseSeeder extends Seeder
 
         // Seed core users and a few students for admin views
         foreach ([
-            ['name' => 'Siswa Brics', 'email' => 'siswa@bricsedu.id', 'role_id' => $studentRole, 'role' => 'student'],
-            ['name' => 'Siswa Dua', 'email' => 'siswa2@bricsedu.id', 'role_id' => $studentRole, 'role' => 'student'],
-            ['name' => 'Siswa Tiga', 'email' => 'siswa3@bricsedu.id', 'role_id' => $studentRole, 'role' => 'student'],
-            ['name' => 'Tutor Brics', 'email' => 'tutor@bricsedu.id', 'role_id' => $tutorRole, 'role' => 'tutor'],
-            ['name' => 'Admin Brics', 'email' => 'admin@bricsedu.id', 'role_id' => $adminRole, 'role' => 'admin'],
+            ['name' => 'Siswa Brics', 'email' => 'teera@gmail.com', 'role_id' => $studentRole],
+            ['name' => 'Siswa Dua', 'email' => 'siswa2@bricsedu.id', 'role_id' => $studentRole],
+            ['name' => 'Siswa Tiga', 'email' => 'siswa3@bricsedu.id', 'role_id' => $studentRole],
+            ['name' => 'Tutor Brics', 'email' => 'tutor@bricsedu.id', 'role_id' => $tutorRole],
+            ['name' => 'Admin Brics', 'email' => 'admin@bricsedu.id', 'role_id' => $adminRole],
         ] as $userData) {
             User::updateOrCreate(
                 ['email' => $userData['email']],
@@ -36,7 +36,6 @@ class DatabaseSeeder extends Seeder
                     'name' => $userData['name'],
                     'password' => bcrypt('password123'),
                     'role_id' => $userData['role_id'],
-                    'role' => $userData['role'],
                 ]
             );
         }

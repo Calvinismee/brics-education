@@ -59,9 +59,10 @@ export default function Dashboard({ userStats = [], growthData = [], studentStat
     const [roleFilter, setRoleFilter] = useState('All');
     const maxVal = growthData.length > 0 ? Math.max(...growthData) : 1;
     const totalFromDistribution = distributionData.reduce((sum, d) => sum + (d.value || 0), 0) || 1;
+    const topUsersList = Array.isArray(topUsers) ? topUsers : Object.values(topUsers || {});
 
-    const roles = ['All', ...Array.from(new Set((topUsers || []).map((u) => u.role)))];
-    const filteredTopUsers = (topUsers || []).filter((u) => roleFilter === 'All' || u.role === roleFilter);
+    const roles = ['All', ...Array.from(new Set(topUsersList.map((u) => u.role)))];
+    const filteredTopUsers = topUsersList.filter((u) => roleFilter === 'All' || u.role === roleFilter);
 
     const statsWithIcons = (userStats || []).map((stat, idx) => {
         const iconMap = [
@@ -167,8 +168,8 @@ export default function Dashboard({ userStats = [], growthData = [], studentStat
                             <div className="ml-auto">
                                 <label className="text-xs text-gray-500 mr-2" style={{ fontWeight: 600 }}>Filter:</label>
                                 <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="rounded-md border px-2 py-1 text-sm" style={{ borderColor: 'var(--brics-beige)' }}>
-                                    {roles.map((r) => (
-                                        <option key={r} value={r}>{r}</option>
+                                    {roles.map((r, index) => (
+                                        <option key={`${r}-${index}`} value={r}>{r}</option>
                                     ))}
                                 </select>
                             </div>
@@ -185,18 +186,18 @@ export default function Dashboard({ userStats = [], growthData = [], studentStat
                                 </tr>
                             </thead>
                             <tbody style={{ borderColor: 'var(--brics-beige)' }} className="divide-y">
-                                {filteredTopUsers.map((user) => (
-                                    <tr key={user.name} className="transition-colors" style={{ '&:hover': { background: 'var(--brics-beige)' } }}>
+                                {filteredTopUsers.map((user, index) => (
+                                    <tr key={user.id ?? `${user.name ?? 'user'}-${index}`} className="transition-colors" style={{ '&:hover': { background: 'var(--brics-beige)' } }}>
                                         <td className="px-5 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-extrabold" style={{ background: 'var(--brics-maroon)', color: 'var(--brics-yellow)' }}>
-                                                    {user.name
+                                                    {(user.name || 'User')
                                                         .split(' ')
                                                         .map((part) => part[0])
                                                         .join('')
                                                         .slice(0, 2)}
                                                 </div>
-                                                <span className="text-sm font-semibold text-gray-800">{user.name}</span>
+                                                <span className="text-sm font-semibold text-gray-800">{user.name || 'User'}</span>
                                             </div>
                                         </td>
                                         <td className="px-5 py-4">

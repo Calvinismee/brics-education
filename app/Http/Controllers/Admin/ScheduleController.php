@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Schedule;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -14,61 +15,73 @@ class ScheduleController extends Controller
 {
     public function index()
     {
+        $courses = DB::table('courses')->pluck('title', 'id');
         $schedules = Schedule::query()
+            ->select('id', 'course_id', 'mentor_id', 'title', 'meeting_link', 'start_time', 'end_time')
             ->with(['tutor:id,name', 'mentor:id,name'])
-            ->orderBy('schedule_date')
             ->orderBy('start_time')
-            ->get()
-            ->map(function (Schedule $schedule) {
-                $startTime = null;
-                $endTime = null;
+            ->paginate(20)
+            ->withQueryString();
 
-                if ($schedule->start_time instanceof \DateTimeInterface) {
-                    $startTime = $schedule->start_time->format('H:i');
-                } elseif (is_string($schedule->start_time) && !empty($schedule->start_time)) {
-                    $startTime = date('H:i', strtotime($schedule->start_time));
-                }
+        $schedules->getCollection()->transform(function (Schedule $schedule) use ($courses) {
+            $startTime = $schedule->start_time instanceof \DateTimeInterface
+                ? $schedule->start_time->format('H:i')
+                : (is_string($schedule->start_time) && $schedule->start_time !== ''
+                    ? date('H:i', strtotime($schedule->start_time))
+                    : null);
 
-                if ($schedule->end_time instanceof \DateTimeInterface) {
-                    $endTime = $schedule->end_time->format('H:i');
-                } elseif (is_string($schedule->end_time) && !empty($schedule->end_time)) {
-                    $endTime = date('H:i', strtotime($schedule->end_time));
-                }
+            $endTime = $schedule->end_time instanceof \DateTimeInterface
+                ? $schedule->end_time->format('H:i')
+                : (is_string($schedule->end_time) && $schedule->end_time !== ''
+                    ? date('H:i', strtotime($schedule->end_time))
+                    : null);
 
-                return [
-                    'id' => $schedule->id,
-                    'course' => $schedule->course ?: $schedule->title ?: '-',
-                    'tutor_id' => $schedule->tutor_id,
-                    'tutor' => $schedule->tutor?->name ?? $schedule->mentor?->name ?? 'Tutor',
-                    'day' => $schedule->day,
-                    'schedule_date' => optional($schedule->schedule_date)->format('Y-m-d'),
-                    'start_time' => $startTime,
-                    'end_time' => $endTime,
-                    'time' => trim($startTime . ' - ' . $endTime),
-                    'students' => $schedule->students_count,
-                    'meeting_link' => $schedule->meeting_link,
-                    'status' => $schedule->status,
-                ];
-            });
+            $scheduleDate = $schedule->start_time instanceof \DateTimeInterface
+                ? $schedule->start_time->format('Y-m-d')
+                : (is_string($schedule->start_time) && $schedule->start_time !== ''
+                    ? Carbon::parse($schedule->start_time)->format('Y-m-d')
+                    : null);
 
-        $today = now()->startOfDay();
+            $dayName = $schedule->start_time instanceof \DateTimeInterface
+                ? $schedule->start_time->locale('id')->translatedFormat('l')
+                : ($scheduleDate ? Carbon::parse($scheduleDate)->locale('id')->translatedFormat('l') : '');
+
+            return [
+                'id' => $schedule->id,
+                'course' => $schedule->title ?: ($courses[$schedule->course_id] ?? '-'),
+                'course_id' => $schedule->course_id,
+                'tutor_id' => $schedule->mentor_id,
+                'tutor' => $schedule->tutor?->name ?? $schedule->mentor?->name ?? 'Tutor',
+                'day' => $dayName,
+                'schedule_date' => $scheduleDate,
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+                'time' => trim($startTime . ' - ' . $endTime),
+                'meeting_link' => $schedule->meeting_link,
+                'status' => 'scheduled',
+            ];
+        });
+
+        $roles = DB::table('roles')->pluck('id', 'name');
 
         return Inertia::render('Admin/Schedule', [
             'schedules' => $schedules,
             'tutors' => User::query()
-                ->whereIn('role', ['mentor', 'tutor'])
+                ->whereIn('role_id', [
+                    $roles['mentor'] ?? ($roles['tutor'] ?? 2),
+                    $roles['tutor'] ?? 2,
+                ])
                 ->orderBy('name')
                 ->get(['id', 'name']),
             'stats' => [
-                'totalClasses' => $schedules->count(),
+                'totalClasses' => Schedule::count(),
                 'upcomingClasses' => Schedule::query()
-                    ->where('status', 'scheduled')
-                    ->whereDate('schedule_date', '>=', $today)
+                    ->where('start_time', '>=', now())
                     ->count(),
                 'activeInstructors' => Schedule::query()
-                    ->whereNotNull('tutor_id')
-                    ->distinct('tutor_id')
-                    ->count('tutor_id'),
+                    ->whereNotNull('mentor_id')
+                    ->distinct('mentor_id')
+                    ->count('mentor_id'),
             ],
         ]);
     }
@@ -87,9 +100,7 @@ class ScheduleController extends Controller
             'status' => ['required', 'in:scheduled,ongoing,completed,canceled'],
         ]);
 
-        $payload = $this->buildPayload($validated);
-
-        Schedule::create($payload);
+        Schedule::create($this->buildPayload($validated));
 
         return redirect()->route('admin.schedule')->with('success', 'Jadwal kelas berhasil ditambahkan.');
     }
@@ -124,19 +135,15 @@ class ScheduleController extends Controller
     {
         $startTime = Carbon::createFromFormat('Y-m-d H:i', $validated['schedule_date'] . ' ' . $validated['start_time']);
         $endTime = Carbon::createFromFormat('Y-m-d H:i', $validated['schedule_date'] . ' ' . $validated['end_time']);
+        $courseId = DB::table('courses')->where('title', $validated['course'])->value('id');
 
         return [
-            'course' => $validated['course'],
-            'tutor_id' => $validated['tutor_id'] ?? null,
+            'course_id' => $courseId,
             'mentor_id' => $validated['tutor_id'] ?? null,
             'title' => $validated['course'],
             'meeting_link' => $validated['meeting_link'] ?? null,
-            'day' => $validated['day'],
-            'schedule_date' => $validated['schedule_date'],
             'start_time' => $startTime,
             'end_time' => $endTime,
-            'students_count' => $validated['students_count'],
-            'status' => $validated['status'],
         ];
     }
 }

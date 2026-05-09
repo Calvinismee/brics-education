@@ -44,6 +44,7 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::get('/users', [UserController::class, 'index'])->name('users');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::put('/users/{user}', [UserController::class, 'update'])->whereNumber('user')->name('users.update');
+        Route::delete('/users/{user}', [UserController::class, 'destroy'])->whereNumber('user')->name('users.destroy');
         Route::get('/users/export', [UserController::class, 'export'])->name('users.export');
         Route::get('/packages', [PackageController::class, 'index'])->name('packages');
         Route::post('/packages', [PackageController::class, 'store'])->name('packages.store');

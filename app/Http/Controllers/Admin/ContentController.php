@@ -16,7 +16,7 @@ class ContentController extends Controller
             ->leftJoin('users', 'materials.uploaded_by', '=', 'users.id')
             ->leftJoin('courses', 'materials.course_id', '=', 'courses.id')
             ->orderByDesc('materials.created_at')
-            ->get([
+            ->select([
                 'materials.id',
                 'materials.title',
                 'materials.type',
@@ -27,34 +27,41 @@ class ContentController extends Controller
                 'users.name as tutor_name',
                 'courses.title as course_title',
             ])
-            ->map(function ($material) {
-                $contentLength = strlen(trim(strip_tags((string) ($material->content ?? ''))));
-                $size = $contentLength > 0
-                    ? number_format(max(1, round($contentLength / 1024, 1)), 1) . ' KB'
-                    : ($material->file_url ? 'Terlampir' : '—');
+            ->paginate(20)
+            ->withQueryString();
 
-                return [
-                    'id' => $material->id,
-                    'title' => $material->title,
-                    'type' => $material->type,
-                    'tutor' => $material->tutor_name ?: 'Tutor',
-                    'course' => $material->course_title ?: '-',
-                    'size' => $size,
-                    'submitted' => optional($material->created_at)->format('d M Y H:i'),
-                    'status' => match ($material->approval_status) {
-                        'approved' => 'approved',
-                        'rejected' => 'rejected',
-                        default => 'pending',
-                    },
-                ];
-            });
+        $contents->getCollection()->transform(function ($material) {
+            $contentLength = strlen(trim(strip_tags((string) ($material->content ?? ''))));
+            $size = $contentLength > 0
+                ? number_format(max(1, round($contentLength / 1024, 1)), 1) . ' KB'
+                : ($material->file_url ? 'Terlampir' : '—');
+
+            return [
+                'id' => $material->id,
+                'title' => $material->title,
+                'type' => $material->type,
+                'tutor' => $material->tutor_name ?: 'Tutor',
+                'course' => $material->course_title ?: '-',
+                'size' => $size,
+                'submitted' => optional($material->created_at)->format('d M Y H:i'),
+                'status' => match ($material->approval_status) {
+                    'approved' => 'approved',
+                    'rejected' => 'rejected',
+                    default => 'pending',
+                },
+            ];
+        });
+
+        $totalContent = DB::table('materials')->count();
+        $pendingReview = DB::table('materials')->where('approval_status', 'pending')->count();
+        $published = DB::table('materials')->where('approval_status', 'approved')->count();
 
         return Inertia::render('Admin/Content', [
             'contents' => $contents,
             'stats' => [
-                'totalContent' => $contents->count(),
-                'pendingReview' => $contents->where('status', 'pending')->count(),
-                'published' => $contents->where('status', 'approved')->count(),
+            'totalContent' => $totalContent,
+            'pendingReview' => $pendingReview,
+            'published' => $published,
             ],
         ]);
     }

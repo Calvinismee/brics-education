@@ -11,7 +11,7 @@ class TransactionController extends Controller
 {
     public function index()
     {
-        $rows = DB::table('transactions')
+        $transactions = DB::table('transactions')
             ->select(
                 'transactions.id',
                 'transactions.invoice_number',
@@ -26,9 +26,10 @@ class TransactionController extends Controller
             ->leftJoin('users', 'transactions.user_id', 'users.id')
             ->leftJoin('courses', 'transactions.course_id', 'courses.id')
             ->orderByDesc('transactions.created_at')
-            ->get();
+            ->paginate(20)
+            ->withQueryString();
 
-        $transactions = $rows->map(function ($t) {
+        $transactions->getCollection()->transform(function ($t) {
             $status = $t->payment_status;
             $mapped = in_array($status, ['paid', 'success'], true) ? 'success' : ($status === 'failed' ? 'failed' : 'pending');
 
@@ -41,11 +42,22 @@ class TransactionController extends Controller
                 'status' => $mapped,
                 'date' => Carbon::parse($t->created_at)->format('Y-m-d H:i'),
             ];
-        })->toArray();
+        });
 
-        $totalTransactions = count($transactions);
-        $totalRevenue = $rows->where('payment_status', 'paid')->sum('amount');
-        $pendingPayments = $rows->where('payment_status', 'pending')->count();
+        $totalTransactions = DB::table('transactions')->count();
+        $totalRevenue = (float) DB::table('transactions')
+            ->selectRaw("COALESCE(SUM(CASE WHEN payment_status::text IN ('paid', 'success') THEN amount ELSE 0 END), 0) as total_revenue")
+            ->value('total_revenue');
+        $successToday = DB::table('transactions')
+            ->whereRaw("payment_status::text IN ('paid', 'success')")
+            ->count();
+        $pendingToday = DB::table('transactions')
+            ->where('payment_status', 'pending')
+            ->count();
+        $failedToday = DB::table('transactions')
+            ->where('payment_status', 'failed')
+            ->count();
+        $pendingPayments = DB::table('transactions')->where('payment_status', 'pending')->count();
 
         return Inertia::render('Admin/Transactions', [
             'transactions' => $transactions,
@@ -53,6 +65,9 @@ class TransactionController extends Controller
                 'totalTransactions' => $totalTransactions,
                 'totalRevenue' => $totalRevenue,
                 'pendingPayments' => $pendingPayments,
+                'successToday' => $successToday,
+                'pendingToday' => $pendingToday,
+                'failedToday' => $failedToday,
             ],
         ]);
     }
@@ -106,21 +121,19 @@ class TransactionController extends Controller
         }
 
         // Payment methods breakdown
-        $allTransactions = DB::table('transactions')->get();
-        $methodBreakdown = [];
-        if (count($allTransactions) > 0) {
-            $grouped = $allTransactions->groupBy('payment_method');
-            foreach ($grouped as $method => $items) {
-                $amount = $items->sum('amount');
-                $methodBreakdown[] = [
-                    'method' => ucwords(str_replace('_', ' ', $method ?? 'Unknown')),
-                    'amount' => (float) $amount,
-                    'count' => count($items),
+        $methodBreakdown = DB::table('transactions')
+            ->selectRaw("payment_method, COALESCE(SUM(amount), 0) as amount, COUNT(*) as count")
+            ->groupBy('payment_method')
+            ->orderByDesc('amount')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'method' => ucwords(str_replace('_', ' ', $item->payment_method ?? 'Unknown')),
+                    'amount' => (float) $item->amount,
+                    'count' => (int) $item->count,
                 ];
-            }
-            // Sort by amount descending
-            usort($methodBreakdown, fn ($a, $b) => $b['amount'] <=> $a['amount']);
-        }
+            })
+            ->toArray();
 
         // Calculate percentages
         $totalAmount = array_sum(array_column($methodBreakdown, 'amount')) ?: 1;
@@ -134,8 +147,8 @@ class TransactionController extends Controller
         }, $methodBreakdown);
 
         // Success rate calculation
-        $successCount = $allTransactions->where('payment_status', 'success')->count();
-        $totalCount = count($allTransactions);
+        $successCount = DB::table('transactions')->where('payment_status', 'success')->count();
+        $totalCount = DB::table('transactions')->count();
         $successRate = $totalCount > 0 ? ($successCount / $totalCount) * 100 : 0;
 
         // Recent transactions

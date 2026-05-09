@@ -2,6 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { useState } from 'react';
 import { Video, FileText, HelpCircle, CheckCircle, XCircle, Clock, Eye, Search, Check, X } from 'lucide-react';
+import DeleteConfirmModal from '@/Components/DeleteConfirmModal';
 
 const typeIcon = {
     video: <Video className="h-4 w-4" />,
@@ -16,11 +17,13 @@ const statusConfig = {
 };
 
 export default function Content({ contents = [], stats = {} }) {
+    const contentList = Array.isArray(contents?.data) ? contents.data : contents;
     const [filter, setFilter] = useState('all');
     const [search, setSearch] = useState('');
+    const [rejectTarget, setRejectTarget] = useState(null);
     const normalizedSearch = search.toLowerCase();
 
-    const filtered = (contents || []).filter((content) => {
+    const filtered = (contentList || []).filter((content) => {
         const matchFilter = filter === 'all' || content.status === filter;
         const title = String(content.title || '').toLowerCase();
         const tutor = String(content.tutor || '').toLowerCase();
@@ -29,10 +32,30 @@ export default function Content({ contents = [], stats = {} }) {
     });
 
     const counts = {
-        all: (contents || []).length,
-        pending: (contents || []).filter((content) => content.status === 'pending').length,
-        approved: (contents || []).filter((content) => content.status === 'approved').length,
-        rejected: (contents || []).filter((content) => content.status === 'rejected').length,
+        all: (contentList || []).length,
+        pending: (contentList || []).filter((content) => content.status === 'pending').length,
+        approved: (contentList || []).filter((content) => content.status === 'approved').length,
+        rejected: (contentList || []).filter((content) => content.status === 'rejected').length,
+    };
+
+    const openRejectConfirm = (content) => {
+        setRejectTarget(content);
+    };
+
+    const closeRejectConfirm = () => {
+        setRejectTarget(null);
+    };
+
+    const handleReject = () => {
+        if (!rejectTarget) {
+            return;
+        }
+
+        router.post(route('admin.content.reject', rejectTarget.id), {}, {
+            preserveScroll: true,
+            onSuccess: closeRejectConfirm,
+            onError: closeRejectConfirm,
+        });
     };
 
     return (
@@ -118,20 +141,20 @@ export default function Content({ contents = [], stats = {} }) {
                                             <>
                                                 <button
                                                     onClick={() => router.post(route('admin.content.approve', content.id), {}, { preserveScroll: true })}
-                                                    className="flex items-center gap-1 rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
+                                                    className="group flex items-center gap-1 rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-50 active:translate-y-0"
                                                     type="button"
                                                     title="Setujui konten"
                                                 >
-                                                    <Check className="h-3.5 w-3.5" />
+                                                    <Check className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110" />
                                                     Approve
                                                 </button>
                                                 <button
-                                                    onClick={() => router.post(route('admin.content.reject', content.id), {}, { preserveScroll: true })}
-                                                    className="flex items-center gap-1 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50"
+                                                    onClick={() => openRejectConfirm(content)}
+                                                    className="group flex items-center gap-1 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-50 active:translate-y-0"
                                                     type="button"
                                                     title="Tolak konten"
                                                 >
-                                                    <X className="h-3.5 w-3.5" />
+                                                    <X className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110" />
                                                     Reject
                                                 </button>
                                             </>
@@ -142,8 +165,8 @@ export default function Content({ contents = [], stats = {} }) {
                                                 <span className="text-xs font-semibold">{status.label}</span>
                                             </div>
                                         </div>
-                                        <button className="flex items-center justify-center rounded-lg p-2 transition-colors hover:bg-[#F7F2E7]">
-                                            <Eye className="h-4 w-4 text-gray-400" />
+                                        <button className="group flex items-center justify-center rounded-lg p-2 transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#F7F2E7] active:translate-y-0" title="Lihat konten">
+                                            <Eye className="h-4 w-4 text-gray-400 transition-transform duration-200 group-hover:scale-110 group-hover:text-[#691D1B]" />
                                         </button>
                                     </div>
                                 </div>
@@ -157,6 +180,22 @@ export default function Content({ contents = [], stats = {} }) {
                         </div>
                     )}
                 </div>
+
+                    <DeleteConfirmModal
+                        open={!!rejectTarget}
+                        title="Yakin menolak konten ini?"
+                        description={rejectTarget ? `${rejectTarget.title} akan dipindahkan ke status ditolak.` : ''}
+                        details={rejectTarget ? (
+                            <>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Tutor</p>
+                                <p className="mt-1 text-sm font-semibold text-gray-900">{rejectTarget.tutor}</p>
+                                <p className="mt-3 text-xs text-gray-500">Tipe: {rejectTarget.type}</p>
+                            </>
+                        ) : null}
+                        confirmLabel="Ya, tolak konten"
+                        onCancel={closeRejectConfirm}
+                        onConfirm={handleReject}
+                    />
             </div>
         </AdminLayout>
     );

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Search, Filter, Download, CheckCircle, XCircle, Clock, ChevronDown } from 'lucide-react';
 
 export default function Transactions({ transactions = [], stats = {} }) {
+    const transactionList = Array.isArray(transactions?.data) ? transactions.data : transactions;
     const [statusFilter, setStatusFilter] = useState('all');
     const [search, setSearch] = useState('');
 
@@ -13,7 +14,7 @@ export default function Transactions({ transactions = [], stats = {} }) {
         failed: { label: 'Gagal', bg: '#ef444415', color: '#ef4444', icon: <XCircle className="h-4 w-4" /> },
     };
 
-    const filtered = transactions.filter((transaction) => {
+    const filtered = transactionList.filter((transaction) => {
         const matchStatus = statusFilter === 'all' || transaction.status === statusFilter;
         const matchSearch = transaction.student.toLowerCase().includes(search.toLowerCase()) || transaction.id.toLowerCase().includes(search.toLowerCase());
         return matchStatus && matchSearch;
@@ -25,10 +26,6 @@ export default function Transactions({ transactions = [], stats = {} }) {
 
             <div className="p-4 lg:p-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 <div className="mb-6 flex items-center justify-between gap-4">
-                    <div>
-                        <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Monitoring Transaksi</h1>
-                        <p className="text-sm text-gray-500">Monitor semua transaksi dan pembayaran</p>
-                    </div>
                     <button className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#4A1412]" style={{ background: '#691D1B' }}>
                         <Download className="h-4 w-4" />
                         Export CSV
@@ -37,9 +34,9 @@ export default function Transactions({ transactions = [], stats = {} }) {
 
                 <div className="mb-6 grid grid-cols-3 gap-4">
                     {[
-                        { label: 'Berhasil Hari Ini', value: `${transactions.filter((transaction) => transaction.status === 'success').length}`, color: '#16a34a', bg: '#22c55e15' },
-                        { label: 'Menunggu Konfirmasi', value: `${transactions.filter((transaction) => transaction.status === 'pending').length}`, color: '#d97706', bg: '#f59e0b15' },
-                        { label: 'Gagal / Error', value: `${transactions.filter((transaction) => transaction.status === 'failed').length}`, color: '#ef4444', bg: '#ef444415' },
+                        { label: 'Transaksi Berhasil', value: `${stats.successToday ?? transactionList.filter((transaction) => transaction.status === 'success').length}`, color: '#16a34a', bg: '#22c55e15' },
+                        { label: 'Menunggu Konfirmasi', value: `${stats.pendingToday ?? transactionList.filter((transaction) => transaction.status === 'pending').length}`, color: '#d97706', bg: '#f59e0b15' },
+                        { label: 'Transaksi Gagal', value: `${stats.failedToday ?? transactionList.filter((transaction) => transaction.status === 'failed').length}`, color: '#ef4444', bg: '#ef444415' },
                     ].map((stat) => (
                         <div key={stat.label} className="rounded-2xl border border-[#D8D7BE] bg-white p-5 shadow-sm">
                             <div className="mb-1 text-2xl font-extrabold" style={{ color: stat.color }}>{stat.value}</div>
@@ -142,7 +139,7 @@ export default function Transactions({ transactions = [], stats = {} }) {
                     )}
 
                     <div className="flex items-center justify-between border-t border-[#D8D7BE] bg-[#F7F2E7] p-4">
-                        <span className="text-xs text-gray-500">Menampilkan {filtered.length} dari {transactions.length} transaksi</span>
+                        <span className="text-xs text-gray-500">Menampilkan {filtered.length} dari {transactionList.length} transaksi</span>
                         <div className="flex items-center gap-2">
                             {[1, 2, 3].map((page) => (
                                 <button key={page} className={`h-8 w-8 rounded-lg text-xs ${page === 1 ? 'text-white' : 'text-gray-600 hover:bg-[#691D1B15]'}`} style={page === 1 ? { background: '#691D1B', fontWeight: 700 } : {}}>

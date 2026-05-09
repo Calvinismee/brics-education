@@ -10,7 +10,8 @@ class TransactionSeeder extends Seeder
 {
     public function run(): void
     {
-        $studentIds = DB::table('users')->where('role', 'student')->pluck('id', 'email');
+        $studentRoleId = DB::table('roles')->where('name', 'student')->value('id') ?? 1;
+        $studentIds = DB::table('users')->where('role_id', $studentRoleId)->pluck('id', 'email');
         $courseIds = DB::table('courses')->pluck('id', 'title');
 
         $now = Carbon::now();

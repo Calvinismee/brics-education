@@ -24,18 +24,6 @@ const navigationGroups = [
             },
         ],
     },
-    {
-        title: 'Sistem',
-        items: [
-            { label: 'Export Laporan', href: route('admin.reports.export'), badge: 'RP' },
-            { label: 'Pengaturan', href: route('admin.settings'), badge: 'SG' },
-            {
-                label: 'Notif. Sistem',
-                href: route('admin.settings.notifications'),
-                badge: 'SN',
-            },
-        ],
-    },
 ];
 
 export default function AdminLayout({ children, title, subtitle, notifications = [] }) {

@@ -2,6 +2,7 @@ import { Head, useForm } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { useState } from 'react';
 import { Calendar, Plus, Clock, Users, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import DeleteConfirmModal from '@/Components/DeleteConfirmModal';
 
 const daysOfWeek = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 const dayOptions = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
@@ -55,10 +56,12 @@ const formatDateLabel = (value) => {
 };
 
 export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
+    const scheduleList = Array.isArray(schedules?.data) ? schedules.data : schedules;
     const [view, setView] = useState('list');
     const [showForm, setShowForm] = useState(false);
     const [editingScheduleId, setEditingScheduleId] = useState(null);
     const [currentMonth, setCurrentMonth] = useState(() => new Date());
+    const [deleteTarget, setDeleteTarget] = useState(null);
     const form = useForm({
         course: '',
         tutor_id: '',
@@ -115,6 +118,14 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
         setShowForm(true);
     };
 
+    const openDeleteConfirm = (schedule) => {
+        setDeleteTarget(schedule);
+    };
+
+    const closeDeleteConfirm = () => {
+        setDeleteTarget(null);
+    };
+
     const handleSubmit = (event) => {
         event?.preventDefault();
 
@@ -132,17 +143,19 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
         });
     };
 
-    const handleDelete = (schedule) => {
-        if (!confirm('Hapus jadwal kelas ini?')) {
+    const handleDelete = () => {
+        if (!deleteTarget) {
             return;
         }
 
-        form.delete(route('admin.schedule.destroy', schedule.id), {
+        form.delete(route('admin.schedule.destroy', deleteTarget.id), {
             preserveScroll: true,
+            onSuccess: closeDeleteConfirm,
+            onError: closeDeleteConfirm,
         });
     };
 
-    const normalizedSchedules = schedules || [];
+    const normalizedSchedules = scheduleList || [];
     const calendarYear = currentMonth.getFullYear();
     const calendarMonth = currentMonth.getMonth();
     const firstDayOffset = (new Date(calendarYear, calendarMonth, 1).getDay() + 6) % 7;
@@ -220,7 +233,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-[#D8D7BE] bg-[#F7F2E7]">
-                                        {['Mata Pelajaran', 'Tutor', 'Jadwal', 'Waktu', 'Siswa', 'Link','Status', 'Aksi'].map((heading) => (
+                                        {['Mata Pelajaran', 'Tutor', 'Jadwal', 'Waktu', 'Link','Status', 'Aksi'].map((heading) => (
                                             <th
                                                 key={heading}
                                                 className="px-5 py-3 text-left text-xs uppercase tracking-wide text-gray-500"
@@ -256,12 +269,6 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
                                                     </div>
                                                 </td>
                                                 <td className="px-5 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <Users className="h-4 w-4 text-gray-400" />
-                                                        <span className="text-sm text-gray-700">{schedule.students}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-5 py-4">
                                                     <a href={schedule.meeting_link || '#'} target="_blank" rel="noreferrer" className="text-sm text-blue-600 underline">
                                                         {schedule.meeting_link ? (schedule.meeting_link.length > 40 ? `${schedule.meeting_link.slice(0, 36)}...` : schedule.meeting_link) : '-'}
                                                     </a>
@@ -273,11 +280,11 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
                                                 </td>
                                                 <td className="px-5 py-4">
                                                     <div className="flex items-center gap-2">
-                                                        <button type="button" onClick={() => openEdit(schedule)} className="rounded-lg p-2 transition-colors hover:bg-[#F7F2E7]">
-                                                            <Edit className="h-4 w-4 text-gray-400" />
+                                                        <button type="button" onClick={() => openEdit(schedule)} className="group rounded-lg p-2 transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#F7F2E7] active:translate-y-0" title="Edit jadwal">
+                                                            <Edit className="h-4 w-4 text-gray-400 transition-transform duration-200 group-hover:scale-110 group-hover:text-[#691D1B]" />
                                                         </button>
-                                                        <button type="button" onClick={() => handleDelete(schedule)} className="rounded-lg p-2 transition-colors hover:bg-[#F7F2E7]">
-                                                            <Trash2 className="h-4 w-4 text-gray-400" />
+                                                        <button type="button" onClick={() => openDeleteConfirm(schedule)} className="group rounded-lg p-2 transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-50 active:translate-y-0" title="Hapus jadwal">
+                                                            <Trash2 className="h-4 w-4 text-gray-400 transition-transform duration-200 group-hover:scale-110 group-hover:text-red-500" />
                                                         </button>
                                                     </div>
                                                 </td>
@@ -503,6 +510,22 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
                         </div>
                     </div>
                 )}
+
+                <DeleteConfirmModal
+                    open={!!deleteTarget}
+                    title="Yakin menghapus jadwal ini?"
+                    description={deleteTarget ? `Jadwal ${deleteTarget.course} akan dihapus permanen dan tidak bisa dikembalikan.` : ''}
+                    details={deleteTarget ? (
+                        <>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Waktu</p>
+                            <p className="mt-1 text-sm font-semibold text-gray-900">{deleteTarget.schedule_date} • {deleteTarget.time}</p>
+                            <p className="mt-3 text-xs text-gray-500">Tutor: {deleteTarget.tutor}</p>
+                        </>
+                    ) : null}
+                    confirmLabel="Ya, hapus jadwal"
+                    onCancel={closeDeleteConfirm}
+                    onConfirm={handleDelete}
+                />
             </div>
         </AdminLayout>
     );

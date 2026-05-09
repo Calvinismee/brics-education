@@ -10,7 +10,8 @@ class NotificationSeeder extends Seeder
 {
     public function run(): void
     {
-        $adminId = DB::table('users')->where('role', 'admin')->value('id');
+        $adminRoleId = DB::table('roles')->where('name', 'admin')->value('id') ?? 3;
+        $adminId = DB::table('users')->where('role_id', $adminRoleId)->value('id');
 
         if (!$adminId) {
             return;

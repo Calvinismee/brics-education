@@ -1,7 +1,8 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { useMemo, useState } from 'react';
-import { Search, UserPlus, Download, CheckSquare, MoreVertical, Edit, X, ArrowUpDown } from 'lucide-react';
+import { Search, UserPlus, Download, CheckSquare, Edit, X, ArrowUpDown, Trash2 } from 'lucide-react';
+import DeleteConfirmModal from '@/Components/DeleteConfirmModal';
 
 const roleLabels = {
     student: 'Siswa',
@@ -22,6 +23,12 @@ const emptyForm = {
     role: 'student',
 };
 
+const extractRoleName = (user) => {
+    const role = user.role;
+    if(role) return typeof role === 'object' ? role.name : role;
+    return 'student'
+}
+
 export default function Users({ users = { data: [] }, totalUsers = 0, stats = {} }) {
     const [selectedUsers, setSelectedUsers] = useState([]);
     const [search, setSearch] = useState('');
@@ -31,6 +38,7 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
     const [sortOrder, setSortOrder] = useState('desc');
     const [showForm, setShowForm] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
     const form = useForm(emptyForm);
 
@@ -41,7 +49,7 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
             const matchesSearch =
                 user.name.toLowerCase().includes(search.toLowerCase()) ||
                 user.email.toLowerCase().includes(search.toLowerCase());
-            const matchesRole = selectedRole === 'all' || user.role === selectedRole;
+            const matchesRole = selectedRole === 'all' || extractRoleName(user) === selectedRole;
 
             const userDate = user.created_at ? new Date(user.created_at) : null;
             let matchesDateFrom = true;
@@ -91,10 +99,30 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
             name: user.name || '',
             email: user.email || '',
             password: '',
-            role: user.role || 'student',
+            role: extractRoleName(user),
         });
         form.clearErrors();
         setShowForm(true);
+    };
+
+    const openDeleteConfirm = (user) => {
+        setDeleteTarget(user);
+    };
+
+    const closeDeleteConfirm = () => {
+        setDeleteTarget(null);
+    };
+
+    const handleDelete = () => {
+        if (!deleteTarget) {
+            return;
+        }
+
+        router.delete(route('admin.users.destroy', deleteTarget.id), {
+            preserveScroll: true,
+            onSuccess: closeDeleteConfirm,
+            onError: closeDeleteConfirm,
+        });
     };
 
     const closeForm = () => {
@@ -259,6 +287,7 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                                             year: 'numeric',
                                         })
                                         : '-';
+                                    const roleName = extractRoleName(user);
 
                                     return (
                                         <tr key={user.id} className={`transition-colors ${isSelected ? 'bg-[#691D1B05]' : 'hover:bg-[#F7F2E7]'}`}>
@@ -274,7 +303,7 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                                                 <div className="flex items-center gap-3">
                                                     <div
                                                         className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white"
-                                                        style={{ background: getStatusColor(user.role) }}
+                                                        style={{ background: getStatusColor(roleName) }}
                                                     >
                                                         {user.name
                                                             .split(' ')
@@ -294,12 +323,12 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                                                 <span
                                                     className="rounded-full px-2 py-1 text-xs"
                                                     style={{
-                                                        background: `${getStatusColor(user.role)}15`,
-                                                        color: getStatusColor(user.role),
+                                                        background: `${getStatusColor(roleName)}15`,
+                                                        color: getStatusColor(roleName),
                                                         fontWeight: 600,
                                                     }}
                                                 >
-                                                    {getRoleDisplay(user.role)}
+                                                    {getRoleDisplay(roleName)}
                                                 </span>
                                             </td>
                                             <td className="px-5 py-4">
@@ -309,13 +338,17 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                                                 <div className="flex items-center gap-2">
                                                     <button
                                                         onClick={() => openEdit(user)}
-                                                        className="flex items-center justify-center rounded-lg p-2 transition-colors hover:bg-[#F7F2E7]"
+                                                        className="group flex items-center justify-center rounded-lg p-2 transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#F7F2E7] active:translate-y-0"
                                                         title="Edit pengguna"
                                                     >
-                                                        <Edit className="h-4 w-4 text-gray-400" />
+                                                        <Edit className="h-4 w-4 text-gray-400 transition-transform duration-200 group-hover:scale-110 group-hover:text-[#691D1B]" />
                                                     </button>
-                                                    <button className="flex items-center justify-center rounded-lg p-2 transition-colors hover:bg-[#F7F2E7]">
-                                                        <MoreVertical className="h-4 w-4 text-gray-400" />
+                                                    <button
+                                                        onClick={() => openDeleteConfirm(user)}
+                                                        className="group flex items-center justify-center rounded-lg p-2 transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-50 active:translate-y-0"
+                                                        title="Hapus pengguna"
+                                                    >
+                                                        <Trash2 className="h-4 w-4 text-gray-400 transition-transform duration-200 group-hover:scale-110 group-hover:text-red-500" />
                                                     </button>
                                                 </div>
                                             </td>
@@ -403,7 +436,7 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                                         className="w-full rounded-xl border border-[#D8D7BE] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
                                     >
                                         <option value="student">Siswa</option>
-                                        <option value="tutor">Tutorx</option>
+                                        <option value="tutor">Tutor</option>
                                         <option value="admin">Admin</option>
                                     </select>
                                     {form.errors.role && <p className="text-xs text-red-500">{form.errors.role}</p>}
@@ -444,6 +477,22 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                         </div>
                     </div>
                 )}
+
+                <DeleteConfirmModal
+                    open={!!deleteTarget}
+                    title="Yakin menghapus pengguna ini?"
+                    description={deleteTarget ? `Tindakan ini akan menghapus akun ${deleteTarget.name} secara permanen dan tidak bisa dibatalkan.` : ''}
+                    details={deleteTarget ? (
+                        <>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Email</p>
+                            <p className="mt-1 text-sm font-semibold text-gray-900">{deleteTarget.email}</p>
+                            <p className="mt-3 text-xs text-gray-500">Peran: {getRoleDisplay(extractRoleName(deleteTarget))}</p>
+                        </>
+                    ) : null}
+                    confirmLabel="Ya, hapus pengguna"
+                    onCancel={closeDeleteConfirm}
+                    onConfirm={handleDelete}
+                />
             </div>
         </AdminLayout>
     );

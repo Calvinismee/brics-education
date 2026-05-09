@@ -13,16 +13,22 @@ class PackageController extends Controller
     public function index()
     {
         $packages = Package::query()
+            ->select('id', 'name', 'price', 'description', 'features', 'popular')
             ->orderByDesc('popular')
             ->orderBy('name')
-            ->get();
+            ->paginate(20)
+            ->withQueryString();
+
+        $totalPackages = Package::count();
+        $popularPackages = Package::where('popular', true)->count();
+        $revenue = (float) Package::query()->selectRaw('COALESCE(SUM(price::numeric), 0) as revenue')->value('revenue');
 
         return Inertia::render('Admin/Packages', [
             'packages' => $packages,
             'stats' => [
-                'totalPackages' => $packages->count(),
-                'activePackages' => $packages->where('popular', true)->count(),
-                'revenue' => $packages->count(),
+                'totalPackages' => $totalPackages,
+                'activePackages' => $popularPackages,
+                'revenue' => $revenue,
             ],
         ]);
     }
