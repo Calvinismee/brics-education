@@ -85,12 +85,13 @@ php artisan key:generate
 
 3. Configure database using Supabase session pooler values (see [Supabase Database Setup](#supabase-database-setup)).
 
-4. Build frontend assets and run migrations:
+4. Build frontend assets, run migrations, and seed the database:
 
 ```bash
 npm run build
 php artisan config:clear
 php artisan migrate
+php artisan db:seed
 ```
 
 5. Start development servers in two separate terminals:
