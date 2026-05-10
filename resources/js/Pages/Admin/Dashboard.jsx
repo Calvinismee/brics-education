@@ -12,7 +12,16 @@ import {
     ArrowUpRight,
 } from 'lucide-react';
 
-const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'];
+const fallbackMonthLabels = () => {
+    const formatter = new Intl.DateTimeFormat('id-ID', { month: 'short' });
+    const currentMonth = new Date();
+
+    return Array.from({ length: 6 }, (_, index) => {
+        const month = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - (5 - index), 1);
+
+        return formatter.format(month);
+    });
+};
 
 function StatCard({ label, value, change, icon, color }) {
     const isPositive = change.startsWith('+');
@@ -55,9 +64,10 @@ function InfoCard({ title, icon, stats }) {
     );
 }
 
-export default function Dashboard({ userStats = [], growthData = [], studentStats = [], tutorStats = [], activityStats = [], topUsers = [], distributionData = [] }) {
+export default function Dashboard({ userStats = [], growthData = [], growthLabels = [], studentStats = [], tutorStats = [], activityStats = [], topUsers = [], distributionData = [] }) {
     const [roleFilter, setRoleFilter] = useState('All');
-    const maxVal = growthData.length > 0 ? Math.max(...growthData) : 1;
+    const maxVal = growthData.length > 0 ? Math.max(...growthData, 1) : 1;
+    const monthLabels = growthLabels.length === growthData.length ? growthLabels : fallbackMonthLabels();
     const totalFromDistribution = distributionData.reduce((sum, d) => sum + (d.value || 0), 0) || 1;
     const topUsersList = Array.isArray(topUsers) ? topUsers : Object.values(topUsers || {});
 
@@ -113,7 +123,7 @@ export default function Dashboard({ userStats = [], growthData = [], studentStat
                                             background: index === (growthData || []).length - 1 ? 'var(--brics-maroon)' : 'var(--brics-beige)',
                                         }}
                                     />
-                                    <span className="text-xs text-gray-400">{months[index]}</span>
+                                    <span className="text-xs text-gray-400">{monthLabels[index]}</span>
                                 </div>
                             ))}
                         </div>

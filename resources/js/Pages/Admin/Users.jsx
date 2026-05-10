@@ -3,10 +3,12 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { useMemo, useState } from 'react';
 import { Search, UserPlus, Download, CheckSquare, Edit, X, ArrowUpDown, Trash2 } from 'lucide-react';
 import DeleteConfirmModal from '@/Components/DeleteConfirmModal';
+import { Spinner } from '@/Components/ui/LoadingStates';
+import { showSuccessToast } from '@/utils/toast';
 
 const roleLabels = {
     student: 'Siswa',
-    tutor: 'Tutor/Mentor',
+    tutor: 'Tutor',
     admin: 'Admin',
 };
 
@@ -23,11 +25,16 @@ const emptyForm = {
     role: 'student',
 };
 
+const normalizeRoleName = (role) => {
+    const roleName = typeof role === 'object' ? role?.name : role;
+    const normalizedRole = String(roleName || 'student').toLowerCase().trim();
+
+    return normalizedRole === 'mentor' ? 'tutor' : normalizedRole;
+};
+
 const extractRoleName = (user) => {
-    const role = user.role;
-    if(role) return typeof role === 'object' ? role.name : role;
-    return 'student'
-}
+    return normalizeRoleName(user.role);
+};
 
 export default function Users({ users = { data: [] }, totalUsers = 0, stats = {} }) {
     const [selectedUsers, setSelectedUsers] = useState([]);
@@ -39,6 +46,7 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
     const [showForm, setShowForm] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const form = useForm(emptyForm);
 
@@ -120,36 +128,74 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
 
         router.delete(route('admin.users.destroy', deleteTarget.id), {
             preserveScroll: true,
-            onSuccess: closeDeleteConfirm,
+            onSuccess: () => {
+                closeDeleteConfirm();
+                showSuccessToast('Pengguna berhasil dihapus.');
+            },
             onError: closeDeleteConfirm,
         });
     };
 
-    const closeForm = () => {
+    const closeForm = (force = false) => {
+        if (!force && (isSubmitting || form.processing)) {
+            return;
+        }
+
         setShowForm(false);
         setEditingUser(null);
         form.reset();
         form.clearErrors();
     };
 
-    const handleSubmit = (event) => {
-        event.preventDefault();
+    const buildPayload = () => {
+        const payload = { ...form.data };
+
+        if (!payload.password) {
+            delete payload.password;
+        }
+
+        return payload;
+    };
+
+    const submitForm = () => {
+        if (isSubmitting || form.processing) {
+            return;
+        }
+
+        setIsSubmitting(true);
+        form.clearErrors();
+        const payload = buildPayload();
 
         if (editingUser) {
-            form.transform((data) => ({
-                ...data,
-                password: data.password || undefined,
-            })).put(route('admin.users.update', editingUser.id), {
+            router.post(route('admin.users.update', editingUser.id), {
+                ...payload,
+                _method: 'put',
+            }, {
                 preserveScroll: true,
-                onSuccess: closeForm,
+                onSuccess: () => {
+                    closeForm(true);
+                    showSuccessToast('Pengguna berhasil diperbarui.');
+                },
+                onError: (errors) => form.setError(errors),
+                onFinish: () => setIsSubmitting(false),
             });
             return;
         }
 
-        form.post(route('admin.users.store'), {
+        router.post(route('admin.users.store'), payload, {
             preserveScroll: true,
-            onSuccess: closeForm,
+            onSuccess: () => {
+                closeForm(true);
+                showSuccessToast('Pengguna berhasil ditambahkan.');
+            },
+            onError: (errors) => form.setError(errors),
+            onFinish: () => setIsSubmitting(false),
         });
+    };
+
+    const handleSubmit = (event) => {
+        event.preventDefault();
+        submitForm();
     };
 
     const handleExport = () => {
@@ -398,7 +444,11 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                                         {editingUser ? 'Perbarui data pengguna yang dipilih' : 'Tambahkan pengguna baru ke sistem'}
                                     </p>
                                 </div>
-                                <button onClick={closeForm} className="rounded-full p-2 text-gray-400 hover:bg-[#F7F2E7]">
+                                <button
+                                    onClick={() => closeForm()}
+                                    disabled={isSubmitting || form.processing}
+                                    className="rounded-full p-2 text-gray-400 hover:bg-[#F7F2E7] disabled:cursor-not-allowed disabled:opacity-60"
+                                >
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
@@ -410,6 +460,7 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                                         type="text"
                                         value={form.data.name}
                                         onChange={(event) => form.setData('name', event.target.value)}
+                                        disabled={isSubmitting || form.processing}
                                         className="w-full rounded-xl border border-[#D8D7BE] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
                                         placeholder="Nama lengkap"
                                     />
@@ -422,6 +473,7 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                                         type="email"
                                         value={form.data.email}
                                         onChange={(event) => form.setData('email', event.target.value)}
+                                        disabled={isSubmitting || form.processing}
                                         className="w-full rounded-xl border border-[#D8D7BE] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
                                         placeholder="email@domain.com"
                                     />
@@ -433,6 +485,7 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                                     <select
                                         value={form.data.role}
                                         onChange={(event) => form.setData('role', event.target.value)}
+                                        disabled={isSubmitting || form.processing}
                                         className="w-full rounded-xl border border-[#D8D7BE] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
                                     >
                                         <option value="student">Siswa</option>
@@ -450,6 +503,7 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                                         type="password"
                                         value={form.data.password}
                                         onChange={(event) => form.setData('password', event.target.value)}
+                                        disabled={isSubmitting || form.processing}
                                         className="w-full rounded-xl border border-[#D8D7BE] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
                                         placeholder={editingUser ? 'Kosongkan jika tidak diubah' : 'Minimal 8 karakter'}
                                     />
@@ -459,18 +513,24 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                                 <div className="md:col-span-2 mt-2 flex items-center justify-end gap-3">
                                     <button
                                         type="button"
-                                        onClick={closeForm}
-                                        className="rounded-xl border border-[#D8D7BE] px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-[#F7F2E7]"
+                                        onClick={() => closeForm()}
+                                        disabled={isSubmitting || form.processing}
+                                        className="rounded-xl border border-[#D8D7BE] px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-[#F7F2E7] disabled:cursor-not-allowed disabled:opacity-60"
                                     >
                                         Batal
                                     </button>
                                     <button
                                         type="submit"
-                                        disabled={form.processing}
-                                        className="rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#4A1412] disabled:opacity-60"
+                                        onClick={(event) => {
+                                            event.preventDefault();
+                                            submitForm();
+                                        }}
+                                        disabled={isSubmitting || form.processing}
+                                        className="flex min-w-40 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#4A1412] disabled:cursor-not-allowed disabled:opacity-80"
                                         style={{ background: '#691D1B' }}
                                     >
-                                        {form.processing ? 'Menyimpan...' : editingUser ? 'Simpan Perubahan' : 'Tambah Pengguna'}
+                                        {(isSubmitting || form.processing) && <Spinner size="xs" color="#FFE882" />}
+                                        {(isSubmitting || form.processing) ? (editingUser ? 'Menyimpan perubahan...' : 'Menambahkan pengguna...') : editingUser ? 'Simpan Perubahan' : 'Tambah Pengguna'}
                                     </button>
                                 </div>
                             </form>

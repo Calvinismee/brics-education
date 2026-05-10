@@ -3,6 +3,8 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { useState } from 'react';
 import { Calendar, Plus, Clock, Users, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import DeleteConfirmModal from '@/Components/DeleteConfirmModal';
+import { Spinner } from '@/Components/ui/LoadingStates';
+import { showSuccessToast } from '@/utils/toast';
 
 const daysOfWeek = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 const dayOptions = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
@@ -69,6 +71,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
         schedule_date: '',
         start_time: '08:00',
         end_time: '10:00',
+        meeting_link: '',
         students_count: 0,
         room: '',
         modality: 'online',
@@ -91,6 +94,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
             schedule_date: '',
             start_time: '08:00',
             end_time: '10:00',
+            meeting_link: '',
             students_count: 0,
             room: '',
             modality: 'online',
@@ -109,6 +113,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
             schedule_date: formatDateKey(schedule.schedule_date),
             start_time: schedule.start_time || '08:00',
             end_time: schedule.end_time || '10:00',
+            meeting_link: schedule.meeting_link || '',
             students_count: schedule.students || 0,
             room: schedule.room || '',
             modality: schedule.modality || 'online',
@@ -132,14 +137,20 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
         if (editingScheduleId) {
             form.put(route('admin.schedule.update', editingScheduleId), {
                 preserveScroll: true,
-                onSuccess: closeForm,
+                onSuccess: () => {
+                    closeForm();
+                    showSuccessToast('Jadwal berhasil diperbarui.');
+                },
             });
             return;
         }
 
         form.post(route('admin.schedule.store'), {
             preserveScroll: true,
-            onSuccess: closeForm,
+            onSuccess: () => {
+                closeForm();
+                showSuccessToast('Jadwal berhasil ditambahkan.');
+            },
         });
     };
 
@@ -150,7 +161,10 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
 
         form.delete(route('admin.schedule.destroy', deleteTarget.id), {
             preserveScroll: true,
-            onSuccess: closeDeleteConfirm,
+            onSuccess: () => {
+                closeDeleteConfirm();
+                showSuccessToast('Jadwal berhasil dihapus.');
+            },
             onError: closeDeleteConfirm,
         });
     };
@@ -499,11 +513,12 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#4A1412] disabled:cursor-not-allowed disabled:opacity-60"
+                                        className="flex min-w-32 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#4A1412] disabled:cursor-not-allowed disabled:opacity-70"
                                         style={{ background: '#691D1B' }}
                                         disabled={form.processing}
                                     >
-                                        {form.processing ? 'Menyimpan...' : 'Simpan'}
+                                        {form.processing && <Spinner size="xs" color="#FFE882" />}
+                                        {form.processing ? (editingScheduleId ? 'Menyimpan perubahan...' : 'Menambahkan jadwal...') : 'Simpan'}
                                     </button>
                                 </div>
                             </form>

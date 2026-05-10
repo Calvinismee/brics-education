@@ -15,9 +15,7 @@ class UserController extends Controller
 {
     public function index()
     {
-        $studentRoleId = User::roleIdFor('student') ?? 1;
-        $tutorRoleId = User::roleIdFor('tutor') ?? 2;
-        $adminRoleId = User::roleIdFor('admin') ?? 3;
+        $roles = User::adminRoleIds();
 
         $users = User::query()
             ->select('id', 'name', 'email', 'role_id', 'created_at')
@@ -25,7 +23,6 @@ class UserController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(15)
             ->withQueryString();
-
 
         $roleStats = User::query()
             ->selectRaw('role_id, count(*) as total')
@@ -36,9 +33,9 @@ class UserController extends Controller
             'users' => $users,
             'totalUsers' => $roleStats->sum(),
             'stats' => [
-                'student' => $roleStats->get($studentRoleId, 0),
-                'tutor' => $roleStats->get($tutorRoleId, 0),
-                'admin' => $roleStats->get($adminRoleId, 0),
+                'student' => $roleStats->get($roles['student'], 0),
+                'tutor' => $roleStats->get($roles['tutor'], 0),
+                'admin' => $roleStats->get($roles['admin'], 0),
             ],
         ]);
     }
@@ -52,11 +49,7 @@ class UserController extends Controller
             'role' => ['required', Rule::in(['student', 'tutor', 'admin'])],
         ]);
 
-        $roles = [
-            'student' => User::roleIdFor('student') ?? 1,
-            'tutor' => User::roleIdFor('tutor') ?? 2,
-            'admin' => User::roleIdFor('admin') ?? 3,
-        ];
+        $roles = User::adminRoleIds();
 
         User::create([
             'name' => $validated['name'],
@@ -77,11 +70,7 @@ class UserController extends Controller
             'role' => ['required', Rule::in(['student', 'tutor', 'admin'])],
         ]);
 
-        $roles = [
-            'student' => User::roleIdFor('student') ?? 1,
-            'tutor' => User::roleIdFor('tutor') ?? 2,
-            'admin' => User::roleIdFor('admin') ?? 3,
-        ];
+        $roles = User::adminRoleIds();
 
         $user->name = $validated['name'];
         $user->email = $validated['email'];
@@ -108,11 +97,7 @@ class UserController extends Controller
         $role = $request->string('role')->toString();
         $search = $request->string('search')->toString();
 
-        $roles = [
-            'student' => User::roleIdFor('student') ?? 1,
-            'tutor' => User::roleIdFor('tutor') ?? 2,
-            'admin' => User::roleIdFor('admin') ?? 3,
-        ];
+        $roles = User::adminRoleIds();
 
         $users = User::query()
             ->when(in_array($role, ['student', 'tutor', 'admin'], true), fn ($query) => $query->where('role_id', $roles[$role] ?? 0))

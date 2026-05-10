@@ -43,7 +43,7 @@ Route::middleware(['auth', 'verified', 'admin'])
 
         Route::get('/users', [UserController::class, 'index'])->name('users');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
-        Route::put('/users/{user}', [UserController::class, 'update'])->whereNumber('user')->name('users.update');
+        Route::match(['post', 'put'], '/users/{user}', [UserController::class, 'update'])->whereNumber('user')->name('users.update');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->whereNumber('user')->name('users.destroy');
         Route::get('/users/export', [UserController::class, 'export'])->name('users.export');
         Route::get('/packages', [PackageController::class, 'index'])->name('packages');
@@ -51,6 +51,9 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::put('/packages/{package}', [PackageController::class, 'update'])->whereNumber('package')->name('packages.update');
         Route::delete('/packages/{package}', [PackageController::class, 'destroy'])->whereNumber('package')->name('packages.destroy');
         Route::get('/content', [ContentController::class, 'index'])->name('content');
+        Route::post('/content', [ContentController::class, 'store'])->name('content.store');
+        Route::match(['post', 'put'], '/content/{content}', [ContentController::class, 'update'])->whereNumber('content')->name('content.update');
+        Route::delete('/content/{content}', [ContentController::class, 'destroy'])->whereNumber('content')->name('content.destroy');
         Route::post('/content/{content}/approve', [ContentController::class, 'approve'])->whereNumber('content')->name('content.approve');
         Route::post('/content/{content}/reject', [ContentController::class, 'reject'])->whereNumber('content')->name('content.reject');
         Route::get('/schedule', [ScheduleController::class, 'index'])->name('schedule');

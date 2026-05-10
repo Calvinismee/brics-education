@@ -1,35 +1,25 @@
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
-import { useState } from 'react';
-import { Bell, Trash2, Clock, CheckCircle, Check } from 'lucide-react';
-import { usePage } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
+import { Bell, Clock, CheckCircle, Check } from 'lucide-react';
+import { normalizeNotifications, sortNotifications } from '@/utils/notifications';
+import { showSuccessToast } from '@/utils/toast';
 
 export default function Notifications({ notifications = {}, stats = {} }) {
-    const page = usePage();
     const [filter, setFilter] = useState('all');
-    const notificationData = notifications.data || notifications || [];
+    const notificationData = useMemo(() => normalizeNotifications(notifications), [notifications]);
     const { unreadCount = 0, totalNotifications = 0 } = stats;
 
-    const filtered = notificationData.filter((notif) => {
+    const filtered = useMemo(() => notificationData.filter((notif) => {
         if (filter === 'unread') return !notif.is_read;
         if (filter === 'read') return notif.is_read;
         return true;
-    });
+    }), [notificationData, filter]);
 
-    const sortedNotifications = [...filtered].sort((a, b) => {
-        // Unread notifications come first
-        if (a.is_read !== b.is_read) {
-            return a.is_read ? 1 : -1;
-        }
-
-        // For unread: sort by created_at descending (newest first)
-        if (!a.is_read && !b.is_read) {
-            return new Date(b.created_at) - new Date(a.created_at);
-        }
-
-        // For read: sort by created_at ascending (oldest first)
-        return new Date(a.created_at) - new Date(b.created_at);
-    });
+    const sortedNotifications = useMemo(
+        () => sortNotifications(filtered),
+        [filtered],
+    );
 
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('id-ID', {
@@ -44,12 +34,14 @@ export default function Notifications({ notifications = {}, stats = {} }) {
     const markAsRead = (notificationId) => {
         router.post(route('admin.notifications.mark-as-read', notificationId), {}, {
             preserveScroll: true,
+            onSuccess: () => showSuccessToast('Notifikasi ditandai sudah dibaca.'),
         });
     };
 
     const markAllAsRead = () => {
         router.post(route('admin.notifications.mark-all-as-read'), {}, {
             preserveScroll: true,
+            onSuccess: () => showSuccessToast('Semua notifikasi ditandai sudah dibaca.'),
         });
     };
 
