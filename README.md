@@ -132,18 +132,7 @@ This project uses Pest on top of PHPUnit. Automated tests must run against a loc
 
 ### Test Database Setup <a id="test-database-setup"></a>
 
-Create a dedicated local PostgreSQL database:
-
-```bash
-createdb brics_test
-```
-
-If `createdb` is not available, use `psql`:
-
-```bash
-psql -U postgres -c "CREATE DATABASE brics_test;"
-```
-
+Create a dedicated local PostgreSQL database 
 The test database connection is configured directly in `phpunit.xml`:
 
 ```env
