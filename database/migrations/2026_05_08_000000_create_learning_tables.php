@@ -50,6 +50,7 @@ return new class extends Migration
                 $table->text('file_url')->nullable();
                 $table->text('content')->nullable();
                 $table->string('approval_status')->default('pending');
+                $table->text('rejection_comment')->nullable();
                 $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();
                 $table->timestamp('approved_at')->nullable();
                 $table->timestamps();

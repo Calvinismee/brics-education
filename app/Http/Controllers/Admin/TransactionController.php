@@ -3,14 +3,22 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TransactionController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $status = $request->string('status')->toString();
+        $search = $request->string('search')->toString();
+        $dateFrom = $request->date('dateFrom');
+        $dateTo = $request->date('dateTo');
+        $sort = $request->string('sort')->toString() === 'asc' ? 'asc' : 'desc';
+
         $transactions = DB::table('transactions')
             ->select(
                 'transactions.id',
@@ -25,7 +33,13 @@ class TransactionController extends Controller
             )
             ->leftJoin('users', 'transactions.user_id', 'users.id')
             ->leftJoin('courses', 'transactions.course_id', 'courses.id')
-            ->orderByDesc('transactions.created_at')
+            ->when($status === 'success', fn ($query) => $query->whereIn('transactions.payment_status', ['paid', 'success']))
+            ->when($status === 'pending', fn ($query) => $query->where('transactions.payment_status', 'pending'))
+            ->when($status === 'failed', fn ($query) => $query->where('transactions.payment_status', 'failed'))
+            ->when($dateFrom, fn ($query) => $query->where('transactions.created_at', '>=', $dateFrom->startOfDay()))
+            ->when($dateTo, fn ($query) => $query->where('transactions.created_at', '<=', $dateTo->endOfDay()))
+            ->when($search !== '', fn ($query) => $query->where('users.name', 'like', "%{$search}%"))
+            ->orderBy('transactions.created_at', $sort)
             ->paginate(20)
             ->withQueryString();
 
@@ -68,6 +82,13 @@ class TransactionController extends Controller
                 'successToday' => $successToday,
                 'pendingToday' => $pendingToday,
                 'failedToday' => $failedToday,
+            ],
+            'filters' => [
+                'status' => in_array($status, ['success', 'pending', 'failed'], true) ? $status : 'all',
+                'search' => $search,
+                'dateFrom' => $dateFrom?->toDateString() ?? '',
+                'dateTo' => $dateTo?->toDateString() ?? '',
+                'sort' => $sort,
             ],
         ]);
     }
@@ -187,6 +208,77 @@ class TransactionController extends Controller
             'paymentMethods' => $paymentMethods,
             'successRate' => round($successRate, 1),
             'recentTransactions' => $recentTransactions,
+        ]);
+    }
+
+    public function export(Request $request): StreamedResponse
+    {
+        $status = $request->string('status')->toString();
+        $search = $request->string('search')->toString();
+        $dateFrom = $request->date('dateFrom');
+        $dateTo = $request->date('dateTo');
+        $sort = $request->string('sort')->toString() === 'asc' ? 'asc' : 'desc';
+
+        $transactions = DB::table('transactions')
+            ->select(
+                'transactions.invoice_number',
+                'transactions.amount',
+                'transactions.payment_method',
+                'transactions.payment_status',
+                'transactions.created_at',
+                'users.name as student',
+                'courses.title as course'
+            )
+            ->leftJoin('users', 'transactions.user_id', 'users.id')
+            ->leftJoin('courses', 'transactions.course_id', 'courses.id')
+            ->when($status === 'success', fn ($query) => $query->whereIn('transactions.payment_status', ['paid', 'success']))
+            ->when($status === 'pending', fn ($query) => $query->where('transactions.payment_status', 'pending'))
+            ->when($status === 'failed', fn ($query) => $query->where('transactions.payment_status', 'failed'))
+            ->when($dateFrom, fn ($query) => $query->where('transactions.created_at', '>=', $dateFrom->startOfDay()))
+            ->when($dateTo, fn ($query) => $query->where('transactions.created_at', '<=', $dateTo->endOfDay()))
+            ->when($search !== '', fn ($query) => $query->where('users.name', 'like', "%{$search}%"))
+            ->orderBy('transactions.created_at', $sort)
+            ->get();
+
+        $fileName = 'transactions-'.now()->format('Y-m-d-His').'.csv';
+
+        DB::table('report_exports')->insert([
+            'user_id' => $request->user()?->id,
+            'type' => 'Transaksi',
+            'title' => 'Export Transaksi',
+            'file_name' => $fileName,
+            'row_count' => $transactions->count(),
+            'filters' => json_encode(array_filter([
+                'status' => $status !== '' ? $status : null,
+                'search' => $search !== '' ? $search : null,
+                'dateFrom' => $dateFrom?->toDateString(),
+                'dateTo' => $dateTo?->toDateString(),
+                'sort' => $sort,
+            ])),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->streamDownload(function () use ($transactions) {
+            $output = fopen('php://output', 'w');
+
+            fputcsv($output, ['Invoice', 'Siswa', 'Course', 'Jumlah', 'Metode', 'Status', 'Tanggal']);
+
+            foreach ($transactions as $transaction) {
+                fputcsv($output, [
+                    $transaction->invoice_number,
+                    $transaction->student ?? '-',
+                    $transaction->course ?? '-',
+                    (float) $transaction->amount,
+                    $transaction->payment_method ?? '-',
+                    $transaction->payment_status,
+                    Carbon::parse($transaction->created_at)->format('Y-m-d H:i'),
+                ]);
+            }
+
+            fclose($output);
+        }, $fileName, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
 }
