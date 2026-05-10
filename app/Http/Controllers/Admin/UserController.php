@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -109,6 +110,20 @@ class UserController extends Controller
             ->get(['name', 'email', 'role_id', 'created_at']);
 
         $fileName = 'users-'.now()->format('Y-m-d-His').'.csv';
+
+        DB::table('report_exports')->insert([
+            'user_id' => $request->user()?->id,
+            'type' => 'Pengguna',
+            'title' => 'Export Pengguna',
+            'file_name' => $fileName,
+            'row_count' => $users->count(),
+            'filters' => json_encode(array_filter([
+                'role' => $role !== '' ? $role : null,
+                'search' => $search !== '' ? $search : null,
+            ])),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
         return response()->streamDownload(function () use ($users) {
             $output = fopen('php://output', 'w');

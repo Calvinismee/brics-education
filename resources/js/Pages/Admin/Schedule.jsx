@@ -7,21 +7,6 @@ import { Spinner } from '@/Components/ui/LoadingStates';
 import { showSuccessToast } from '@/utils/toast';
 
 const daysOfWeek = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-const dayOptions = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-
-    const statusLabel = {
-    scheduled: 'Terjadwal',
-    ongoing: 'Berlangsung',
-    completed: 'Selesai',
-    canceled: 'Dibatalkan',
-};
-
-const statusStyles = {
-    scheduled: { background: '#f59e0b15', color: '#d97706' },
-    ongoing: { background: '#3b82f615', color: '#2563eb' },
-    completed: { background: '#22c55e15', color: '#16a34a' },
-    canceled: { background: '#ef444415', color: '#ef4444' },
-};
 
 const formatMonthLabel = (date) => new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(date);
 
@@ -67,15 +52,10 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
     const form = useForm({
         course: '',
         tutor_id: '',
-        day: 'Senin',
         schedule_date: '',
         start_time: '08:00',
         end_time: '10:00',
         meeting_link: '',
-        students_count: 0,
-        room: '',
-        modality: 'online',
-        status: 'scheduled',
     });
 
     const closeForm = () => {
@@ -90,15 +70,10 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
         form.setData({
             course: '',
             tutor_id: '',
-            day: 'Senin',
             schedule_date: '',
             start_time: '08:00',
             end_time: '10:00',
             meeting_link: '',
-            students_count: 0,
-            room: '',
-            modality: 'online',
-            status: 'scheduled',
         });
         form.clearErrors();
         setShowForm(true);
@@ -109,15 +84,10 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
         form.setData({
             course: schedule.course || '',
             tutor_id: schedule.tutor_id || '',
-            day: schedule.day || 'Senin',
             schedule_date: formatDateKey(schedule.schedule_date),
             start_time: schedule.start_time || '08:00',
             end_time: schedule.end_time || '10:00',
             meeting_link: schedule.meeting_link || '',
-            students_count: schedule.students || 0,
-            room: schedule.room || '',
-            modality: schedule.modality || 'online',
-            status: schedule.status || 'scheduled',
         });
         form.clearErrors();
         setShowForm(true);
@@ -203,7 +173,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
                 <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
                     {[
                         { label: 'Total Kelas', value: stats.totalClasses ?? normalizedSchedules.length, icon: <Calendar className="h-5 w-5" /> },
-                        { label: 'Kelas Mendatang', value: stats.upcomingClasses ?? normalizedSchedules.filter((schedule) => schedule.status === 'scheduled').length, icon: <Clock className="h-5 w-5" /> },
+                        { label: 'Kelas Mendatang', value: stats.upcomingClasses ?? normalizedSchedules.filter((schedule) => formatDateKey(schedule.schedule_date) >= formatDateKey(new Date().toISOString().slice(0, 10))).length, icon: <Clock className="h-5 w-5" /> },
                         {
                             label: 'Tutor Aktif',
                             value: stats.activeInstructors ?? new Set(normalizedSchedules.map((schedule) => schedule.tutor_id).filter(Boolean)).size,
@@ -247,7 +217,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-[#D8D7BE] bg-[#F7F2E7]">
-                                        {['Mata Pelajaran', 'Tutor', 'Jadwal', 'Waktu', 'Link','Status', 'Aksi'].map((heading) => (
+                                        {['Mata Pelajaran', 'Tutor', 'Jadwal', 'Waktu', 'Link', 'Aksi'].map((heading) => (
                                             <th
                                                 key={heading}
                                                 className="px-5 py-3 text-left text-xs uppercase tracking-wide text-gray-500"
@@ -259,52 +229,43 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[#F7F2E7]">
-                                    {normalizedSchedules.map((schedule) => {
-                                        const scheduleStatus = statusStyles[schedule.status] ?? statusStyles.scheduled;
-
-                                        return (
-                                            <tr key={schedule.id} className="transition-colors hover:bg-[#F7F2E7]">
-                                                <td className="px-5 py-4">
-                                                    <p className="text-sm font-semibold text-gray-800">{schedule.course}</p>
-                                                </td>
-                                                <td className="px-5 py-4">
-                                                    <span className="text-sm text-gray-700">{schedule.tutor}</span>
-                                                </td>
-                                                <td className="px-5 py-4">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm text-gray-700">{schedule.day}</span>
-                                                        <span className="text-xs text-gray-400">{formatDateLabel(schedule.schedule_date)}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-5 py-4">
-                                                    <div className="flex items-center gap-2 text-sm text-gray-700">
-                                                        <Clock className="h-4 w-4" />
-                                                        {schedule.time}
-                                                    </div>
-                                                </td>
-                                                <td className="px-5 py-4">
-                                                    <a href={schedule.meeting_link || '#'} target="_blank" rel="noreferrer" className="text-sm text-blue-600 underline">
-                                                        {schedule.meeting_link ? (schedule.meeting_link.length > 40 ? `${schedule.meeting_link.slice(0, 36)}...` : schedule.meeting_link) : '-'}
-                                                    </a>
-                                                </td>
-                                                <td className="px-5 py-4">
-                                                    <span className="rounded-full px-2 py-1 text-xs" style={{ background: scheduleStatus.background, color: scheduleStatus.color, fontWeight: 600 }}>
-                                                        {statusLabel[schedule.status] || schedule.status || '-'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-5 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <button type="button" onClick={() => openEdit(schedule)} className="group rounded-lg p-2 transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#F7F2E7] active:translate-y-0" title="Edit jadwal">
-                                                            <Edit className="h-4 w-4 text-gray-400 transition-transform duration-200 group-hover:scale-110 group-hover:text-[#691D1B]" />
-                                                        </button>
-                                                        <button type="button" onClick={() => openDeleteConfirm(schedule)} className="group rounded-lg p-2 transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-50 active:translate-y-0" title="Hapus jadwal">
-                                                            <Trash2 className="h-4 w-4 text-gray-400 transition-transform duration-200 group-hover:scale-110 group-hover:text-red-500" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
+                                    {normalizedSchedules.map((schedule) => (
+                                        <tr key={schedule.id} className="transition-colors hover:bg-[#F7F2E7]">
+                                            <td className="px-5 py-4">
+                                                <p className="text-sm font-semibold text-gray-800">{schedule.course}</p>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <span className="text-sm text-gray-700">{schedule.tutor}</span>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm text-gray-700">{schedule.day}</span>
+                                                    <span className="text-xs text-gray-400">{formatDateLabel(schedule.schedule_date)}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <div className="flex items-center gap-2 text-sm text-gray-700">
+                                                    <Clock className="h-4 w-4" />
+                                                    {schedule.time}
+                                                </div>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <a href={schedule.meeting_link || '#'} target="_blank" rel="noreferrer" className="text-sm text-blue-600 underline">
+                                                    {schedule.meeting_link ? (schedule.meeting_link.length > 40 ? `${schedule.meeting_link.slice(0, 36)}...` : schedule.meeting_link) : '-'}
+                                                </a>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <button type="button" onClick={() => openEdit(schedule)} className="group rounded-lg p-2 transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#F7F2E7] active:translate-y-0" title="Edit jadwal">
+                                                        <Edit className="h-4 w-4 text-gray-400 transition-transform duration-200 group-hover:scale-110 group-hover:text-[#691D1B]" />
+                                                    </button>
+                                                    <button type="button" onClick={() => openDeleteConfirm(schedule)} className="group rounded-lg p-2 transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-50 active:translate-y-0" title="Hapus jadwal">
+                                                        <Trash2 className="h-4 w-4 text-gray-400 transition-transform duration-200 group-hover:scale-110 group-hover:text-red-500" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
                                 </tbody>
                             </table>
                         </div>
@@ -379,7 +340,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
                         <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
                             <div className="border-b border-[#F7F2E7] p-5" style={{ background: '#691D1B' }}>
                                 <h3 className="font-bold text-white">{editingScheduleId ? 'Edit Jadwal Kelas' : 'Tambah Jadwal Kelas'}</h3>
-                                <p className="mt-1 text-xs text-white/70">Isi kelas, tutor, tanggal, jam, kapasitas, mode, dan status jadwal.</p>
+                                <p className="mt-1 text-xs text-white/70">Isi kelas, tutor, tanggal, jam, dan link pertemuan.</p>
                             </div>
 
                             <form onSubmit={handleSubmit} className="flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
@@ -414,7 +375,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div>
                                         <label className="mb-2 block text-sm font-semibold text-gray-700">Tanggal</label>
                                         <input
@@ -423,20 +384,6 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
                                             type="date"
                                             className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
                                         />
-                                    </div>
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-gray-700">Hari</label>
-                                        <select
-                                            value={form.data.day}
-                                            onChange={(event) => form.setData('day', event.target.value)}
-                                            className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
-                                        >
-                                            {dayOptions.map((day) => (
-                                                <option key={day} value={day}>
-                                                    {day}
-                                                </option>
-                                            ))}
-                                        </select>
                                     </div>
                                     <div>
                                         <label className="mb-2 block text-sm font-semibold text-gray-700">Link Pertemuan (Zoom)</label>
@@ -450,7 +397,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div>
                                         <label className="mb-2 block text-sm font-semibold text-gray-700">Jam Mulai</label>
                                         <input
@@ -468,34 +415,6 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
                                             type="time"
                                             className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
                                         />
-                                    </div>
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-gray-700">Jumlah Siswa</label>
-                                        <input
-                                            value={form.data.students_count}
-                                            onChange={(event) => form.setData('students_count', event.target.value.replace(/\D/g, ''))}
-                                            type="text"
-                                            inputMode="numeric"
-                                            className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-1">
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-gray-700">Status Jadwal</label>
-                                        <select
-                                            value={form.data.status}
-                                            onChange={(event) => form.setData('status', event.target.value)}
-                                            className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
-                                        >
-                                            {Object.entries(statusLabel).map(([value, label]) => (
-                                                <option key={value} value={value}>
-                                                    {label}
-                                                </option>
-                                            ))}
-                                        </select>
                                     </div>
                                 </div>
 

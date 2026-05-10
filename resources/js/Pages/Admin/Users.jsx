@@ -240,68 +240,75 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                 </div>
 
                 <div className="overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
-                    <div className="flex flex-col items-start justify-between gap-3 border-b border-[#F7F2E7] p-5 sm:flex-row sm:items-center">
-                        <div className="flex items-center gap-2 rounded-lg border border-[#D8D7BE] bg-[#F7F2E7] px-3 py-2">
-                            <Search className="h-4 w-4 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder="Cari pengguna..."
-                                value={search}
-                                onChange={(event) => setSearch(event.target.value)}
-                                className="w-48 bg-transparent text-sm outline-none"
-                            />
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <div className="flex items-center gap-2 rounded-lg border border-[#D8D7BE] bg-white px-2 py-1.5">
-                                {['all', 'student', 'tutor', 'admin'].map((role) => (
-                                    <button
-                                        key={role}
-                                        onClick={() => setSelectedRole(role)}
-                                        className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${selectedRole === role ? 'text-white' : 'text-gray-600 hover:bg-[#F7F2E7]'
-                                            }`}
-                                        style={selectedRole === role ? { background: '#691D1B' } : {}}
-                                    >
-                                        {role === 'all' ? 'Semua' : getRoleDisplay(role)}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="flex flex-row gap-2">
+                    <div className="border-b border-[#F7F2E7] p-5">
+                        <div className="grid gap-4 xl:grid-cols-[minmax(240px,320px)_1fr] xl:items-center">
+                            <div className="flex min-h-11 items-center gap-2 rounded-lg border border-[#D8D7BE] bg-[#F7F2E7] px-3 py-2">
+                                <Search className="h-4 w-4 text-gray-400" />
                                 <input
-                                    type="date"
-                                    value={dateFrom}
-                                    onChange={(event) => setDateFrom(event.target.value)}
-                                    className="rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm outline-none focus:border-[#691D1B]"
-                                    title="Dari tanggal"
-                                />
-                                <p className="text-sm text-gray-500">s/d</p>
-                                <input
-                                    type="date"
-                                    value={dateTo}
-                                    onChange={(event) => setDateTo(event.target.value)}
-                                    className="rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm outline-none focus:border-[#691D1B]"
-                                    title="Sampai tanggal"
+                                    type="text"
+                                    placeholder="Cari pengguna..."
+                                    value={search}
+                                    onChange={(event) => setSearch(event.target.value)}
+                                    className="w-full bg-transparent text-sm outline-none"
                                 />
                             </div>
-                            <button
-                                onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-                                className="flex items-center gap-1.5 rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm text-gray-600 transition-colors hover:border-[#691D1B]"
-                                title={`Urutkan ${sortOrder === 'desc' ? 'Terbaru dulu' : 'Terlama dulu'}`}
-                            >
-                                <ArrowUpDown className="h-4 w-4" />
-                                {sortOrder === 'desc' ? 'Terbaru' : 'Terlama'}
-                            </button>
-                            <button
-                                onClick={handleExport}
-                                className="flex items-center gap-1.5 rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm text-gray-600 transition-colors hover:border-[#691D1B]"
-                            >
-                                <Download className="h-4 w-4" />
-                                Export
-                            </button>
-                            {selectedUsers.length > 0 && (
-                                <span className="text-sm font-semibold text-[#691D1B]">
-                                    {selectedUsers.length} dipilih
-                                </span>
-                            )}
+                            <div className="flex flex-col gap-3 xl:items-end">
+                                <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                                    <div className="flex min-h-11 items-center gap-1 rounded-lg border border-[#D8D7BE] bg-white p-1">
+                                        {['all', 'student', 'tutor', 'admin'].map((role) => (
+                                            <button
+                                                key={role}
+                                                onClick={() => setSelectedRole(role)}
+                                                className={`min-w-16 rounded-md px-3 py-2 text-xs font-semibold transition-colors ${
+                                                    selectedRole === role ? 'text-white' : 'text-gray-600 hover:bg-[#F7F2E7]'
+                                                }`}
+                                                style={selectedRole === role ? { background: '#691D1B' } : {}}
+                                            >
+                                                {role === 'all' ? 'Semua' : getRoleDisplay(role)}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="flex min-h-11 flex-wrap items-center gap-2 rounded-lg border border-[#D8D7BE] bg-white px-2 py-1.5">
+                                        <input
+                                            type="date"
+                                            value={dateFrom}
+                                            onChange={(event) => setDateFrom(event.target.value)}
+                                            className="w-36 rounded-md border-0 px-2 py-1.5 text-sm outline-none focus:ring-0"
+                                            title="Dari tanggal"
+                                        />
+                                        <span className="text-sm text-gray-500">s/d</span>
+                                        <input
+                                            type="date"
+                                            value={dateTo}
+                                            onChange={(event) => setDateTo(event.target.value)}
+                                            className="w-36 rounded-md border-0 px-2 py-1.5 text-sm outline-none focus:ring-0"
+                                            title="Sampai tanggal"
+                                        />
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <button
+                                            onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                                            className="flex min-h-11 items-center gap-1.5 rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm text-gray-600 transition-colors hover:border-[#691D1B]"
+                                            title={`Urutkan ${sortOrder === 'desc' ? 'Terbaru dulu' : 'Terlama dulu'}`}
+                                        >
+                                            <ArrowUpDown className="h-4 w-4" />
+                                            {sortOrder === 'desc' ? 'Terbaru' : 'Terlama'}
+                                        </button>
+                                        <button
+                                            onClick={handleExport}
+                                            className="flex min-h-11 items-center gap-1.5 rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm text-gray-600 transition-colors hover:border-[#691D1B]"
+                                        >
+                                            <Download className="h-4 w-4" />
+                                            Export Pengguna
+                                        </button>
+                                    </div>
+                                </div>
+                                {selectedUsers.length > 0 && (
+                                    <span className="text-sm font-semibold text-[#691D1B]">
+                                        {selectedUsers.length} dipilih
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
 

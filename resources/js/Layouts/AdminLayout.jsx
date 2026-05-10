@@ -7,22 +7,23 @@ const navigationGroups = [
     {
         title: 'Overview',
         items: [
-            { label: 'Dashboard', href: route('admin.dashboard'), badge: 'DA' },
-            { label: 'Pengguna', href: route('admin.users'), badge: 'US' },
-            { label: 'Paket', href: route('admin.packages'), badge: 'PK' },
-            { label: 'Konten', href: route('admin.content'), badge: 'CT' },
-        ],
-    },
-    {
-        title: 'Operasional',
-        items: [
-            { label: 'Jadwal', href: route('admin.schedule'), badge: 'SC' },
-            { label: 'Transaksi', href: route('admin.transactions'), badge: 'TR' },
+            { label: 'Statistik Pengguna', href: route('admin.dashboard'), badge: 'DA' },
             {
                 label: 'Statistik Transaksi',
                 href: route('admin.transaction-stats'),
                 badge: 'ST',
             },
+            { label: 'Laporan', href: route('admin.reports.export'), badge: 'LP' },
+        ],
+    },
+    {
+        title: 'Operasional',
+        items: [
+            { label: 'Pengguna', href: route('admin.users'), badge: 'US' },
+            { label: 'Transaksi', href: route('admin.transactions'), badge: 'TR' },
+            { label: 'Paket', href: route('admin.packages'), badge: 'PK' },
+            { label: 'Konten', href: route('admin.content'), badge: 'CT' },
+            { label: 'Jadwal', href: route('admin.schedule'), badge: 'SC' },
         ],
     },
 ];
@@ -112,18 +113,16 @@ export default function AdminLayout({ children, title, subtitle, notifications =
                                             <Link
                                                 key={item.label}
                                                 href={item.href}
-                                                className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-all ${
-                                                    active
+                                                className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-all ${active
                                                         ? 'bg-[#FFE882] text-[#000000] shadow-sm'
                                                         : 'text-white/80 hover:bg-white/10 hover:text-white'
-                                                }`}
+                                                    }`}
                                             >
                                                 <span
-                                                    className={`flex h-8 w-8 items-center justify-center rounded-xl text-[11px] font-bold ${
-                                                        active
+                                                    className={`flex h-8 w-8 items-center justify-center rounded-xl text-[11px] font-bold ${active
                                                             ? 'bg-[#691D1B] text-white'
                                                             : 'bg-white/10 text-[#FFE882]'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {item.badge}
                                                 </span>
@@ -200,9 +199,8 @@ export default function AdminLayout({ children, title, subtitle, notifications =
                                                         {sortedNotificationList.map((notification) => (
                                                             <div
                                                                 key={notification.id}
-                                                                className={`flex items-start justify-between gap-3 p-4 transition hover:bg-[#F7F2E7] ${
-                                                                    !notification.is_read ? 'bg-[#F9F7F5]' : ''
-                                                                }`}
+                                                                className={`flex items-start justify-between gap-3 p-4 transition hover:bg-[#F7F2E7] ${!notification.is_read ? 'bg-[#F9F7F5]' : ''
+                                                                    }`}
                                                             >
                                                                 <div className="flex-1 min-w-0">
                                                                     <h4 className="font-semibold text-gray-900">
