@@ -25,6 +25,27 @@ test('TC_ADMIN_COURSE_001 admin berhasil menambah course atau paket', function (
     ]);
 });
 
+test('TC_ADMIN_COURSE_002 tambah course atau paket gagal jika harga tidak valid', function () {
+    // Dokumentasi: admin POST paket dengan harga non-numeric/negatif; expected validasi price menolak data dan paket tidak tersimpan.
+    $admin = adminUser();
+
+    $response = $this->actingAs($admin)->from(route('admin.packages'))->post(route('admin.packages.store'), [
+        'name' => 'Paket Harga Invalid',
+        'price' => 'gratis',
+        'description' => 'Paket dengan harga tidak valid.',
+        'features' => ['Tryout'],
+        'popular' => false,
+    ]);
+
+    $response
+        ->assertRedirect(route('admin.packages', absolute: false))
+        ->assertSessionHasErrors('price');
+
+    $this->assertDatabaseMissing('packages', [
+        'name' => 'Paket Harga Invalid',
+    ]);
+});
+
 test('TC_ADMIN_COURSE_003 admin berhasil mengubah data course atau paket', function () {
     // Dokumentasi: admin PUT perubahan harga/deskripsi paket; expected data paket terbarui.
     $admin = adminUser();

@@ -53,6 +53,62 @@ test('admin dapat mencari transaksi berdasarkan nama siswa', function () {
             ->where('filters.search', 'Nasywa'));
 });
 
+test('TC_ADMIN_TRX_003 admin dapat filter transaksi berdasarkan status', function () {
+    // Dokumentasi: admin membuka transaksi dengan query status pending; expected hanya transaksi pending tampil.
+    $admin = adminUser();
+
+    transactionRecord([
+        'invoice_number' => 'INV-STATUS-SUCCESS',
+        'payment_status' => 'success',
+    ]);
+
+    transactionRecord([
+        'invoice_number' => 'INV-STATUS-PENDING',
+        'payment_status' => 'pending',
+    ]);
+
+    transactionRecord([
+        'invoice_number' => 'INV-STATUS-FAILED',
+        'payment_status' => 'failed',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('admin.transactions', [
+        'status' => 'pending',
+    ]));
+
+    $response
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Admin/Transactions')
+            ->has('transactions.data', 1)
+            ->where('transactions.data.0.id', 'INV-STATUS-PENDING')
+            ->where('transactions.data.0.status', 'pending')
+            ->where('filters.status', 'pending'));
+});
+
+test('TC_ADMIN_TRX_004 pencarian transaksi berdasarkan nama siswa menampilkan hasil kosong jika tidak ditemukan', function () {
+    // Dokumentasi: admin mencari nama siswa yang tidak punya transaksi; expected daftar transaksi kosong dan filter search dipertahankan.
+    $admin = adminUser();
+    $student = studentUser(['name' => 'Siswa Terdaftar']);
+
+    transactionRecord([
+        'student' => $student,
+        'invoice_number' => 'INV-SEARCH-EMPTY',
+        'payment_status' => 'success',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('admin.transactions', [
+        'search' => 'Nama Tidak Ada',
+    ]));
+
+    $response
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Admin/Transactions')
+            ->has('transactions.data', 0)
+            ->where('filters.search', 'Nama Tidak Ada'));
+});
+
 test('admin dapat export transaksi sebagai CSV', function () {
     // Dokumentasi: admin membuka route export transaksi; expected file CSV transaksi terunduh.
     $admin = adminUser();

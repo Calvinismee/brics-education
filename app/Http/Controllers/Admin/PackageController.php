@@ -37,7 +37,7 @@ class PackageController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'price' => ['required', 'string', 'max:255'],
+            'price' => ['required', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
             'features' => ['nullable', 'array'],
             'features.*' => ['string', 'max:255'],
@@ -59,7 +59,7 @@ class PackageController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'price' => ['required', 'string', 'max:255'],
+            'price' => ['required', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
             'features' => ['nullable', 'array'],
             'features.*' => ['string', 'max:255'],
