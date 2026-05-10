@@ -53,14 +53,28 @@ test('TC_ADMIN_COURSE_003 admin berhasil mengubah data course atau paket', funct
 });
 
 test('TC_ADMIN_MATERI_001 admin dapat melihat materi yang diunggah tutor', function () {
-    // Dokumentasi: admin membuka halaman validasi konten; expected materi unggahan tutor tampil sebagai data review.
+    // Dokumentasi: admin membuka halaman validasi konten; expected materi pending tampil sebelum materi yang sudah direview.
     $admin = adminUser();
     $course = courseRecord(['title' => 'Paket SNBT']);
     $tutor = tutorUser(['name' => 'Fajar Tutor']);
     materialRecord([
         'course' => $course,
         'tutor' => $tutor,
+        'title' => 'Materi Sudah Disetujui',
+        'approval_status' => 'approved',
+        'approved_by' => $admin->id,
+        'approved_at' => now(),
+        'created_at' => now()->addDay(),
+        'updated_at' => now()->addDay(),
+    ]);
+
+    materialRecord([
+        'course' => $course,
+        'tutor' => $tutor,
         'title' => 'Materi TPS',
+        'approval_status' => 'pending',
+        'created_at' => now()->subDay(),
+        'updated_at' => now()->subDay(),
     ]);
 
     $response = $this->actingAs($admin)->get(route('admin.content'));
@@ -70,10 +84,12 @@ test('TC_ADMIN_MATERI_001 admin dapat melihat materi yang diunggah tutor', funct
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('Admin/Content')
-            ->has('contents.data', 1)
+            ->has('contents.data', 2)
             ->where('contents.data.0.title', 'Materi TPS')
             ->where('contents.data.0.tutor', 'Fajar Tutor')
-            ->where('contents.data.0.status', 'pending'));
+            ->where('contents.data.0.status', 'pending')
+            ->where('contents.data.1.title', 'Materi Sudah Disetujui')
+            ->where('contents.data.1.status', 'approved'));
 });
 
 test('TC_ADMIN_MATERI_002 admin berhasil menyetujui materi unggahan tutor', function () {

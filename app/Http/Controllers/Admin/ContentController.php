@@ -16,6 +16,7 @@ class ContentController extends Controller
         $contents = DB::table('materials')
             ->leftJoin('users', 'materials.uploaded_by', '=', 'users.id')
             ->leftJoin('courses', 'materials.course_id', '=', 'courses.id')
+            ->orderByRaw("case when materials.approval_status = 'pending' then 0 else 1 end")
             ->orderByDesc('materials.created_at')
             ->select([
                 'materials.id',
