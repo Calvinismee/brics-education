@@ -1,9 +1,8 @@
-# BRICS Education
+# BRICS Education <a id="brics-education"></a>
 
-### Software Engineering KOM1231 Even Semester 2025/2026
+### Software Engineering KOM1231 Even Semester 2025/2026 <a id="software-engineering-kom1231-even-semester-20252026"></a>
 
 Web-based SNBT preparation tutoring management platform that integrates independent learning with automated transaction management. Designed to provide a structured and accessible learning experience for prospective university students.
-
 
 Developed by:
 
@@ -13,27 +12,40 @@ Developed by:
 | Julius Calvin Kurniadi         | M0403241082 |
 | Azalia Noverizqy Aqila Pramono | M0403241123 |
 
-## Prerequisites
+## Table of Contents <a id="table-of-contents"></a>
+
+- [BRICS Education](#brics-education)
+  - [Software Engineering KOM1231 Even Semester 2025/2026](#software-engineering-kom1231-even-semester-20252026)
+  - [Prerequisites](#prerequisites)
+  - [Tech Stack](#tech-stack)
+  - [Clone](#clone)
+  - [GitHub Workflow Feature Development](#github-workflow-feature-development)
+  - [Quick Start](#quick-start)
+  - [Supabase Database Setup](#supabase-database-setup)
+
+## Prerequisites <a id="prerequisites"></a>
 
 - PHP 8.3+
 - Composer 2+
 - Node.js 20+ and npm 10+
 - PostgreSQL PHP extension (pgsql and pdo_pgsql)
 
-## Tech Stack
+## Tech Stack <a id="tech-stack"></a>
+
 - PHP 8.3
 - Laravel 13
 - PostgreSQL (Supabase)
 - Inertia.js + React 18
 - Vite 8
 
-## Clone
+## Clone <a id="clone"></a>
+
 ```bash
 git clone https://github.com/Calvinismee/brics-education.git
 cd brics-education
 ```
 
-## GitHub Workflow (Feature Development)
+## GitHub Workflow (Feature Development) <a id="github-workflow-feature-development"></a>
 
 1. Pull from `main`:
 
@@ -67,7 +79,7 @@ git push -u origin feature/your-feature-name
 - Open a Pull Request from `feature/your-feature-name` to `main`.
 - Ask for review, then merge after approval.
 
-## Quick Start
+## Quick Start <a id="quick-start"></a>
 
 1. Install backend and frontend dependencies:
 
@@ -83,7 +95,7 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-3. Configure database using Supabase session pooler values (see [Supabase Database Setup](#supabase-database-setup)).
+3. Configure database using Supabase session pooler values. See [Supabase Database Setup](#supabase-database-setup).
 
 4. Build frontend assets, run migrations, and seed the database:
 
@@ -111,24 +123,24 @@ npm run dev
 php artisan migrate:status
 ```
 
-Then open http://localhost:8000 in your browser.
+Then open [http://localhost:8000](http://localhost:8000) in your browser.
 
-## Supabase Database Setup
+## Supabase Database Setup <a id="supabase-database-setup"></a>
 
 Use the Session Pooler connection details from Supabase dashboard:
 
 1. Open Supabase project.
 2. Go to Connect.
-3. Choose 'Direct - Connection string'
-3. In Connection Method, choose Session pooler.
-4. Copy host, port, database, and user.
-5. Ask database owner for password
+3. Choose `Direct - Connection string`.
+4. In Connection Method, choose Session pooler.
+5. Copy host, port, database, and user.
+6. Ask database owner for password.
 
-Required .env values:
+Required `.env` values:
 
 ```env
 DB_CONNECTION=pgsql
-DB_HOST=aws-1-ap-south-1.pooler.supabase.com (example)
+DB_HOST=aws-1-ap-south-1.pooler.supabase.com
 DB_PORT=5432
 DB_DATABASE=<database-name>
 DB_USERNAME=<username>
@@ -139,5 +151,5 @@ Important:
 
 - Do not commit real database credentials.
 - Supabase direct host is often IPv6-only. Use Session Pooler for IPv4-compatible access.
-#
+
 ### Happy Engineering, y'all !!
