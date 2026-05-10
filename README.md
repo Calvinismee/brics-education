@@ -144,13 +144,7 @@ If `createdb` is not available, use `psql`:
 psql -U postgres -c "CREATE DATABASE brics_test;"
 ```
 
-Copy the testing environment template:
-
-```bash
-cp .env.testing.example .env.testing
-```
-
-Default testing database values:
+The test database connection is configured directly in `phpunit.xml`:
 
 ```env
 DB_CONNECTION=pgsql
@@ -161,7 +155,7 @@ DB_USERNAME=postgres
 DB_PASSWORD=
 ```
 
-Update `DB_PASSWORD` in `.env.testing` if your local PostgreSQL uses a password. If your local PostgreSQL username is not `postgres`, update both `.env.testing` and the forced `DB_USERNAME` value in `phpunit.xml`.
+If your local PostgreSQL username is not `postgres`, or if it needs a password, update the forced database values in `phpunit.xml`.
 
 The test suite uses Laravel `RefreshDatabase`, so migrations are rebuilt automatically while tests run.
 
