@@ -10,12 +10,25 @@ use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Models\Course;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Transaction;
+use App\Models\Enrollment;
+use App\Models\Material;
+use App\Models\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
+    $courses = Course::with('category')
+        ->where('status', 'active')
+        ->orderBy('created_at', 'desc')
+        ->get();
+
     return Inertia::render('LandingPage', [
+        'courses' => $courses,
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
         'laravelVersion' => Application::VERSION,
@@ -23,9 +36,200 @@ Route::get('/', function () {
     ]);
 });
 
+Route::get('/course/{course}', function (Course $course) {
+    $course->load('category');
+
+    return Inertia::render('CourseDetail', [
+        'course' => $course,
+    ]);
+})->name('course.detail');
+
+Route::get('/checkout/{course}', function (Course $course) {
+    $course->load('category');
+
+    return Inertia::render('Checkout', [
+        'course' => $course,
+    ]);
+})->name('checkout');
+
+Route::post('/checkout', function (Request $request) {
+    $request->validate([
+        'course_id' => ['required', 'exists:courses,id'],
+        'payment_method' => ['required', 'string'],
+    ]);
+
+    $user = Auth::user();
+
+    if (!$user) {
+        return redirect()->route('login');
+    }
+
+    $course = Course::findOrFail($request->course_id);
+
+    $transaction = Transaction::create([
+        'user_id' => $user->id,
+        'course_id' => $course->id,
+        'amount' => $course->price,
+        'payment_method' => $request->payment_method,
+        'payment_status' => 'pending',
+    ]);
+
+    return redirect("/payment-status/{$transaction->id}");
+})->middleware('auth');
+
+Route::get('/payment-status/{transaction}', function (Transaction $transaction) {
+    $transaction->load('course.category');
+
+    return Inertia::render('PaymentStatus', [
+        'transaction' => $transaction,
+    ]);
+})->name('payment.status');
+
+Route::post('/payment-status/{transaction}/confirm', function (Transaction $transaction) {
+    $transaction->load('course');
+
+    $transaction->update([
+        'payment_status' => 'success',
+        'paid_at' => now(),
+    ]);
+
+    Enrollment::updateOrCreate(
+        [
+            'user_id' => $transaction->user_id,
+            'course_id' => $transaction->course_id,
+        ],
+        [
+            'status' => 'active',
+            'enrolled_at' => now(),
+        ]
+    );
+
+    return redirect()
+        ->to('/payment-status/' . $transaction->id)
+        ->with('success', 'Pembayaran berhasil dikonfirmasi dan course telah aktif.');
+})->name('payment.confirm');
+
 Route::get('/dashboard', function () {
-    return redirect('/');
+    if (!auth()->check()) {
+        return redirect()->route('login');
+    }
+
+    $user = auth()->user();
+
+    if ($user->role_id !== 3) {
+        auth()->logout();
+
+        return redirect()
+            ->route('login')
+            ->withErrors([
+                'email' => 'Akun ini bukan akun siswa.',
+            ]);
+    }
+
+    $enrollments = Enrollment::with('course.category')
+        ->where('user_id', $user->id)
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    $transactions = Transaction::with('course.category')
+        ->where('user_id', $user->id)
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    $activeCourseIds = $enrollments
+        ->where('status', 'active')
+        ->pluck('course_id');
+
+    $schedules = Schedule::with(['course.category', 'mentor'])
+        ->whereIn('course_id', $activeCourseIds)
+        ->orderBy('start_time')
+        ->take(3)
+        ->get();
+
+    return Inertia::render('StudentDashboard', [
+        'user' => $user,
+        'enrollments' => $enrollments,
+        'transactions' => $transactions,
+        'schedules' => $schedules,
+    ]);
 })->name('dashboard');
+
+Route::get('/course/{course}/learn', function (Course $course) {
+    if (!auth()->check()) {
+        return redirect()->route('login');
+    }
+
+    $user = auth()->user();
+
+    if ($user->role_id !== 3) {
+    auth()->logout();
+
+    return redirect()
+        ->route('login')
+        ->withErrors([
+            'email' => 'Akun ini bukan akun siswa.',
+        ]);
+}
+
+    $enrollment = Enrollment::where('user_id', $user->id)
+        ->where('course_id', $course->id)
+        ->where('status', 'active')
+        ->first();
+
+    if (!$enrollment) {
+        return redirect()
+            ->to('/course/' . $course->id)
+            ->withErrors([
+                'course' => 'Kamu belum memiliki akses aktif ke course ini.',
+            ]);
+    }
+
+    $course->load('category');
+
+    $materials = Material::where('course_id', $course->id)
+        ->where('approval_status', 'approved')
+        ->orderBy('created_at')
+        ->get();
+
+    return Inertia::render('CourseLearn', [
+        'user' => $user,
+        'course' => $course,
+        'materials' => $materials,
+        'enrollment' => $enrollment,
+    ]);
+})->name('course.learn');
+
+Route::get('/student/schedules', function () {
+    if (!auth()->check()) {
+        return redirect()->route('login');
+    }
+
+    $user = auth()->user();
+
+    if ($user->role_id !== 3) {
+    auth()->logout();
+
+    return redirect()
+        ->route('login')
+        ->withErrors([
+            'email' => 'Akun ini bukan akun siswa.',
+        ]);
+}
+
+    $activeCourseIds = Enrollment::where('user_id', $user->id)
+        ->where('status', 'active')
+        ->pluck('course_id');
+
+    $schedules = Schedule::with(['course.category', 'mentor'])
+        ->whereIn('course_id', $activeCourseIds)
+        ->orderBy('start_time')
+        ->get();
+
+    return Inertia::render('StudentSchedules', [
+        'user' => $user,
+        'schedules' => $schedules,
+    ]);
+})->name('student.schedules');
 
 Route::get('/login', fn () => Inertia::render('Auth/LoginSiswa'))->name('login');
 Route::get('/login/tutor', fn () => Inertia::render('Auth/LoginTutor'))->name('login.tutor');
