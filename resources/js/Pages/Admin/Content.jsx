@@ -113,12 +113,6 @@ export default function Content({ contents = [], stats = {} }) {
             <Head title="Validasi Konten" />
 
             <div className="p-4 lg:p-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                    <div>
-                        <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Validasi Konten</h1>
-                        <p className="text-sm text-gray-500">Setujui atau tolak materi pembelajaran sebelum dipublikasikan.</p>
-                    </div>
-                </div>
 
                 <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
                     {[
