@@ -14,6 +14,7 @@ use App\Models\Transaction;
 use App\Models\Enrollment;
 use App\Models\Material;
 use App\Models\Schedule;
+use App\Models\User;
 use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AdminDashboardController;
@@ -117,7 +118,7 @@ Route::get('/dashboard', function () {
 
     $user = auth()->user();
 
-    if ($user->role_id !== 3) {
+    if (strtolower((string) User::roleNameFor($user->role_id)) !== 'student') {
         auth()->logout();
 
         return redirect()
@@ -162,15 +163,15 @@ Route::get('/course/{course}/learn', function (Course $course) {
 
     $user = auth()->user();
 
-    if ($user->role_id !== 3) {
-    auth()->logout();
+    if (strtolower((string) User::roleNameFor($user->role_id)) !== 'student') {
+        auth()->logout();
 
-    return redirect()
-        ->route('login')
-        ->withErrors([
-            'email' => 'Akun ini bukan akun siswa.',
-        ]);
-}
+        return redirect()
+            ->route('login')
+            ->withErrors([
+                'email' => 'Akun ini bukan akun siswa.',
+            ]);
+    }
 
     $enrollment = Enrollment::where('user_id', $user->id)
         ->where('course_id', $course->id)
@@ -207,15 +208,15 @@ Route::get('/student/schedules', function () {
 
     $user = auth()->user();
 
-    if ($user->role_id !== 3) {
-    auth()->logout();
+    if (strtolower((string) User::roleNameFor($user->role_id)) !== 'student') {
+        auth()->logout();
 
-    return redirect()
-        ->route('login')
-        ->withErrors([
-            'email' => 'Akun ini bukan akun siswa.',
-        ]);
-}
+        return redirect()
+            ->route('login')
+            ->withErrors([
+                'email' => 'Akun ini bukan akun siswa.',
+            ]);
+    }
 
     $activeCourseIds = Enrollment::where('user_id', $user->id)
         ->where('status', 'active')

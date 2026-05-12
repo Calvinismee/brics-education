@@ -84,14 +84,17 @@ class UserController extends Controller
         ]);
 
         $roles = User::adminRoleIds();
+        $legacyRole = $this->legacyRoleFor($validated['role']);
 
-        User::create([
+        $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role_id' => $roles[$validated['role']] ?? 1,
             'mentor_course_id' => $validated['role'] === 'tutor' ? ($validated['mentor_course_id'] ?? null) : null,
         ]);
+
+        $user->forceFill(['role' => $legacyRole])->save();
 
         return redirect()->route('admin.users')->with('success', 'Pengguna berhasil ditambahkan.');
     }
@@ -107,9 +110,11 @@ class UserController extends Controller
         ]);
 
         $roles = User::adminRoleIds();
+        $legacyRole = $this->legacyRoleFor($validated['role']);
 
         $user->name = $validated['name'];
         $user->email = $validated['email'];
+        $user->role = $legacyRole;
         $user->role_id = $roles[$validated['role']] ?? $user->role_id;
         $user->mentor_course_id = $validated['role'] === 'tutor' ? ($validated['mentor_course_id'] ?? null) : null;
 
@@ -120,6 +125,11 @@ class UserController extends Controller
         $user->save();
 
         return redirect()->route('admin.users')->with('success', 'Pengguna berhasil diperbarui.');
+    }
+
+    private function legacyRoleFor(string $role): string
+    {
+        return $role === 'tutor' ? 'mentor' : $role;
     }
 
     public function destroy(User $user): RedirectResponse

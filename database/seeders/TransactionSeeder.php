@@ -20,37 +20,39 @@ class TransactionSeeder extends Seeder
             ])
             ->pluck('id', 'email');
 
-        $packages = Package::query()
-            ->whereIn('name', ['Paket Dasar', 'Paket Intensif', 'Paket Premium'])
-            ->get()
-            ->keyBy('name');
+        $package = Package::query()
+            ->where('name', 'Paket Persiapan SNBT')
+            ->first();
+
+        if (! $package) {
+            return;
+        }
 
         $now = Carbon::now();
         $samples = [
-            ['invoice' => 'INV-20251201-0001', 'student_email' => 'siswa@bricsedu.id', 'package' => 'Paket Dasar', 'amount' => 149000, 'method' => 'bank_transfer', 'status' => 'success', 'days_ago' => 160],
-            ['invoice' => 'INV-20251215-0002', 'student_email' => 'siswa2@bricsedu.id', 'package' => 'Paket Intensif', 'amount' => 249000, 'method' => 'gopay', 'status' => 'success', 'days_ago' => 145],
-            ['invoice' => 'INV-20260105-0003', 'student_email' => 'siswa3@bricsedu.id', 'package' => 'Paket Premium', 'amount' => 399000, 'method' => 'bank_transfer', 'status' => 'success', 'days_ago' => 123],
-            ['invoice' => 'INV-20260120-0004', 'student_email' => 'siswa@bricsedu.id', 'package' => 'Paket Intensif', 'amount' => 249000, 'method' => 'ovo', 'status' => 'failed', 'days_ago' => 108],
-            ['invoice' => 'INV-20260208-0005', 'student_email' => 'siswa2@bricsedu.id', 'package' => 'Paket Dasar', 'amount' => 149000, 'method' => 'bank_transfer', 'status' => 'success', 'days_ago' => 89],
-            ['invoice' => 'INV-20260215-0006', 'student_email' => 'siswa3@bricsedu.id', 'package' => 'Paket Premium', 'amount' => 399000, 'method' => 'gopay', 'status' => 'success', 'days_ago' => 82],
-            ['invoice' => 'INV-20260228-0007', 'student_email' => 'siswa@bricsedu.id', 'package' => 'Paket Intensif', 'amount' => 249000, 'method' => 'qris', 'status' => 'success', 'days_ago' => 69],
-            ['invoice' => 'INV-20260310-0008', 'student_email' => 'siswa2@bricsedu.id', 'package' => 'Paket Premium', 'amount' => 399000, 'method' => 'bank_transfer', 'status' => 'success', 'days_ago' => 59],
-            ['invoice' => 'INV-20260320-0009', 'student_email' => 'siswa3@bricsedu.id', 'package' => 'Paket Dasar', 'amount' => 149000, 'method' => 'ovo', 'status' => 'success', 'days_ago' => 49],
-            ['invoice' => 'INV-20260325-0010', 'student_email' => 'siswa@bricsedu.id', 'package' => 'Paket Premium', 'amount' => 399000, 'method' => 'gopay', 'status' => 'pending', 'days_ago' => 44],
-            ['invoice' => 'INV-20260405-0011', 'student_email' => 'siswa2@bricsedu.id', 'package' => 'Paket Intensif', 'amount' => 249000, 'method' => 'bank_transfer', 'status' => 'success', 'days_ago' => 33],
-            ['invoice' => 'INV-20260415-0012', 'student_email' => 'siswa3@bricsedu.id', 'package' => 'Paket Dasar', 'amount' => 149000, 'method' => 'qris', 'status' => 'success', 'days_ago' => 23],
-            ['invoice' => 'INV-20260420-0013', 'student_email' => 'siswa@bricsedu.id', 'package' => 'Paket Intensif', 'amount' => 249000, 'method' => 'ovo', 'status' => 'failed', 'days_ago' => 18],
-            ['invoice' => 'INV-20260428-0014', 'student_email' => 'siswa2@bricsedu.id', 'package' => 'Paket Premium', 'amount' => 399000, 'method' => 'bank_transfer', 'status' => 'success', 'days_ago' => 10],
-            ['invoice' => 'INV-20260501-0015', 'student_email' => 'siswa3@bricsedu.id', 'package' => 'Paket Dasar', 'amount' => 149000, 'method' => 'gopay', 'status' => 'success', 'days_ago' => 7],
-            ['invoice' => 'INV-20260505-0016', 'student_email' => 'siswa@bricsedu.id', 'package' => 'Paket Premium', 'amount' => 399000, 'method' => 'bank_transfer', 'status' => 'success', 'days_ago' => 3],
-            ['invoice' => 'INV-20260507-0017', 'student_email' => 'siswa2@bricsedu.id', 'package' => 'Paket Intensif', 'amount' => 249000, 'method' => 'qris', 'status' => 'pending', 'days_ago' => 1],
+            ['invoice' => 'INV-20251201-0001', 'student_email' => 'siswa@bricsedu.id', 'method' => 'bank_transfer', 'status' => 'success', 'days_ago' => 160],
+            ['invoice' => 'INV-20251215-0002', 'student_email' => 'siswa2@bricsedu.id', 'method' => 'gopay', 'status' => 'success', 'days_ago' => 145],
+            ['invoice' => 'INV-20260105-0003', 'student_email' => 'siswa3@bricsedu.id', 'method' => 'bank_transfer', 'status' => 'success', 'days_ago' => 123],
+            ['invoice' => 'INV-20260120-0004', 'student_email' => 'siswa@bricsedu.id', 'method' => 'ovo', 'status' => 'failed', 'days_ago' => 108],
+            ['invoice' => 'INV-20260208-0005', 'student_email' => 'siswa2@bricsedu.id', 'method' => 'bank_transfer', 'status' => 'success', 'days_ago' => 89],
+            ['invoice' => 'INV-20260215-0006', 'student_email' => 'siswa3@bricsedu.id', 'method' => 'gopay', 'status' => 'success', 'days_ago' => 82],
+            ['invoice' => 'INV-20260228-0007', 'student_email' => 'siswa@bricsedu.id', 'method' => 'qris', 'status' => 'success', 'days_ago' => 69],
+            ['invoice' => 'INV-20260310-0008', 'student_email' => 'siswa2@bricsedu.id', 'method' => 'bank_transfer', 'status' => 'success', 'days_ago' => 59],
+            ['invoice' => 'INV-20260320-0009', 'student_email' => 'siswa3@bricsedu.id', 'method' => 'ovo', 'status' => 'success', 'days_ago' => 49],
+            ['invoice' => 'INV-20260325-0010', 'student_email' => 'siswa@bricsedu.id', 'method' => 'gopay', 'status' => 'pending', 'days_ago' => 44],
+            ['invoice' => 'INV-20260405-0011', 'student_email' => 'siswa2@bricsedu.id', 'method' => 'bank_transfer', 'status' => 'success', 'days_ago' => 33],
+            ['invoice' => 'INV-20260415-0012', 'student_email' => 'siswa3@bricsedu.id', 'method' => 'qris', 'status' => 'success', 'days_ago' => 23],
+            ['invoice' => 'INV-20260420-0013', 'student_email' => 'siswa@bricsedu.id', 'method' => 'ovo', 'status' => 'failed', 'days_ago' => 18],
+            ['invoice' => 'INV-20260428-0014', 'student_email' => 'siswa2@bricsedu.id', 'method' => 'bank_transfer', 'status' => 'success', 'days_ago' => 10],
+            ['invoice' => 'INV-20260501-0015', 'student_email' => 'siswa3@bricsedu.id', 'method' => 'gopay', 'status' => 'success', 'days_ago' => 7],
+            ['invoice' => 'INV-20260505-0016', 'student_email' => 'siswa@bricsedu.id', 'method' => 'bank_transfer', 'status' => 'success', 'days_ago' => 3],
+            ['invoice' => 'INV-20260507-0017', 'student_email' => 'siswa2@bricsedu.id', 'method' => 'qris', 'status' => 'pending', 'days_ago' => 1],
         ];
 
         foreach ($samples as $sample) {
             $userId = $studentIds[$sample['student_email']] ?? null;
-            $package = $packages->get($sample['package']);
 
-            if (! $userId || ! $package) {
+            if (! $userId) {
                 continue;
             }
 
@@ -67,7 +69,7 @@ class TransactionSeeder extends Seeder
                     'course_id' => null,
                     'package_id' => $package->id,
                     'enrollment_id' => null,
-                    'amount' => $sample['amount'],
+                    'amount' => $package->price,
                     'payment_method' => $sample['method'],
                     'payment_status' => $sample['status'],
                     'payment_gateway_ref' => null,

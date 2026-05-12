@@ -367,6 +367,11 @@ The following rules should be treated as core system invariants.
 - Only admin users may access `/admin/*`.
 - Non-admin users are redirected to `/` with an unauthorized message.
 
+### 7.7 Student Access Rules
+
+- Only users whose resolved role name is `student` may access student dashboard, learning pages, and student schedules.
+- Student route guards must not hardcode numeric role ids because seeded or migrated role ids can vary between databases.
+
 ---
 
 ## 8. Business Processes
@@ -970,18 +975,27 @@ Invalidation:
 
 ## 14. Seeder Architecture
 
-Seeders are designed to reflect the current package-course-enrollment model.
+Seeders are designed to reflect the current package-course-enrollment model for a SNBT preparation website.
 
 ### Seeded Actors
 
 - 3 students
-- multiple tutors mapped by subject
+- 7 tutors mapped one-to-one to SNBT course subjects
 - 1 admin
 
 ### Seeded Domain Data
 
-- courses
-- packages and package-course mapping
+- categories for `Tes Potensi Skolastik` and `Tes Literasi`
+- 7 active SNBT courses:
+  - `Penalaran Umum`
+  - `Pengetahuan dan Pemahaman Umum`
+  - `Pemahaman Bacaan dan Menulis`
+  - `Pengetahuan Kuantitatif`
+  - `Literasi dalam Bahasa Indonesia`
+  - `Literasi dalam Bahasa Inggris`
+  - `Penalaran Matematika`
+- one commercial package: `Paket Persiapan SNBT`
+- package-course mapping from `Paket Persiapan SNBT` to all 7 SNBT courses
 - course content by tutor
 - schedules by subject tutor
 - package-based transactions
@@ -992,6 +1006,7 @@ Important note:
 
 - local seed data is now aligned with the current architecture
 - package purchase is reflected in seeded transactions, not direct course purchase
+- successful seeded SNBT transactions enroll students into every course in `Paket Persiapan SNBT`
 
 ---
 
@@ -1003,6 +1018,7 @@ The following are important for the team to know before extending the system.
 
 - `users.role` still exists
 - the system should use `role_id` as canonical authorization data
+- seeders and admin user writes keep `users.role` synchronized for legacy visibility
 - if future cleanup is planned, remove the string role after confirming no remaining runtime dependency
 
 ### 15.2 `transactions.course_id` Is Transitional

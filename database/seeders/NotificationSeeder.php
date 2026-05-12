@@ -22,12 +22,12 @@ class NotificationSeeder extends Seeder
         $notifications = [
             [
                 'title' => 'Transaksi Baru',
-                'message' => 'Siswa Brics berhasil membeli Paket Dasar dan otomatis terenroll ke course terkait.',
+                'message' => 'Siswa Brics berhasil membeli Paket Persiapan SNBT dan otomatis terenroll ke seluruh course TPS dan Literasi.',
                 'created_at' => $now->copy()->subDays(2),
             ],
             [
                 'title' => 'Konten Course Diperbarui',
-                'message' => 'Tutor IPA menambahkan bank soal baru untuk course IPA Terpadu.',
+                'message' => 'Tutor Penalaran Matematika menambahkan drill soal kontekstual untuk persiapan SNBT.',
                 'created_at' => $now->copy()->subDays(1),
             ],
             [
@@ -37,7 +37,7 @@ class NotificationSeeder extends Seeder
             ],
             [
                 'title' => 'Jadwal Kelas Ditambahkan',
-                'message' => 'Kelas Bahasa Indonesia dijadwalkan dengan mentor yang sudah terikat ke course tersebut.',
+                'message' => 'Kelas Literasi Bahasa Indonesia dijadwalkan dengan mentor yang sudah terikat ke course tersebut.',
                 'created_at' => $now->copy()->subHours(3),
             ],
             [

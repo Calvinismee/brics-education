@@ -10,24 +10,69 @@ class PackageSeeder extends Seeder
 {
     public function run(): void
     {
+        DB::table('packages')
+            ->whereIn('name', ['Paket Dasar', 'Paket Intensif', 'Paket Premium'])
+            ->delete();
+
+        DB::table('courses')
+            ->whereIn('title', ['Matematika Dasar', 'Bahasa Indonesia', 'IPA Terpadu'])
+            ->delete();
+
+        $categories = [
+            'Tes Potensi Skolastik' => 'Subtes SNBT untuk mengukur kemampuan bernalar, memahami informasi, dan menggunakan konsep kuantitatif.',
+            'Tes Literasi' => 'Subtes SNBT untuk mengukur kemampuan memahami, mengevaluasi, dan menggunakan teks serta penalaran matematika.',
+        ];
+
+        foreach ($categories as $name => $description) {
+            DB::table('categories')->updateOrInsert(
+                ['name' => $name],
+                [
+                    'description' => $description,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+        }
+
+        $categoryIds = DB::table('categories')
+            ->whereIn('name', array_keys($categories))
+            ->pluck('id', 'name');
+
         $courseCatalog = [
             [
-                'title' => 'Matematika Dasar',
-                'description' => 'Fondasi konsep numerik, aljabar dasar, dan latihan penalaran kuantitatif.',
-                'price' => 149000,
-                'status' => 'published',
+                'category' => 'Tes Potensi Skolastik',
+                'title' => 'Penalaran Umum',
+                'description' => 'Latihan memahami pola, argumen, simpulan, dan strategi bernalar untuk soal TPS SNBT.',
             ],
             [
-                'title' => 'Bahasa Indonesia',
-                'description' => 'Pemahaman bacaan, penalaran verbal, dan strategi menjawab soal literasi.',
-                'price' => 149000,
-                'status' => 'published',
+                'category' => 'Tes Potensi Skolastik',
+                'title' => 'Pengetahuan dan Pemahaman Umum',
+                'description' => 'Penguatan kosakata, ide pokok, hubungan antargagasan, dan pemahaman informasi umum.',
             ],
             [
-                'title' => 'IPA Terpadu',
-                'description' => 'Ringkasan materi inti IPA dengan latihan soal dan pembahasan konsep.',
-                'price' => 179000,
-                'status' => 'published',
+                'category' => 'Tes Potensi Skolastik',
+                'title' => 'Pemahaman Bacaan dan Menulis',
+                'description' => 'Strategi membaca efektif, menyunting kalimat, dan memahami struktur teks akademik.',
+            ],
+            [
+                'category' => 'Tes Potensi Skolastik',
+                'title' => 'Pengetahuan Kuantitatif',
+                'description' => 'Konsep bilangan, aljabar, data, geometri dasar, dan latihan penalaran kuantitatif.',
+            ],
+            [
+                'category' => 'Tes Literasi',
+                'title' => 'Literasi dalam Bahasa Indonesia',
+                'description' => 'Pemahaman teks Bahasa Indonesia, evaluasi informasi, dan penarikan simpulan berbasis bacaan.',
+            ],
+            [
+                'category' => 'Tes Literasi',
+                'title' => 'Literasi dalam Bahasa Inggris',
+                'description' => 'Reading comprehension, vocabulary in context, inference, and academic text analysis.',
+            ],
+            [
+                'category' => 'Tes Literasi',
+                'title' => 'Penalaran Matematika',
+                'description' => 'Penerapan konsep matematika dalam konteks masalah, data, grafik, dan situasi sehari-hari.',
             ],
         ];
 
@@ -35,60 +80,37 @@ class PackageSeeder extends Seeder
             DB::table('courses')->updateOrInsert(
                 ['title' => $courseData['title']],
                 [
+                    'category_id' => $categoryIds[$courseData['category']] ?? null,
                     'description' => $courseData['description'],
-                    'price' => $courseData['price'],
-                    'status' => $courseData['status'],
+                    'price' => 99000,
+                    'status' => 'active',
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]
             );
         }
 
-        foreach ([
+        $courseIds = DB::table('courses')
+            ->whereIn('title', array_column($courseCatalog, 'title'))
+            ->pluck('id')
+            ->all();
+
+        $package = Package::updateOrCreate(
+            ['name' => 'Paket Persiapan SNBT'],
             [
-                'name' => 'Paket Dasar',
-                'price' => '149000',
-                'description' => 'Paket pengenalan untuk siswa yang ingin mulai dari fondasi utama.',
-                'features' => ['Akses video pembelajaran', 'Latihan soal dasar', 'Forum diskusi'],
-                'courses' => ['Matematika Dasar'],
-                'popular' => false,
-            ],
-            [
-                'name' => 'Paket Intensif',
-                'price' => '249000',
-                'description' => 'Paket kombinasi untuk siswa yang ingin belajar rutin dengan dua course inti.',
-                'features' => ['Akses video pembelajaran', 'Live class mingguan', 'Konsultasi mentor'],
-                'courses' => ['Matematika Dasar', 'Bahasa Indonesia'],
+                'price' => '499000',
+                'description' => 'Paket lengkap persiapan SNBT yang mencakup seluruh subtes TPS dan Literasi.',
+                'features' => [
+                    'Akses semua course TPS dan Literasi',
+                    'Materi konsep dan strategi pengerjaan soal',
+                    'Bank soal bertahap dengan pembahasan',
+                    'Jadwal live class bersama tutor',
+                    'Simulasi dan evaluasi progres belajar',
+                ],
                 'popular' => true,
-            ],
-            [
-                'name' => 'Paket Premium',
-                'price' => '399000',
-                'description' => 'Paket lengkap dengan seluruh course utama untuk persiapan yang lebih menyeluruh.',
-                'features' => ['Semua fitur Paket Intensif', 'Simulasi ujian', 'Prioritas review mentor'],
-                'courses' => ['Matematika Dasar', 'Bahasa Indonesia', 'IPA Terpadu'],
-                'popular' => false,
-            ],
-        ] as $packageData) {
-            $courseTitles = $packageData['courses'];
-            unset($packageData['courses']);
+            ]
+        );
 
-            $package = Package::updateOrCreate(
-                ['name' => $packageData['name']],
-                [
-                    'price' => $packageData['price'],
-                    'description' => $packageData['description'],
-                    'features' => $packageData['features'],
-                    'popular' => $packageData['popular'],
-                ]
-            );
-
-            $courseIds = DB::table('courses')
-                ->whereIn('title', $courseTitles)
-                ->pluck('id')
-                ->all();
-
-            $package->courses()->sync($courseIds);
-        }
+        $package->courses()->sync($courseIds);
     }
 }

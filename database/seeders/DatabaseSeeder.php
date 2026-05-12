@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
@@ -16,21 +17,37 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        Cache::forget('roles:map');
+        Cache::forget('roles:id-map');
+
+        foreach (['student', 'mentor', 'admin'] as $roleName) {
+            DB::table('roles')->updateOrInsert(
+                ['name' => $roleName],
+                [
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+        }
+
         // Get role IDs
         $studentRole = DB::table('roles')->where('name', 'student')->value('id') ?? 1;
         $tutorRole = DB::table('roles')->where('name', 'mentor')->value('id') ?? 2;
         $adminRole = DB::table('roles')->where('name', 'admin')->value('id') ?? 3;
 
-        // Seed core users for admin, students, and mentors mapped to courses.
+        // Seed core users for admin, students, and SNBT mentors mapped to courses.
         foreach ([
-            ['name' => 'Siswa Brics', 'email' => 'siswa@bricsedu.id', 'role_id' => $studentRole],
-            ['name' => 'Siswa Dua', 'email' => 'siswa2@bricsedu.id', 'role_id' => $studentRole],
-            ['name' => 'Siswa Tiga', 'email' => 'siswa3@bricsedu.id', 'role_id' => $studentRole],
-            ['name' => 'Tutor Matematika', 'email' => 'tutor.math@bricsedu.id', 'role_id' => $tutorRole],
-            ['name' => 'Tutor Bahasa', 'email' => 'tutor.bahasa@bricsedu.id', 'role_id' => $tutorRole],
-            ['name' => 'Tutor IPA', 'email' => 'tutor.ipa@bricsedu.id', 'role_id' => $tutorRole],
-            ['name' => 'Tutor Umum', 'email' => 'tutor@bricsedu.id', 'role_id' => $tutorRole],
-            ['name' => 'Admin Brics', 'email' => 'admin@bricsedu.id', 'role_id' => $adminRole],
+            ['name' => 'Siswa Brics', 'email' => 'siswa@bricsedu.id', 'role_id' => $studentRole, 'role' => 'student'],
+            ['name' => 'Siswa Dua', 'email' => 'siswa2@bricsedu.id', 'role_id' => $studentRole, 'role' => 'student'],
+            ['name' => 'Siswa Tiga', 'email' => 'siswa3@bricsedu.id', 'role_id' => $studentRole, 'role' => 'student'],
+            ['name' => 'Tutor Penalaran Umum', 'email' => 'tutor.penalaran.umum@bricsedu.id', 'role_id' => $tutorRole, 'role' => 'mentor'],
+            ['name' => 'Tutor Pengetahuan Umum', 'email' => 'tutor.ppu@bricsedu.id', 'role_id' => $tutorRole, 'role' => 'mentor'],
+            ['name' => 'Tutor Bacaan dan Menulis', 'email' => 'tutor.pbm@bricsedu.id', 'role_id' => $tutorRole, 'role' => 'mentor'],
+            ['name' => 'Tutor Kuantitatif', 'email' => 'tutor.kuantitatif@bricsedu.id', 'role_id' => $tutorRole, 'role' => 'mentor'],
+            ['name' => 'Tutor Literasi Indonesia', 'email' => 'tutor.literasi.indonesia@bricsedu.id', 'role_id' => $tutorRole, 'role' => 'mentor'],
+            ['name' => 'Tutor Literasi Inggris', 'email' => 'tutor.literasi.inggris@bricsedu.id', 'role_id' => $tutorRole, 'role' => 'mentor'],
+            ['name' => 'Tutor Penalaran Matematika', 'email' => 'tutor.penalaran.matematika@bricsedu.id', 'role_id' => $tutorRole, 'role' => 'mentor'],
+            ['name' => 'Admin Brics', 'email' => 'admin@bricsedu.id', 'role_id' => $adminRole, 'role' => 'admin'],
         ] as $userData) {
             User::updateOrCreate(
                 ['email' => $userData['email']],
@@ -40,6 +57,13 @@ class DatabaseSeeder extends Seeder
                     'role_id' => $userData['role_id'],
                 ]
             );
+
+            DB::table('users')
+                ->where('email', $userData['email'])
+                ->update([
+                    'role' => $userData['role'],
+                    'updated_at' => now(),
+                ]);
         }
 
         $this->call([
