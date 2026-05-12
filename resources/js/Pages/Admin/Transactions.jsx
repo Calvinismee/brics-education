@@ -1,7 +1,7 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Download, CheckCircle, XCircle, Clock, ArrowUpDown } from 'lucide-react';
+import { Search, Download, CheckCircle, XCircle, Clock, ArrowUpDown, Eye } from 'lucide-react';
 
 export default function Transactions({ transactions = [], stats = {}, filters = {} }) {
     const transactionList = Array.isArray(transactions?.data) ? transactions.data : transactions;
@@ -210,7 +210,7 @@ export default function Transactions({ transactions = [], stats = {}, filters = 
                         <table className="w-full">
                             <thead>
                                 <tr className="border-b border-[#D8D7BE] bg-[#F7F2E7]">
-                                    {['ID Transaksi', 'Siswa', 'Kursus', 'Jumlah', 'Metode', 'Status', 'Waktu'].map((heading) => (
+                                    {['ID Transaksi', 'Siswa', 'Kursus', 'Jumlah', 'Metode', 'Status', 'Waktu', 'Aksi'].map((heading) => (
                                         <th key={heading} className="px-5 py-3 text-left text-xs uppercase tracking-wide text-gray-500" style={{ fontWeight: 700 }}>
                                             {heading}
                                         </th>
@@ -246,6 +246,15 @@ export default function Transactions({ transactions = [], stats = {}, filters = 
                                             </td>
                                             <td className="px-5 py-4">
                                                 <span className="text-xs text-gray-500">{transaction.date}</span>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <Link
+                                                    href={route('admin.transactions.show', transaction.databaseId)}
+                                                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#D8D7BE] px-3 py-2 text-xs font-semibold text-gray-600 transition-colors hover:border-[#691D1B] hover:text-[#691D1B]"
+                                                >
+                                                    <Eye className="h-4 w-4" />
+                                                    Detail
+                                                </Link>
                                             </td>
                                         </tr>
                                     );

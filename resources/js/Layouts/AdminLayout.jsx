@@ -1,6 +1,6 @@
 import { Link, usePage, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import { Bell, X, Check } from 'lucide-react';
+import { Bell, Check, Menu, X } from 'lucide-react';
 import { countUnreadNotifications, normalizeNotifications, sortNotifications } from '@/utils/notifications';
 
 const navigationGroups = [
@@ -33,6 +33,7 @@ export default function AdminLayout({ children, title, subtitle, notifications =
     const user = page.props.auth?.user;
     const currentPath = page.url.split('?')[0];
     const [showNotifications, setShowNotifications] = useState(false);
+    const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     const sharedNotifications = page.props?.notifications ?? notifications;
     const notificationList = useMemo(
         () => normalizeNotifications(sharedNotifications),
@@ -60,111 +61,150 @@ export default function AdminLayout({ children, title, subtitle, notifications =
         [notificationList],
     );
 
+    const renderSidebarContent = (closeOnNavigate = false) => (
+        <>
+            <div className="border-b border-white/10 p-5">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <div className="text-xs uppercase tracking-[0.25em] text-[#FFE882]/80">
+                            BRICS Education
+                        </div>
+                        <div className="mt-1 text-lg font-bold text-white">
+                            Admin Panel
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="border-b border-white/10 p-5">
+                <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FFE882] text-sm font-extrabold text-[#691D1B]">
+                        {(user?.name || 'Admin')
+                            .split(' ')
+                            .map((part) => part[0])
+                            .join('')
+                            .slice(0, 2)
+                            .toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-white">
+                            {user?.name || 'Admin User'}
+                        </div>
+                        <div className="text-xs text-white/60">Administrator</div>
+                    </div>
+                </div>
+            </div>
+
+            <nav className="flex-1 space-y-5 overflow-y-auto p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {navigationGroups.map((group) => (
+                    <div key={group.title}>
+                        <div className="px-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/45">
+                            {group.title}
+                        </div>
+                        <div className="mt-2 space-y-1">
+                            {group.items.map((item) => {
+                                const active = isActive(item.href);
+
+                                return (
+                                    <Link
+                                        key={item.label}
+                                        href={item.href}
+                                        onClick={() => closeOnNavigate && setShowMobileSidebar(false)}
+                                        className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-all ${active
+                                                ? 'bg-[#FFE882] text-[#000000] shadow-sm'
+                                                : 'text-white/80 hover:bg-white/10 hover:text-white'
+                                            }`}
+                                    >
+                                        <span
+                                            className={`flex h-8 w-8 items-center justify-center rounded-xl text-[11px] font-bold ${active
+                                                    ? 'bg-[#691D1B] text-white'
+                                                    : 'bg-white/10 text-[#FFE882]'
+                                                }`}
+                                        >
+                                            {item.badge}
+                                        </span>
+                                        <span className="text-sm font-medium">
+                                            {item.label}
+                                        </span>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ))}
+            </nav>
+
+            <div className="border-t border-white/10 p-4">
+                <Link
+                    href={route('logout')}
+                    method="post"
+                    as="button"
+                    className="flex w-full items-center justify-center rounded-2xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
+                >
+                    Keluar
+                </Link>
+            </div>
+        </>
+    );
+
     return (
         <div className="min-h-screen bg-[#F7F2E7] text-[#111827]">
-            <div className="flex min-h-screen">
-                <aside className="hidden w-72 shrink-0 flex-col border-r border-white/10 bg-[#691D1B] text-white lg:flex">
-                    <div className="border-b border-white/10 p-5">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <div className="text-xs uppercase tracking-[0.25em] text-[#FFE882]/80">
-                                    BRICS Education
-                                </div>
-                                <div className="mt-1 text-lg font-bold text-white">
-                                    Admin Panel
-                                </div>
-                            </div>
-                            <div className="rounded-2xl border border-[#FFE882]/30 bg-[#FFE882]/10 px-3 py-1 text-xs font-semibold text-[#FFE882]">
-                                LIVE
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="border-b border-white/10 p-5">
-                        <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FFE882] text-sm font-extrabold text-[#691D1B]">
-                                {(user?.name || 'Admin')
-                                    .split(' ')
-                                    .map((part) => part[0])
-                                    .join('')
-                                    .slice(0, 2)
-                                    .toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                                <div className="truncate text-sm font-semibold text-white">
-                                    {user?.name || 'Admin User'}
-                                </div>
-                                <div className="text-xs text-white/60">Administrator</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <nav className="flex-1 space-y-5 overflow-y-auto p-4">
-                        {navigationGroups.map((group) => (
-                            <div key={group.title}>
-                                <div className="px-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/45">
-                                    {group.title}
-                                </div>
-                                <div className="mt-2 space-y-1">
-                                    {group.items.map((item) => {
-                                        const active = isActive(item.href);
-
-                                        return (
-                                            <Link
-                                                key={item.label}
-                                                href={item.href}
-                                                className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-all ${active
-                                                        ? 'bg-[#FFE882] text-[#000000] shadow-sm'
-                                                        : 'text-white/80 hover:bg-white/10 hover:text-white'
-                                                    }`}
-                                            >
-                                                <span
-                                                    className={`flex h-8 w-8 items-center justify-center rounded-xl text-[11px] font-bold ${active
-                                                            ? 'bg-[#691D1B] text-white'
-                                                            : 'bg-white/10 text-[#FFE882]'
-                                                        }`}
-                                                >
-                                                    {item.badge}
-                                                </span>
-                                                <span className="text-sm font-medium">
-                                                    {item.label}
-                                                </span>
-                                            </Link>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        ))}
-                    </nav>
-
-                    <div className="border-t border-white/10 p-4">
-                        <Link
-                            href={route('logout')}
-                            method="post"
-                            as="button"
-                            className="flex w-full items-center justify-center rounded-2xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
-                        >
-                            Keluar
-                        </Link>
-                    </div>
+            <div className="min-h-screen lg:pl-72">
+                <aside className="fixed inset-y-0 left-0 z-30 hidden h-screen w-72 shrink-0 flex-col border-r border-white/10 bg-[#691D1B] text-white lg:flex">
+                    {renderSidebarContent()}
                 </aside>
+
+                <div
+                    className={`fixed inset-0 z-40 lg:hidden ${showMobileSidebar ? 'pointer-events-auto' : 'pointer-events-none'}`}
+                    aria-hidden={!showMobileSidebar}
+                >
+                    <button
+                        type="button"
+                        aria-label="Tutup menu admin"
+                        className={`absolute inset-0 bg-black/45 transition-opacity duration-300 ease-out ${showMobileSidebar ? 'opacity-100' : 'opacity-0'}`}
+                        onClick={() => setShowMobileSidebar(false)}
+                    />
+                    <aside
+                        className={`relative flex h-full w-[calc(100vw-2rem)] max-w-72 flex-col bg-[#691D1B] text-white shadow-2xl transition-transform duration-300 ease-out ${showMobileSidebar ? 'translate-x-0' : '-translate-x-full'}`}
+                    >
+                        <button
+                            type="button"
+                            aria-label="Tutup menu admin"
+                            onClick={() => setShowMobileSidebar(false)}
+                            className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white transition hover:bg-white/10"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
+                        {renderSidebarContent(true)}
+                    </aside>
+                </div>
 
                 <div className="flex min-w-0 flex-1 flex-col">
                     <header className="sticky top-0 z-20 border-b border-[#D8D7BE] bg-white/95 px-4 py-4 backdrop-blur lg:px-6">
                         <div className="flex items-center justify-between gap-4">
-                            <div>
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#691D1B]/70">
-                                    Admin Workspace
+                            <div className="flex min-w-0 items-start gap-3">
+                                <button
+                                    type="button"
+                                    aria-label="Buka menu admin"
+                                    onClick={() => setShowMobileSidebar(true)}
+                                    className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#D8D7BE] bg-[#F7F2E7] text-gray-700 transition hover:bg-[#E8E3D6] lg:hidden"
+                                >
+                                    <Menu className="h-5 w-5" />
+                                </button>
+                                <div className="min-w-0">
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#691D1B]/70">
+                                        Admin Workspace
+                                    </div>
+                                    <h1 className="mt-1 truncate text-lg font-bold text-gray-900 sm:text-xl">
+                                        {title || 'Admin Panel'}
+                                    </h1>
+                                    <p className="mt-1 hidden text-sm text-gray-500 sm:block">
+                                        {subtitle || 'Kelola operasional platform dari satu panel.'}
+                                    </p>
                                 </div>
-                                <h1 className="mt-1 text-xl font-bold text-gray-900">
-                                    {title || 'Admin Panel'}
-                                </h1>
-                                <p className="mt-1 text-sm text-gray-500">
-                                    {subtitle || 'Kelola operasional platform dari satu panel.'}
-                                </p>
                             </div>
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex shrink-0 items-center gap-3">
                                 {/* Notifications Dropdown */}
                                 <div className="relative">
                                     <button
@@ -181,7 +221,7 @@ export default function AdminLayout({ children, title, subtitle, notifications =
 
                                     {/* Dropdown Menu */}
                                     {showNotifications && (
-                                        <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl border border-[#D8D7BE] bg-white shadow-lg">
+                                        <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-sm rounded-2xl border border-[#D8D7BE] bg-white shadow-lg">
                                             <div className="flex items-center justify-between border-b border-[#F7F2E7] p-4">
                                                 <h3 className="font-bold text-gray-900">Notifikasi</h3>
                                                 <button onClick={() => setShowNotifications(false)}>

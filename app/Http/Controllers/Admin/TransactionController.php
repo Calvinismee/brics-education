@@ -49,6 +49,7 @@ class TransactionController extends Controller
 
             return [
                 'id' => $t->invoice_number ?? (string) $t->id,
+                'databaseId' => $t->id,
                 'student' => $t->student ?? '-',
                 'course' => $t->course ?? '-',
                 'amount' => 'Rp '.number_format((float) $t->amount, 0, ',', '.'),
@@ -89,6 +90,58 @@ class TransactionController extends Controller
                 'dateFrom' => $dateFrom?->toDateString() ?? '',
                 'dateTo' => $dateTo?->toDateString() ?? '',
                 'sort' => $sort,
+            ],
+        ]);
+    }
+
+    public function show(int $transaction)
+    {
+        $record = DB::table('transactions')
+            ->select(
+                'transactions.id',
+                'transactions.invoice_number',
+                'transactions.amount',
+                'transactions.payment_method',
+                'transactions.payment_status',
+                'transactions.payment_gateway_ref',
+                'transactions.paid_at',
+                'transactions.created_at',
+                'transactions.updated_at',
+                'users.name as student',
+                'users.email as student_email',
+                'courses.title as course',
+                'courses.description as course_description',
+                'enrollments.status as enrollment_status'
+            )
+            ->leftJoin('users', 'transactions.user_id', '=', 'users.id')
+            ->leftJoin('courses', 'transactions.course_id', '=', 'courses.id')
+            ->leftJoin('enrollments', 'transactions.enrollment_id', '=', 'enrollments.id')
+            ->where('transactions.id', $transaction)
+            ->first();
+
+        abort_if(! $record, 404);
+
+        $status = $record->payment_status;
+        $mapped = in_array($status, ['paid', 'success'], true) ? 'success' : ($status === 'failed' ? 'failed' : 'pending');
+
+        return Inertia::render('Admin/TransactionDetail', [
+            'transaction' => [
+                'id' => $record->id,
+                'invoiceNumber' => $record->invoice_number,
+                'student' => $record->student ?? '-',
+                'studentEmail' => $record->student_email ?? '-',
+                'course' => $record->course ?? '-',
+                'courseDescription' => $record->course_description,
+                'amount' => (float) $record->amount,
+                'amountFormatted' => 'Rp '.number_format((float) $record->amount, 0, ',', '.'),
+                'method' => $record->payment_method ?? '-',
+                'status' => $mapped,
+                'rawStatus' => $record->payment_status,
+                'gatewayReference' => $record->payment_gateway_ref,
+                'enrollmentStatus' => $record->enrollment_status,
+                'paidAt' => $record->paid_at ? Carbon::parse($record->paid_at)->format('Y-m-d H:i') : null,
+                'createdAt' => Carbon::parse($record->created_at)->format('Y-m-d H:i'),
+                'updatedAt' => Carbon::parse($record->updated_at)->format('Y-m-d H:i'),
             ],
         ]);
     }

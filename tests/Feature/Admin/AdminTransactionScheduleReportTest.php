@@ -22,6 +22,43 @@ test('TC_ADMIN_TRX_001 admin dapat melihat daftar transaksi', function () {
             ->has('stats'));
 });
 
+test('TC_ADMIN_TRX_002 admin dapat melihat detail transaksi', function () {
+    // Dokumentasi: admin membuka detail transaksi dari daftar; expected data invoice, siswa, course, status, dan nominal tampil lengkap.
+    $admin = adminUser();
+    $student = studentUser([
+        'name' => 'Siswa Detail',
+        'email' => 'siswa.detail@example.test',
+    ]);
+    $course = courseRecord([
+        'title' => 'Paket Detail',
+        'description' => 'Course untuk verifikasi detail transaksi.',
+    ]);
+    $transaction = transactionRecord([
+        'student' => $student,
+        'course' => $course,
+        'invoice_number' => 'INV-DETAIL-001',
+        'amount' => 75000,
+        'payment_method' => 'bank_transfer',
+        'payment_status' => 'success',
+        'payment_gateway_ref' => 'PG-DETAIL-001',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('admin.transactions.show', $transaction['id']));
+
+    $response
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Admin/TransactionDetail')
+            ->where('transaction.invoiceNumber', 'INV-DETAIL-001')
+            ->where('transaction.student', 'Siswa Detail')
+            ->where('transaction.studentEmail', 'siswa.detail@example.test')
+            ->where('transaction.course', 'Paket Detail')
+            ->where('transaction.amountFormatted', 'Rp 75.000')
+            ->where('transaction.method', 'bank_transfer')
+            ->where('transaction.status', 'success')
+            ->where('transaction.gatewayReference', 'PG-DETAIL-001'));
+});
+
 test('admin dapat mencari transaksi berdasarkan nama siswa', function () {
     // Dokumentasi: admin membuka transaksi dengan query search nama siswa; expected hanya transaksi siswa tersebut tampil.
     $admin = adminUser();
@@ -212,4 +249,77 @@ test('TC_ADMIN_LAPORAN_001 admin dapat melihat laporan transaksi yang tersedia',
             ->where('reports.0.title', 'Export Transaksi')
             ->where('reports.0.rowCount', 3)
             ->where('stats.availableReports', 1));
+});
+
+test('TC_ADMIN_LAPORAN_002 admin dapat filter laporan berdasarkan periode', function () {
+    // Dokumentasi: admin membuka laporan dengan dateFrom/dateTo; expected hanya export pada periode tersebut yang tampil.
+    $admin = adminUser();
+
+    DB::table('report_exports')->insert([
+        [
+            'user_id' => $admin->id,
+            'type' => 'Transaksi',
+            'title' => 'Export Periode Mei',
+            'file_name' => 'transactions-may.csv',
+            'row_count' => 5,
+            'filters' => json_encode(['status' => 'success']),
+            'created_at' => '2026-05-10 10:00:00',
+            'updated_at' => '2026-05-10 10:00:00',
+        ],
+        [
+            'user_id' => $admin->id,
+            'type' => 'Transaksi',
+            'title' => 'Export Periode April',
+            'file_name' => 'transactions-april.csv',
+            'row_count' => 2,
+            'filters' => json_encode(['status' => 'pending']),
+            'created_at' => '2026-04-10 10:00:00',
+            'updated_at' => '2026-04-10 10:00:00',
+        ],
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('admin.reports.export', [
+        'dateFrom' => '2026-05-01',
+        'dateTo' => '2026-05-31',
+    ]));
+
+    $response
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Admin/ReportsExport')
+            ->has('reports', 1)
+            ->where('reports.0.title', 'Export Periode Mei')
+            ->where('filters.dateFrom', '2026-05-01')
+            ->where('filters.dateTo', '2026-05-31')
+            ->where('stats.availableReports', 1));
+});
+
+test('TC_ADMIN_LAPORAN_003 laporan kosong pada periode tanpa transaksi', function () {
+    // Dokumentasi: admin memfilter periode tanpa histori export; expected halaman tetap tampil dengan daftar kosong.
+    $admin = adminUser();
+
+    DB::table('report_exports')->insert([
+        'user_id' => $admin->id,
+        'type' => 'Transaksi',
+        'title' => 'Export Luar Periode',
+        'file_name' => 'transactions-outside.csv',
+        'row_count' => 4,
+        'filters' => json_encode(['status' => 'success']),
+        'created_at' => '2026-04-10 10:00:00',
+        'updated_at' => '2026-04-10 10:00:00',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('admin.reports.export', [
+        'dateFrom' => '2026-05-01',
+        'dateTo' => '2026-05-31',
+    ]));
+
+    $response
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Admin/ReportsExport')
+            ->has('reports', 0)
+            ->where('filters.dateFrom', '2026-05-01')
+            ->where('filters.dateTo', '2026-05-31')
+            ->where('stats.availableReports', 0));
 });
