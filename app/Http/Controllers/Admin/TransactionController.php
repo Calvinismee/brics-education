@@ -3,29 +3,46 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TransactionController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $status = $request->string('status')->toString();
+        $search = $request->string('search')->toString();
+        $dateFrom = $request->date('dateFrom');
+        $dateTo = $request->date('dateTo');
+        $sort = $request->string('sort')->toString() === 'asc' ? 'asc' : 'desc';
+
         $transactions = DB::table('transactions')
             ->select(
                 'transactions.id',
                 'transactions.invoice_number',
                 'transactions.amount',
+                'transactions.package_id',
                 'transactions.payment_method',
                 'transactions.payment_status',
                 'transactions.paid_at',
                 'transactions.created_at',
                 'users.name as student',
-                'courses.title as course'
+                'courses.title as course',
+                'packages.name as package_name'
             )
             ->leftJoin('users', 'transactions.user_id', 'users.id')
             ->leftJoin('courses', 'transactions.course_id', 'courses.id')
-            ->orderByDesc('transactions.created_at')
+            ->leftJoin('packages', 'transactions.package_id', 'packages.id')
+            ->when($status === 'success', fn ($query) => $query->whereIn('transactions.payment_status', ['paid', 'success']))
+            ->when($status === 'pending', fn ($query) => $query->where('transactions.payment_status', 'pending'))
+            ->when($status === 'failed', fn ($query) => $query->where('transactions.payment_status', 'failed'))
+            ->when($dateFrom, fn ($query) => $query->where('transactions.created_at', '>=', $dateFrom->startOfDay()))
+            ->when($dateTo, fn ($query) => $query->where('transactions.created_at', '<=', $dateTo->endOfDay()))
+            ->when($search !== '', fn ($query) => $query->where('users.name', 'like', "%{$search}%"))
+            ->orderBy('transactions.created_at', $sort)
             ->paginate(20)
             ->withQueryString();
 
@@ -35,9 +52,11 @@ class TransactionController extends Controller
 
             return [
                 'id' => $t->invoice_number ?? (string) $t->id,
+                'databaseId' => $t->id,
                 'student' => $t->student ?? '-',
-                'course' => $t->course ?? '-',
-                'amount' => 'Rp ' . number_format((float) $t->amount, 0, ',', '.'),
+                'course' => $t->course ?? ($t->package_name ? 'Paket: '.$t->package_name : '-'),
+                'package' => $t->package_name,
+                'amount' => 'Rp '.number_format((float) $t->amount, 0, ',', '.'),
                 'method' => $t->payment_method ?? '-',
                 'status' => $mapped,
                 'date' => Carbon::parse($t->created_at)->format('Y-m-d H:i'),
@@ -69,6 +88,69 @@ class TransactionController extends Controller
                 'pendingToday' => $pendingToday,
                 'failedToday' => $failedToday,
             ],
+            'filters' => [
+                'status' => in_array($status, ['success', 'pending', 'failed'], true) ? $status : 'all',
+                'search' => $search,
+                'dateFrom' => $dateFrom?->toDateString() ?? '',
+                'dateTo' => $dateTo?->toDateString() ?? '',
+                'sort' => $sort,
+            ],
+        ]);
+    }
+
+    public function show(int $transaction)
+    {
+        $record = DB::table('transactions')
+            ->select(
+                'transactions.id',
+                'transactions.invoice_number',
+                'transactions.amount',
+                'transactions.package_id',
+                'transactions.payment_method',
+                'transactions.payment_status',
+                'transactions.payment_gateway_ref',
+                'transactions.paid_at',
+                'transactions.created_at',
+                'transactions.updated_at',
+                'users.name as student',
+                'users.email as student_email',
+                'courses.title as course',
+                'courses.description as course_description',
+                'packages.name as package_name',
+                'enrollments.status as enrollment_status'
+            )
+            ->leftJoin('users', 'transactions.user_id', '=', 'users.id')
+            ->leftJoin('courses', 'transactions.course_id', '=', 'courses.id')
+            ->leftJoin('packages', 'transactions.package_id', '=', 'packages.id')
+            ->leftJoin('enrollments', 'transactions.enrollment_id', '=', 'enrollments.id')
+            ->where('transactions.id', $transaction)
+            ->first();
+
+        abort_if(! $record, 404);
+
+        $status = $record->payment_status;
+        $mapped = in_array($status, ['paid', 'success'], true) ? 'success' : ($status === 'failed' ? 'failed' : 'pending');
+
+        return Inertia::render('Admin/TransactionDetail', [
+            'transaction' => [
+                'id' => $record->id,
+                'invoiceNumber' => $record->invoice_number,
+                'student' => $record->student ?? '-',
+                'studentEmail' => $record->student_email ?? '-',
+                'course' => $record->course ?? ($record->package_name ? 'Paket: '.$record->package_name : '-'),
+                'package' => $record->package_name,
+                'courseDescription' => $record->course_description,
+                'amount' => (float) $record->amount,
+                'amountFormatted' => 'Rp '.number_format((float) $record->amount, 0, ',', '.'),
+                'method' => $record->payment_method ?? '-',
+                'status' => $mapped,
+                'rawStatus' => $record->payment_status,
+                'gatewayReference' => $record->payment_gateway_ref,
+                'enrollmentStatus' => $record->enrollment_status,
+                'paidAt' => $record->paid_at ? Carbon::parse($record->paid_at)->format('Y-m-d H:i') : null,
+                'createdAt' => Carbon::parse($record->created_at)->format('Y-m-d H:i'),
+                'updatedAt' => Carbon::parse($record->updated_at)->format('Y-m-d H:i'),
+            ],
         ]);
     }
 
@@ -79,15 +161,15 @@ class TransactionController extends Controller
         // Build list of last 6 months (oldest -> newest)
         $months = [];
         for ($i = 5; $i >= 0; $i--) {
-            $m = $now->copy()->subMonths($i);
+            $m = $now->copy()->subMonthsNoOverflow($i)->startOfMonth();
             $months[] = $m;
         }
 
-        $start = $now->copy()->subMonths(5)->startOfMonth();
+        $start = $now->copy()->subMonthsNoOverflow(5)->startOfMonth();
 
         // Monthly revenue data
         $rows = DB::table('transactions')
-            ->selectRaw("date_trunc('month', created_at) as month, COALESCE(SUM(amount),0) as total")
+            ->selectRaw("date_trunc('month', created_at) as month, COALESCE(SUM(CASE WHEN payment_status::text IN ('paid', 'success') THEN amount ELSE 0 END), 0) as total")
             ->where('created_at', '>=', $start)
             ->groupBy('month')
             ->orderBy('month')
@@ -101,7 +183,8 @@ class TransactionController extends Controller
             $key = $m->format('Y-m');
             $amount = isset($rows[$key]) ? (float) $rows[$key]->total : 0;
             $stats[] = [
-                'period' => $m->format('M Y'),
+                'period' => $m->copy()->locale('id')->translatedFormat('M Y'),
+                'periodKey' => $key,
                 'amount' => $amount,
             ];
         }
@@ -122,7 +205,7 @@ class TransactionController extends Controller
 
         // Payment methods breakdown
         $methodBreakdown = DB::table('transactions')
-            ->selectRaw("payment_method, COALESCE(SUM(amount), 0) as amount, COUNT(*) as count")
+            ->selectRaw('payment_method, COALESCE(SUM(amount), 0) as amount, COUNT(*) as count')
             ->groupBy('payment_method')
             ->orderByDesc('amount')
             ->get()
@@ -153,9 +236,10 @@ class TransactionController extends Controller
 
         // Recent transactions
         $recentTx = DB::table('transactions')
-            ->select('transactions.id', 'transactions.invoice_number', 'transactions.amount', 'transactions.payment_method', 'transactions.payment_status', 'transactions.created_at', 'users.name as student', 'courses.title as course')
+            ->select('transactions.id', 'transactions.invoice_number', 'transactions.amount', 'transactions.payment_method', 'transactions.payment_status', 'transactions.created_at', 'users.name as student', 'courses.title as course', 'packages.name as package_name')
             ->leftJoin('users', 'transactions.user_id', 'users.id')
             ->leftJoin('courses', 'transactions.course_id', 'courses.id')
+            ->leftJoin('packages', 'transactions.package_id', 'packages.id')
             ->orderByDesc('transactions.created_at')
             ->limit(5)
             ->get();
@@ -163,10 +247,11 @@ class TransactionController extends Controller
         $recentTransactions = $recentTx->map(function ($t) {
             $status = $t->payment_status;
             $mapped = in_array($status, ['paid', 'success'], true) ? 'success' : ($status === 'failed' ? 'failed' : 'pending');
+
             return [
                 'id' => $t->invoice_number ?? (string) $t->id,
                 'student' => $t->student ?? '-',
-                'course' => $t->course ?? '-',
+                'course' => $t->course ?? ($t->package_name ? 'Paket: '.$t->package_name : '-'),
                 'amount' => (float) $t->amount,
                 'method' => ucwords(str_replace('_', ' ', $t->payment_method ?? '-')),
                 'status' => $mapped,
@@ -185,6 +270,80 @@ class TransactionController extends Controller
             'paymentMethods' => $paymentMethods,
             'successRate' => round($successRate, 1),
             'recentTransactions' => $recentTransactions,
+        ]);
+    }
+
+    public function export(Request $request): StreamedResponse
+    {
+        $status = $request->string('status')->toString();
+        $search = $request->string('search')->toString();
+        $dateFrom = $request->date('dateFrom');
+        $dateTo = $request->date('dateTo');
+        $sort = $request->string('sort')->toString() === 'asc' ? 'asc' : 'desc';
+
+        $transactions = DB::table('transactions')
+            ->select(
+                'transactions.invoice_number',
+                'transactions.amount',
+                'transactions.package_id',
+                'transactions.payment_method',
+                'transactions.payment_status',
+                'transactions.created_at',
+                'users.name as student',
+                'courses.title as course',
+                'packages.name as package_name'
+            )
+            ->leftJoin('users', 'transactions.user_id', 'users.id')
+            ->leftJoin('courses', 'transactions.course_id', 'courses.id')
+            ->leftJoin('packages', 'transactions.package_id', 'packages.id')
+            ->when($status === 'success', fn ($query) => $query->whereIn('transactions.payment_status', ['paid', 'success']))
+            ->when($status === 'pending', fn ($query) => $query->where('transactions.payment_status', 'pending'))
+            ->when($status === 'failed', fn ($query) => $query->where('transactions.payment_status', 'failed'))
+            ->when($dateFrom, fn ($query) => $query->where('transactions.created_at', '>=', $dateFrom->startOfDay()))
+            ->when($dateTo, fn ($query) => $query->where('transactions.created_at', '<=', $dateTo->endOfDay()))
+            ->when($search !== '', fn ($query) => $query->where('users.name', 'like', "%{$search}%"))
+            ->orderBy('transactions.created_at', $sort)
+            ->get();
+
+        $fileName = 'transactions-'.now()->format('Y-m-d-His').'.csv';
+
+        DB::table('report_exports')->insert([
+            'user_id' => $request->user()?->id,
+            'type' => 'Transaksi',
+            'title' => 'Export Transaksi',
+            'file_name' => $fileName,
+            'row_count' => $transactions->count(),
+            'filters' => json_encode(array_filter([
+                'status' => $status !== '' ? $status : null,
+                'search' => $search !== '' ? $search : null,
+                'dateFrom' => $dateFrom?->toDateString(),
+                'dateTo' => $dateTo?->toDateString(),
+                'sort' => $sort,
+            ])),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->streamDownload(function () use ($transactions) {
+            $output = fopen('php://output', 'w');
+
+            fputcsv($output, ['Invoice', 'Siswa', 'Course', 'Jumlah', 'Metode', 'Status', 'Tanggal']);
+
+            foreach ($transactions as $transaction) {
+                fputcsv($output, [
+                    $transaction->invoice_number,
+                    $transaction->student ?? '-',
+                    $transaction->course ?? ($transaction->package_name ? 'Paket: '.$transaction->package_name : '-'),
+                    (float) $transaction->amount,
+                    $transaction->payment_method ?? '-',
+                    $transaction->payment_status,
+                    Carbon::parse($transaction->created_at)->format('Y-m-d H:i'),
+                ]);
+            }
+
+            fclose($output);
+        }, $fileName, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
 }

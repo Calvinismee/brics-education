@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use App\Models\Package;
 use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
@@ -22,12 +21,15 @@ class DatabaseSeeder extends Seeder
         $tutorRole = DB::table('roles')->where('name', 'mentor')->value('id') ?? 2;
         $adminRole = DB::table('roles')->where('name', 'admin')->value('id') ?? 3;
 
-        // Seed core users and a few students for admin views
+        // Seed core users for admin, students, and mentors mapped to courses.
         foreach ([
-            ['name' => 'Siswa Brics', 'email' => 'teera@gmail.com', 'role_id' => $studentRole],
+            ['name' => 'Siswa Brics', 'email' => 'siswa@bricsedu.id', 'role_id' => $studentRole],
             ['name' => 'Siswa Dua', 'email' => 'siswa2@bricsedu.id', 'role_id' => $studentRole],
             ['name' => 'Siswa Tiga', 'email' => 'siswa3@bricsedu.id', 'role_id' => $studentRole],
-            ['name' => 'Tutor Brics', 'email' => 'tutor@bricsedu.id', 'role_id' => $tutorRole],
+            ['name' => 'Tutor Matematika', 'email' => 'tutor.math@bricsedu.id', 'role_id' => $tutorRole],
+            ['name' => 'Tutor Bahasa', 'email' => 'tutor.bahasa@bricsedu.id', 'role_id' => $tutorRole],
+            ['name' => 'Tutor IPA', 'email' => 'tutor.ipa@bricsedu.id', 'role_id' => $tutorRole],
+            ['name' => 'Tutor Umum', 'email' => 'tutor@bricsedu.id', 'role_id' => $tutorRole],
             ['name' => 'Admin Brics', 'email' => 'admin@bricsedu.id', 'role_id' => $adminRole],
         ] as $userData) {
             User::updateOrCreate(

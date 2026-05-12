@@ -1,13 +1,33 @@
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
-import { useState } from 'react';
-import { Video, FileText, HelpCircle, CheckCircle, XCircle, Clock, Eye, Search, Check, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import {
+    Video,
+    FileText,
+    HelpCircle,
+    CheckCircle,
+    XCircle,
+    Clock,
+    Eye,
+    Search,
+    Check,
+    X,
+    ExternalLink,
+} from 'lucide-react';
 import DeleteConfirmModal from '@/Components/DeleteConfirmModal';
+import { Spinner } from '@/Components/ui/LoadingStates';
+import { showSuccessToast } from '@/utils/toast';
 
 const typeIcon = {
     video: <Video className="h-4 w-4" />,
     module: <FileText className="h-4 w-4" />,
     bank_soal: <HelpCircle className="h-4 w-4" />,
+};
+
+const typeLabels = {
+    video: 'Video',
+    module: 'Modul',
+    bank_soal: 'Bank Soal',
 };
 
 const statusConfig = {
@@ -16,20 +36,49 @@ const statusConfig = {
     rejected: { label: 'Ditolak', bg: '#ef444415', color: '#ef4444', icon: <XCircle className="h-4 w-4" /> },
 };
 
-export default function Content({ contents = [], stats = {} }) {
+const stripHtml = (value) => String(value || '').replace(/<[^>]*>/g, '').trim();
+
+export default function Content({ contents = [], courses = [], stats = {} }) {
     const contentList = Array.isArray(contents?.data) ? contents.data : contents;
     const [filter, setFilter] = useState('all');
+    const [selectedCourse, setSelectedCourse] = useState('all');
     const [search, setSearch] = useState('');
+    const [viewTarget, setViewTarget] = useState(null);
     const [rejectTarget, setRejectTarget] = useState(null);
+    const [rejectComment, setRejectComment] = useState('');
+    const [actionProcessingId, setActionProcessingId] = useState(null);
     const normalizedSearch = search.toLowerCase();
 
     const filtered = (contentList || []).filter((content) => {
         const matchFilter = filter === 'all' || content.status === filter;
+        const matchCourse = selectedCourse === 'all' || Number(content.course_id) === Number(selectedCourse);
         const title = String(content.title || '').toLowerCase();
         const tutor = String(content.tutor || '').toLowerCase();
-        const matchSearch = title.includes(normalizedSearch) || tutor.includes(normalizedSearch);
-        return matchFilter && matchSearch;
+        const course = String(content.course || '').toLowerCase();
+        const matchSearch = title.includes(normalizedSearch) || tutor.includes(normalizedSearch) || course.includes(normalizedSearch);
+        return matchFilter && matchCourse && matchSearch;
     });
+
+    const groupedContents = useMemo(() => {
+        return filtered.reduce((groups, content) => {
+            const key = content.course_id || 'unknown';
+            const title = content.course || 'Tanpa Course';
+
+            if (!groups[key]) {
+                groups[key] = {
+                    id: key,
+                    title,
+                    items: [],
+                };
+            }
+
+            groups[key].items.push(content);
+
+            return groups;
+        }, {});
+    }, [filtered]);
+
+    const groupedContentList = Object.values(groupedContents);
 
     const counts = {
         all: (contentList || []).length,
@@ -40,33 +89,53 @@ export default function Content({ contents = [], stats = {} }) {
 
     const openRejectConfirm = (content) => {
         setRejectTarget(content);
+        setRejectComment(content.rejection_comment || '');
     };
 
     const closeRejectConfirm = () => {
         setRejectTarget(null);
+        setRejectComment('');
     };
 
-    const handleReject = () => {
-        if (!rejectTarget) {
+    const handleApprove = (content) => {
+        const actionId = `approve-${content.id}`;
+
+        if (actionProcessingId) {
             return;
         }
 
-        router.post(route('admin.content.reject', rejectTarget.id), {}, {
+        setActionProcessingId(actionId);
+        router.post(route('admin.content.approve', content.id), {}, {
             preserveScroll: true,
-            onSuccess: closeRejectConfirm,
-            onError: closeRejectConfirm,
+            onSuccess: () => showSuccessToast('Konten berhasil disetujui.'),
+            onFinish: () => setActionProcessingId(null),
+        });
+    };
+
+    const handleReject = () => {
+        if (!rejectTarget || actionProcessingId) {
+            return;
+        }
+
+        const actionId = `reject-${rejectTarget.id}`;
+        setActionProcessingId(actionId);
+        router.post(route('admin.content.reject', rejectTarget.id), {
+            comment: rejectComment,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                closeRejectConfirm();
+                showSuccessToast('Konten berhasil ditolak.');
+            },
+            onFinish: () => setActionProcessingId(null),
         });
     };
 
     return (
-        <AdminLayout title="Validasi Konten" subtitle="Review materi, soal, dan aset pembelajaran sebelum publish.">
+        <AdminLayout title="Validasi Konten" subtitle="Review materi, soal, dan aset pembelajaran yang diunggah tutor.">
             <Head title="Validasi Konten" />
 
             <div className="p-4 lg:p-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                <div className="mb-6">
-                    <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Manajemen Konten</h1>
-                    <p className="text-sm text-gray-500">Validasi dan kelola materi pembelajaran yang diunggah tutor</p>
-                </div>
 
                 <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
                     {[
@@ -103,6 +172,28 @@ export default function Content({ contents = [], stats = {} }) {
                             </button>
                         );
                     })}
+                    <div className="flex max-w-full items-center gap-2 overflow-x-auto rounded-full border border-[#D8D7BE] bg-white p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        <button
+                            type="button"
+                            onClick={() => setSelectedCourse('all')}
+                            className="whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition"
+                            style={selectedCourse === 'all' ? { background: '#691D1B', color: 'white' } : { color: '#4b5563' }}
+                        >
+                            Semua Course
+                        </button>
+                        {(courses || []).map((course) => (
+                            <button
+                                key={course.id}
+                                type="button"
+                                onClick={() => setSelectedCourse(course.id)}
+                                className="whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition"
+                                style={Number(selectedCourse) === Number(course.id) ? { background: '#691D1B', color: 'white' } : { color: '#4b5563' }}
+                            >
+                                {course.title}
+                                <span className="ml-1 text-[10px] opacity-70">({course.contentCount ?? 0})</span>
+                            </button>
+                        ))}
+                    </div>
                     <div className="ml-auto flex items-center gap-2 rounded-lg border border-[#D8D7BE] bg-white px-3 py-2">
                         <Search className="h-4 w-4 text-gray-400" />
                         <input
@@ -117,61 +208,88 @@ export default function Content({ contents = [], stats = {} }) {
 
                 <div className="overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
                     <div className="divide-y divide-[#F7F2E7]">
-                        {filtered.map((content) => {
-                            const status = statusConfig[content.status] ?? statusConfig.pending;
-                            const isPending = content.status === 'pending';
-
-                            return (
-                                <div key={content.id} className="flex items-center gap-4 p-5 transition-colors hover:bg-[#F7F2E7]">
-                                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: '#691D1B15', color: '#691D1B' }}>
-                                        {typeIcon[content.type]}
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <p className="truncate text-sm font-semibold text-gray-800">{content.title}</p>
-                                        <div className="mt-1 flex items-center gap-3 text-xs text-gray-400">
-                                            <span>{content.tutor}</span>
-                                            <span>•</span>
-                                            <span>{content.size}</span>
-                                            <span>•</span>
-                                            <span>{content.submitted}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        {isPending && (
-                                            <>
-                                                <button
-                                                    onClick={() => router.post(route('admin.content.approve', content.id), {}, { preserveScroll: true })}
-                                                    className="group flex items-center gap-1 rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-50 active:translate-y-0"
-                                                    type="button"
-                                                    title="Setujui konten"
-                                                >
-                                                    <Check className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110" />
-                                                    Approve
-                                                </button>
-                                                <button
-                                                    onClick={() => openRejectConfirm(content)}
-                                                    className="group flex items-center gap-1 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-50 active:translate-y-0"
-                                                    type="button"
-                                                    title="Tolak konten"
-                                                >
-                                                    <X className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110" />
-                                                    Reject
-                                                </button>
-                                            </>
-                                        )}
-                                        <div className="rounded-full px-2 py-1" style={{ background: status.bg }}>
-                                            <div className="flex items-center gap-1.5" style={{ color: status.color }}>
-                                                {status.icon}
-                                                <span className="text-xs font-semibold">{status.label}</span>
-                                            </div>
-                                        </div>
-                                        <button className="group flex items-center justify-center rounded-lg p-2 transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#F7F2E7] active:translate-y-0" title="Lihat konten">
-                                            <Eye className="h-4 w-4 text-gray-400 transition-transform duration-200 group-hover:scale-110 group-hover:text-[#691D1B]" />
-                                        </button>
+                        {groupedContentList.map((group) => (
+                            <section key={group.id}>
+                                <div className="border-b border-[#F7F2E7] bg-[#F7F2E7] px-5 py-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <h2 className="text-sm font-extrabold text-gray-900">{group.title}</h2>
+                                        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[#691D1B]">
+                                            {group.items.length} konten
+                                        </span>
                                     </div>
                                 </div>
-                            );
-                        })}
+                                <div className="divide-y divide-[#F7F2E7]">
+                                    {group.items.map((content) => {
+                                        const status = statusConfig[content.status] ?? statusConfig.pending;
+                                        const isPending = content.status === 'pending';
+                                        const approveActionId = `approve-${content.id}`;
+                                        const rejectActionId = `reject-${content.id}`;
+                                        const isApproving = actionProcessingId === approveActionId;
+                                        const isRejecting = actionProcessingId === rejectActionId;
+
+                                        return (
+                                            <div key={content.id} className="flex flex-col gap-4 p-5 transition-colors hover:bg-[#F7F2E7] lg:flex-row lg:items-center">
+                                                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: '#691D1B15', color: '#691D1B' }}>
+                                                    {typeIcon[content.type] ?? typeIcon.module}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="truncate text-sm font-semibold text-gray-800">{content.title}</p>
+                                                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400">
+                                                        <span>{content.tutor}</span>
+                                                        <span>{content.size}</span>
+                                                        <span>{content.submitted}</span>
+                                                    </div>
+                                                    {content.rejection_comment && (
+                                                        <p className="mt-2 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">
+                                                            {content.rejection_comment}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                                                    {isPending && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => handleApprove(content)}
+                                                                disabled={!!actionProcessingId}
+                                                                className="group flex min-w-24 items-center justify-center gap-1 rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-50 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
+                                                                type="button"
+                                                                title="Setujui konten"
+                                                            >
+                                                                {isApproving ? <Spinner size="xs" color="#16a34a" /> : <Check className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110" />}
+                                                                {isApproving ? 'Memproses...' : 'Setujui'}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => openRejectConfirm(content)}
+                                                                disabled={!!actionProcessingId}
+                                                                className="group flex min-w-24 items-center justify-center gap-1 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-50 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
+                                                                type="button"
+                                                                title="Tolak konten"
+                                                            >
+                                                                {isRejecting ? <Spinner size="xs" color="#dc2626" /> : <X className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110" />}
+                                                                {isRejecting ? 'Memproses...' : 'Tolak'}
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    <div className="rounded-full px-2 py-1" style={{ background: status.bg }}>
+                                                        <div className="flex items-center gap-1.5" style={{ color: status.color }}>
+                                                            {status.icon}
+                                                            <span className="text-xs font-semibold">{status.label}</span>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setViewTarget(content)}
+                                                        className="group flex items-center justify-center rounded-lg p-2 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white active:translate-y-0"
+                                                        title="Lihat konten"
+                                                    >
+                                                        <Eye className="h-4 w-4 text-gray-400 transition-transform duration-200 group-hover:scale-110 group-hover:text-[#691D1B]" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </section>
+                        ))}
                     </div>
 
                     {filtered.length === 0 && (
@@ -181,21 +299,109 @@ export default function Content({ contents = [], stats = {} }) {
                     )}
                 </div>
 
-                    <DeleteConfirmModal
-                        open={!!rejectTarget}
-                        title="Yakin menolak konten ini?"
-                        description={rejectTarget ? `${rejectTarget.title} akan dipindahkan ke status ditolak.` : ''}
-                        details={rejectTarget ? (
-                            <>
-                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Tutor</p>
-                                <p className="mt-1 text-sm font-semibold text-gray-900">{rejectTarget.tutor}</p>
-                                <p className="mt-3 text-xs text-gray-500">Tipe: {rejectTarget.type}</p>
-                            </>
-                        ) : null}
-                        confirmLabel="Ya, tolak konten"
-                        onCancel={closeRejectConfirm}
-                        onConfirm={handleReject}
-                    />
+                {contents.links && contents.links.length > 0 && (
+                    <div className="mt-6 flex flex-wrap justify-center gap-2">
+                        {contents.links.map((link, index) => (
+                            <a
+                                key={`${link.label}-${index}`}
+                                href={link.url || '#'}
+                                className={`rounded px-3 py-2 text-sm ${
+                                    link.active
+                                        ? 'bg-[#691D1B] text-white'
+                                        : link.url
+                                            ? 'border border-[#D8D7BE] text-gray-700 hover:bg-[#F7F2E7]'
+                                            : 'text-gray-400'
+                                }`}
+                                dangerouslySetInnerHTML={{ __html: link.label }}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {viewTarget && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                        <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-xl">
+                            <div className="flex items-start justify-between gap-4 border-b border-[#F7F2E7] p-5">
+                                <div>
+                                    <h3 className="text-lg font-extrabold text-gray-900">{viewTarget.title}</h3>
+                                    <p className="mt-1 text-sm text-gray-500">{viewTarget.course || '-'} - {viewTarget.tutor}</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setViewTarget(null)}
+                                    className="rounded-full p-2 text-gray-400 transition-colors hover:bg-[#F7F2E7] hover:text-[#691D1B]"
+                                    title="Tutup"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                            <div className="space-y-4 p-5">
+                                <div className="flex flex-wrap items-center gap-2 text-xs">
+                                    <span className="rounded-full bg-[#691D1B15] px-2 py-1 font-semibold text-[#691D1B]">{typeLabels[viewTarget.type] || viewTarget.type}</span>
+                                    <span className="rounded-full px-2 py-1 font-semibold" style={{ background: (statusConfig[viewTarget.status] ?? statusConfig.pending).bg, color: (statusConfig[viewTarget.status] ?? statusConfig.pending).color }}>
+                                        {(statusConfig[viewTarget.status] ?? statusConfig.pending).label}
+                                    </span>
+                                    <span className="text-gray-400">{viewTarget.submitted}</span>
+                                </div>
+
+                                {viewTarget.file_url && (
+                                    <a
+                                        href={viewTarget.file_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-2 rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm font-semibold text-[#691D1B] transition-colors hover:bg-[#F7F2E7]"
+                                    >
+                                        <ExternalLink className="h-4 w-4" />
+                                        Buka file
+                                    </a>
+                                )}
+
+                                <div className="max-h-72 overflow-y-auto rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] p-4">
+                                    <p className="whitespace-pre-wrap text-sm leading-6 text-gray-700">
+                                        {stripHtml(viewTarget.content) || 'Tidak ada isi konten.'}
+                                    </p>
+                                </div>
+
+                                {viewTarget.rejection_comment && (
+                                    <div className="rounded-xl border border-red-100 bg-red-50 p-4">
+                                        <p className="mb-1 text-xs font-semibold uppercase text-red-500">Komentar Penolakan</p>
+                                        <p className="whitespace-pre-wrap text-sm leading-6 text-red-700">{viewTarget.rejection_comment}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <DeleteConfirmModal
+                    open={!!rejectTarget}
+                    title="Yakin menolak konten ini?"
+                    description={rejectTarget ? `${rejectTarget.title} akan dipindahkan ke status ditolak.` : ''}
+                    details={rejectTarget ? (
+                        <>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Tutor</p>
+                            <p className="mt-1 text-sm font-semibold text-gray-900">{rejectTarget.tutor}</p>
+                            <p className="mt-3 text-xs text-gray-500">Tipe: {typeLabels[rejectTarget.type] || rejectTarget.type}</p>
+                            <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-500" htmlFor="reject-comment">
+                                Komentar
+                            </label>
+                            <textarea
+                                id="reject-comment"
+                                value={rejectComment}
+                                onChange={(event) => setRejectComment(event.target.value)}
+                                maxLength={1000}
+                                rows={4}
+                                className="mt-2 w-full resize-none rounded-xl border border-[#D8D7BE] bg-white px-3 py-2 text-sm text-gray-700 outline-none transition-colors focus:border-[#691D1B]"
+                                placeholder="Tuliskan catatan untuk tutor"
+                            />
+                            <p className="mt-1 text-right text-[11px] text-gray-400">{rejectComment.length}/1000</p>
+                        </>
+                    ) : null}
+                    confirmLabel="Ya, tolak konten"
+                    processing={!!rejectTarget && actionProcessingId === `reject-${rejectTarget.id}`}
+                    onCancel={closeRejectConfirm}
+                    onConfirm={handleReject}
+                />
             </div>
         </AdminLayout>
     );

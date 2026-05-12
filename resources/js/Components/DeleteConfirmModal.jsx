@@ -1,4 +1,5 @@
 import { AlertTriangle, Sparkles } from 'lucide-react';
+import { Spinner } from '@/Components/ui/LoadingStates';
 
 export default function DeleteConfirmModal({
     open,
@@ -6,6 +7,7 @@ export default function DeleteConfirmModal({
     description,
     details,
     confirmLabel = 'Ya, hapus',
+    processing = false,
     onCancel,
     onConfirm,
 }) {
@@ -40,15 +42,18 @@ export default function DeleteConfirmModal({
                     <button
                         type="button"
                         onClick={onCancel}
-                        className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted active:translate-y-0"
+                        disabled={processing}
+                        className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         Batal
                     </button>
                     <button
                         type="button"
                         onClick={onConfirm}
-                        className="rounded-xl bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-destructive/90 active:translate-y-0"
+                        disabled={processing}
+                        className="flex items-center gap-2 rounded-xl bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-destructive/90 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
                     >
+                        {processing && <Spinner size="xs" color="#ffffff" />}
                         {confirmLabel}
                     </button>
                 </div>

@@ -26,6 +26,15 @@ class Schedule extends Model
     }
 
     public function mentor()
+    protected function casts(): array
+    {
+        return [
+            'start_time' => 'datetime',
+            'end_time' => 'datetime',
+        ];
+    }
+
+    public function mentor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'mentor_id');
     }

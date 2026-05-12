@@ -21,9 +21,7 @@ test('users can authenticate using the login screen', function () {
 });
 
 test('admin users can authenticate using the admin login screen', function () {
-    $user = User::factory()->create([
-        'role' => 'admin',
-    ]);
+    $user = adminUser();
 
     $response = $this->post('/login/admin', [
         'email' => $user->email,

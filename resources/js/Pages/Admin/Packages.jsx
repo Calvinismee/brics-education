@@ -3,6 +3,8 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { useState } from 'react';
 import { Plus, Edit, Trash2, Package, Users, Check } from 'lucide-react';
 import DeleteConfirmModal from '@/Components/DeleteConfirmModal';
+import { Spinner } from '@/Components/ui/LoadingStates';
+import { showSuccessToast } from '@/utils/toast';
 
 const formatPriceInput = (value) => {
     const digits = String(value ?? '').replace(/\D/g, '');
@@ -16,13 +18,13 @@ const formatPriceInput = (value) => {
 
 const normalizePriceValue = (value) => String(value ?? '').replace(/\D/g, '');
 
-export default function Packages({ packages = [], stats = {} }) {
+export default function Packages({ packages = [], courses = [], stats = {} }) {
     const packageList = Array.isArray(packages?.data) ? packages.data : packages;
     const [showForm, setShowForm] = useState(false);
     const [editingPkgId, setEditingPkgId] = useState(null);
     const [featureInput, setFeatureInput] = useState('');
     const [deleteTarget, setDeleteTarget] = useState(null);
-    const form = useForm({ name: '', price: '', description: '', features: [], popular: false });
+    const form = useForm({ name: '', price: '', description: '', features: [], course_ids: [], popular: false });
 
     const closeForm = () => {
         setShowForm(false);
@@ -34,7 +36,7 @@ export default function Packages({ packages = [], stats = {} }) {
 
     const openCreate = () => {
         setEditingPkgId(null);
-        form.setData({ name: '', price: '', description: '', features: [], popular: false });
+        form.setData({ name: '', price: '', description: '', features: [], course_ids: [], popular: false });
         form.clearErrors();
         setFeatureInput('');
         setShowForm(true);
@@ -47,6 +49,7 @@ export default function Packages({ packages = [], stats = {} }) {
             price: normalizePriceValue(pkg.price),
             description: pkg.description || '',
             features: Array.isArray(pkg.features) ? pkg.features : [],
+            course_ids: Array.isArray(pkg.courses) ? pkg.courses.map((course) => Number(course.id)) : [],
             popular: !!pkg.popular,
         });
         form.clearErrors();
@@ -69,20 +72,27 @@ export default function Packages({ packages = [], stats = {} }) {
             ...current,
             price: normalizePriceValue(current.price),
             features: current.features || [],
+            course_ids: (current.course_ids || []).map((courseId) => Number(courseId)),
             popular: !!current.popular,
         }));
 
         if (editingPkgId) {
             form.put(route('admin.packages.update', editingPkgId), {
                 preserveScroll: true,
-                onSuccess: closeForm,
+                onSuccess: () => {
+                    closeForm();
+                    showSuccessToast('Paket berhasil diperbarui.');
+                },
             });
             return;
         }
 
         form.post(route('admin.packages.store'), {
             preserveScroll: true,
-            onSuccess: closeForm,
+            onSuccess: () => {
+                closeForm();
+                showSuccessToast('Paket berhasil ditambahkan.');
+            },
         });
     };
 
@@ -91,9 +101,24 @@ export default function Packages({ packages = [], stats = {} }) {
 
         form.delete(route('admin.packages.destroy', deleteTarget.id), {
             preserveScroll: true,
-            onSuccess: closeDeleteConfirm,
+            onSuccess: () => {
+                closeDeleteConfirm();
+                showSuccessToast('Paket berhasil dihapus.');
+            },
             onError: closeDeleteConfirm,
         });
+    };
+
+    const toggleCourse = (courseId) => {
+        const normalizedCourseId = Number(courseId);
+        const selectedCourseIds = (form.data.course_ids || []).map((id) => Number(id));
+
+        form.setData(
+            'course_ids',
+            selectedCourseIds.includes(normalizedCourseId)
+                ? selectedCourseIds.filter((id) => id !== normalizedCourseId)
+                : [...selectedCourseIds, normalizedCourseId],
+        );
     };
 
     return (
@@ -162,6 +187,20 @@ export default function Packages({ packages = [], stats = {} }) {
                                         </li>
                                     ))}
                                 </ul>
+                                <div className="mb-5 rounded-lg border border-[#D8D7BE] bg-[#F7F2E7] p-3">
+                                    <div className="mb-2 text-xs font-bold uppercase text-gray-500">Course dalam paket</div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {(pkg.courses || []).length > 0 ? (
+                                            pkg.courses.map((course) => (
+                                                <span key={course.id} className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-gray-600">
+                                                    {course.title}
+                                                </span>
+                                            ))
+                                        ) : (
+                                            <span className="text-xs text-gray-400">Belum ada course dipilih.</span>
+                                        )}
+                                    </div>
+                                </div>
                                 <div className="flex gap-2">
                                         <button onClick={() => openEdit(pkg)} className="group flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#D8D7BE] py-2 text-xs text-gray-600 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#691D1B] active:translate-y-0" title="Edit paket">
                                             <Edit className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110 group-hover:text-[#691D1B]" />
@@ -239,6 +278,31 @@ export default function Packages({ packages = [], stats = {} }) {
                                         ))}
                                     </ul>
                                 </div>
+                                <div>
+                                    <label className="mb-2 block text-sm font-semibold text-gray-700">Course dalam Paket</label>
+                                    <p className="mb-2 text-xs text-gray-500">Siswa akan otomatis terenroll ke semua course yang dipilih saat paket berhasil dibeli.</p>
+                                    <div className="grid gap-2 rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] p-3 sm:grid-cols-2">
+                                        {(courses || []).length > 0 ? (
+                                            courses.map((course) => {
+                                                const selected = (form.data.course_ids || []).map((id) => Number(id)).includes(Number(course.id));
+
+                                                return (
+                                                    <label key={course.id} className="flex cursor-pointer items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-700">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selected}
+                                                            onChange={() => toggleCourse(course.id)}
+                                                            className="h-4 w-4"
+                                                        />
+                                                        <span>{course.title}</span>
+                                                    </label>
+                                                );
+                                            })
+                                        ) : (
+                                            <div className="text-sm text-gray-500">Belum ada course tersedia.</div>
+                                        )}
+                                    </div>
+                                </div>
                                 <div className="flex items-center gap-2 rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3">
                                     <input id="popular" checked={form.data.popular} onChange={(e) => form.setData('popular', e.target.checked)} type="checkbox" className="h-4 w-4" />
                                     <div>
@@ -255,8 +319,14 @@ export default function Packages({ packages = [], stats = {} }) {
                                     <button type="button" onClick={closeForm} className="rounded-xl border-2 border-[#D8D7BE] px-5 py-2.5 text-sm font-semibold text-gray-600 transition-colors hover:border-[#691D1B]">
                                         Batal
                                     </button>
-                                    <button type="submit" className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#4A1412] disabled:cursor-not-allowed disabled:opacity-60" style={{ background: '#691D1B' }} disabled={form.processing}>
-                                        {form.processing ? 'Menyimpan...' : 'Simpan'}
+                                    <button
+                                        type="submit"
+                                        className="flex min-w-32 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#4A1412] disabled:cursor-not-allowed disabled:opacity-70"
+                                        style={{ background: '#691D1B' }}
+                                        disabled={form.processing}
+                                    >
+                                        {form.processing && <Spinner size="xs" color="#FFE882" />}
+                                        {form.processing ? (editingPkgId ? 'Menyimpan perubahan...' : 'Menambahkan paket...') : 'Simpan'}
                                     </button>
                                 </div>
                             </form>

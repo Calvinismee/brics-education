@@ -7,12 +7,13 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
-#[Fillable(['name', 'email', 'password', 'role_id'])]
+#[Fillable(['name', 'email', 'password', 'role_id', 'mentor_course_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -65,6 +66,15 @@ class User extends Authenticatable
         return $roleIds[$normalizedRoleName] ?? null;
     }
 
+    public static function adminRoleIds(): array
+    {
+        return [
+            'student' => static::roleIdFor('student') ?? 1,
+            'tutor' => static::roleIdFor('tutor') ?? static::roleIdFor('mentor') ?? 2,
+            'admin' => static::roleIdFor('admin') ?? 3,
+        ];
+    }
+
     private static function cachedRoleMap(): array
     {
         return Cache::rememberForever(self::ROLE_MAP_CACHE_KEY, function () {
@@ -88,6 +98,11 @@ class User extends Authenticatable
     public function role()
     {
         return $this->belongsTo(Role::class, 'role_id');
+    }
+
+    public function mentorCourse(): BelongsTo
+    {
+        return $this->belongsTo(Course::class, 'mentor_course_id');
     }
 
     public function isAdmin(): bool
