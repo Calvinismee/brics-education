@@ -1085,6 +1085,10 @@ Future multi-course option:
 
 Do not silently publish content without a clear state change.
 
+### 16.8 Keep Architecture Documentation Current
+
+- Always update `Architecture.md` when adding or changing features, seed data, or migrations.
+
 ---
 
 ## 17. Suggested Future Enhancements
