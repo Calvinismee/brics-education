@@ -365,6 +365,7 @@ The following rules should be treated as core system invariants.
 ### 7.6 Admin Access Rules
 
 - Only admin users may access `/admin/*`.
+- Guests opening `/admin` or `/admin/*` are redirected to `/login/admin`.
 - Non-admin users are redirected to `/` with an unauthorized message.
 
 ### 7.7 Student Access Rules
@@ -416,10 +417,13 @@ Important note:
 ### 8.4 Tutor Teaching Assignment Process
 
 1. Tutor can be assigned a course from user management, or implicitly through first valid schedule assignment.
-2. When admin creates a schedule, the selected mentor must either:
+2. Admin schedule creation submits `course_id` from the course list; schedule titles are display metadata and must not be used as course lookup keys.
+3. Editing an existing schedule only changes date, time, and meeting link; changing course or tutor should be handled by creating a new schedule.
+4. Schedule `end_time` must be later than `start_time`.
+5. When admin creates a schedule, the selected mentor must either:
    - have no course assignment yet, or
    - already be assigned to the same course
-3. Otherwise, validation fails.
+6. Otherwise, validation fails.
 
 ### 8.5 Content Review Process
 
@@ -444,6 +448,17 @@ Important note:
 2. Middleware shares the latest notification set with Inertia.
 3. Notification cache is stored per admin user.
 4. Read actions invalidate the cached notification payload and stats.
+5. Runtime admin notifications are broadcast to all admin users through `App\Support\AdminNotifier`.
+
+Current runtime notification triggers:
+
+- student registration
+- checkout transaction created with `pending` status
+- payment confirmation that changes a transaction to `success`
+- schedule creation
+- schedule update
+- content approval or rejection
+- future Eloquent `Material` creation with `pending` approval status
 
 ---
 
@@ -850,6 +865,7 @@ Controller:
 Purpose:
 
 - create, update, delete class schedules
+- bind schedules to courses by `course_id`
 - enforce mentor-course invariant
 
 ### 11.7 Transactions

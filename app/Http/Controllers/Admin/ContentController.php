@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\AdminNotifier;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -124,6 +125,9 @@ class ContentController extends Controller
     private function updateApprovalStatus(int $contentId, string $status, string $message, ?string $comment = null): RedirectResponse
     {
         $comment = trim((string) $comment);
+        $currentStatus = DB::table('materials')
+            ->where('id', $contentId)
+            ->value('approval_status');
 
         DB::table('materials')
             ->where('id', $contentId)
@@ -134,6 +138,10 @@ class ContentController extends Controller
                 'rejection_comment' => $status === 'rejected' && $comment !== '' ? $comment : null,
                 'updated_at' => now(),
             ]);
+
+        if ($currentStatus !== null && $currentStatus !== $status) {
+            AdminNotifier::contentReviewed($contentId, $status);
+        }
 
         return redirect()->route('admin.content')->with('success', $message);
     }

@@ -214,7 +214,7 @@ export default function Content({ contents = [], courses = [], stats = {} }) {
                                     <div className="flex items-center justify-between gap-3">
                                         <h2 className="text-sm font-extrabold text-gray-900">{group.title}</h2>
                                         <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[#691D1B]">
-                                            {group.items.length} konten
+                                            {group.items.length}
                                         </span>
                                     </div>
                                 </div>

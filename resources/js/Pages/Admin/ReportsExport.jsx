@@ -63,10 +63,6 @@ export default function ReportsExport({ reports = [], stats = {}, filters = {} }
             <Head title="Laporan Sistem" />
 
             <div className="space-y-6 p-4 lg:p-6">
-                <div>
-                    <h1 className="text-2xl font-extrabold text-gray-900">Laporan Sistem</h1>
-                    <p className="mt-1 text-sm text-gray-500">Rekap lintas modul untuk kebutuhan administrasi.</p>
-                </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
                     <section className="rounded-lg border border-[#D8D7BE] bg-white p-5 shadow-sm">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\AdminNotifier;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -46,8 +47,10 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
             'role_id' => $studentRoleId,
         ]);
+        $user->forceFill(['role' => 'student'])->save();
 
         event(new Registered($user));
+        AdminNotifier::studentRegistered($user);
 
         Auth::login($user);
 
