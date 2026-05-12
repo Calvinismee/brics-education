@@ -22,6 +22,7 @@ const navigationGroups = [
             { label: 'Pengguna', href: route('admin.users'), badge: 'US' },
             { label: 'Transaksi', href: route('admin.transactions'), badge: 'TR' },
             { label: 'Paket', href: route('admin.packages'), badge: 'PK' },
+            { label: 'Course', href: route('admin.courses'), badge: 'CR' },
             { label: 'Konten', href: route('admin.content'), badge: 'CT' },
             { label: 'Jadwal', href: route('admin.schedule'), badge: 'SC' },
         ],
@@ -95,7 +96,7 @@ export default function AdminLayout({ children, title, subtitle, notifications =
                 </div>
             </div>
 
-            <nav className="flex-1 space-y-5 overflow-y-auto p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <nav className="flex-1 space-y-5 p-4">
                 {navigationGroups.map((group) => (
                     <div key={group.title}>
                         <div className="px-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/45">
@@ -150,7 +151,7 @@ export default function AdminLayout({ children, title, subtitle, notifications =
     return (
         <div className="min-h-screen bg-[#F7F2E7] text-[#111827]">
             <div className="min-h-screen lg:pl-72">
-                <aside className="fixed inset-y-0 left-0 z-30 hidden h-screen w-72 shrink-0 flex-col border-r border-white/10 bg-[#691D1B] text-white lg:flex">
+                <aside className="fixed inset-y-0 left-0 z-30 hidden h-screen w-72 shrink-0 flex-col overflow-y-auto border-r border-white/10 bg-[#691D1B] text-white lg:flex">
                     {renderSidebarContent()}
                 </aside>
 

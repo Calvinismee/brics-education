@@ -123,13 +123,23 @@ function courseRecord(array $overrides = []): array
 
 function packageRecord(array $overrides = []): Package
 {
-    return Package::create(array_merge([
+    $courses = $overrides['courses'] ?? [];
+
+    unset($overrides['courses']);
+
+    $package = Package::create(array_merge([
         'name' => 'Paket SNBT',
         'price' => '15000',
         'description' => 'Paket belajar untuk persiapan SNBT.',
         'features' => ['Tryout', 'Pembahasan'],
         'popular' => false,
     ], $overrides));
+
+    if ($courses !== []) {
+        $package->courses()->sync(collect($courses)->map(fn ($course) => is_array($course) ? $course['id'] : $course->id)->all());
+    }
+
+    return $package;
 }
 
 function materialRecord(array $overrides = []): array
@@ -162,12 +172,14 @@ function transactionRecord(array $overrides = []): array
 {
     $student = $overrides['student'] ?? studentUser();
     $course = $overrides['course'] ?? courseRecord();
+    $package = $overrides['package'] ?? null;
 
-    unset($overrides['student'], $overrides['course']);
+    unset($overrides['student'], $overrides['course'], $overrides['package']);
 
     $payload = array_merge([
         'user_id' => $student->id,
-        'course_id' => $course['id'],
+        'course_id' => $course['id'] ?? null,
+        'package_id' => $package instanceof Package ? $package->id : ($package['id'] ?? null),
         'invoice_number' => 'INV-TEST-001',
         'amount' => 15000,
         'payment_method' => 'qris',

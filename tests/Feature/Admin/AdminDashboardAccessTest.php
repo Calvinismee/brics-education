@@ -30,6 +30,7 @@ test('TC_ADMIN_ROLE_001 admin dapat mengakses seluruh menu manajemen yang tersed
     foreach ([
         'admin.users',
         'admin.packages',
+        'admin.courses',
         'admin.content',
         'admin.transactions',
         'admin.transaction-stats',

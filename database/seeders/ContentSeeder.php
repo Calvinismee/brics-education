@@ -9,17 +9,12 @@ class ContentSeeder extends Seeder
 {
     public function run(): void
     {
-        $tutorId = DB::table('users')->where('email', 'tutor@bricsedu.id')->value('id');
-
-        if (! $tutorId) {
-            return;
-        }
-
         foreach ([
             [
                 'title' => 'Video Pembelajaran Matematika Dasar',
                 'type' => 'video',
                 'course_title' => 'Matematika Dasar',
+                'tutor_email' => 'tutor.math@bricsedu.id',
                 'content' => 'Video pengantar konsep bilangan dan operasi dasar.',
                 'approval_status' => 'approved',
             ],
@@ -27,6 +22,7 @@ class ContentSeeder extends Seeder
                 'title' => 'Modul Bahasa Indonesia: Teks Eksplanasi',
                 'type' => 'module',
                 'course_title' => 'Bahasa Indonesia',
+                'tutor_email' => 'tutor.bahasa@bricsedu.id',
                 'content' => 'Modul ringkas untuk memahami struktur dan contoh teks eksplanasi.',
                 'approval_status' => 'pending',
             ],
@@ -34,25 +30,24 @@ class ContentSeeder extends Seeder
                 'title' => 'Bank Soal IPA - Sistem Pencernaan',
                 'type' => 'bank_soal',
                 'course_title' => 'IPA Terpadu',
+                'tutor_email' => 'tutor.ipa@bricsedu.id',
                 'content' => 'Bank soal evaluasi pemahaman materi sistem pencernaan manusia.',
                 'approval_status' => 'rejected',
                 'rejection_comment' => 'Tambahkan pembahasan jawaban dan perbaiki beberapa pertanyaan yang ambigu.',
             ],
+            [
+                'title' => 'Ringkasan Numerasi Lanjutan',
+                'type' => 'module',
+                'course_title' => 'Matematika Dasar',
+                'tutor_email' => 'tutor.math@bricsedu.id',
+                'content' => 'Ringkasan konsep numerasi lanjutan dengan latihan bertahap.',
+                'approval_status' => 'pending',
+            ],
         ] as $contentData) {
-            DB::table('courses')->updateOrInsert(
-                ['title' => $contentData['course_title']],
-                [
-                    'title' => $contentData['course_title'],
-                    'description' => 'Kelas demo untuk kebutuhan seed data.',
-                    'price' => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]
-            );
-
+            $tutorId = DB::table('users')->where('email', $contentData['tutor_email'])->value('id');
             $courseId = DB::table('courses')->where('title', $contentData['course_title'])->value('id');
 
-            if (! $courseId) {
+            if (! $courseId || ! $tutorId) {
                 continue;
             }
 
@@ -67,7 +62,9 @@ class ContentSeeder extends Seeder
                     'content' => $contentData['content'],
                     'approval_status' => $contentData['approval_status'],
                     'rejection_comment' => $contentData['rejection_comment'] ?? null,
-                    'approved_by' => $contentData['approval_status'] === 'approved' ? $tutorId : null,
+                    'approved_by' => $contentData['approval_status'] === 'approved'
+                        ? DB::table('users')->where('email', 'admin@bricsedu.id')->value('id')
+                        : null,
                     'approved_at' => $contentData['approval_status'] === 'approved' ? now() : null,
                     'created_at' => now(),
                     'updated_at' => now(),

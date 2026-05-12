@@ -23,6 +23,7 @@ const emptyForm = {
     email: '',
     password: '',
     role: 'student',
+    mentor_course_id: '',
 };
 
 const normalizeRoleName = (role) => {
@@ -36,7 +37,7 @@ const extractRoleName = (user) => {
     return normalizeRoleName(user.role);
 };
 
-export default function Users({ users = { data: [] }, totalUsers = 0, stats = {} }) {
+export default function Users({ users = { data: [] }, courses = [], totalUsers = 0, stats = {} }) {
     const [selectedUsers, setSelectedUsers] = useState([]);
     const [search, setSearch] = useState('');
     const [selectedRole, setSelectedRole] = useState('all');
@@ -108,6 +109,7 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
             email: user.email || '',
             password: '',
             role: extractRoleName(user),
+            mentor_course_id: user.mentor_course_id || '',
         });
         form.clearErrors();
         setShowForm(true);
@@ -152,6 +154,10 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
 
         if (!payload.password) {
             delete payload.password;
+        }
+
+        if (payload.role !== 'tutor') {
+            delete payload.mentor_course_id;
         }
 
         return payload;
@@ -319,7 +325,7 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                                     <th className="w-10 px-5 py-3">
                                         <CheckSquare className="h-4 w-4 cursor-pointer text-gray-400" />
                                     </th>
-                                    {['Pengguna', 'Email', 'Peran', 'Bergabung', 'Aksi'].map((heading) => (
+                                    {['Pengguna', 'Email', 'Peran', 'Course', 'Bergabung', 'Aksi'].map((heading) => (
                                         <th
                                             key={heading}
                                             className="px-5 py-3 text-left text-xs uppercase tracking-wide text-gray-500"
@@ -383,6 +389,27 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                                                 >
                                                     {getRoleDisplay(roleName)}
                                                 </span>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                {roleName === 'student' ? (
+                                                    <div className="flex max-w-xs flex-wrap gap-1.5">
+                                                        {(user.enrolledCourses || []).length > 0 ? (
+                                                            user.enrolledCourses.map((course) => (
+                                                                <span key={course.id} className="rounded-full bg-[#F7F2E7] px-2 py-1 text-xs font-semibold text-gray-600">
+                                                                    {course.title}
+                                                                </span>
+                                                            ))
+                                                        ) : (
+                                                            <span className="text-xs text-gray-400">Belum enroll</span>
+                                                        )}
+                                                    </div>
+                                                ) : roleName === 'tutor' ? (
+                                                    <span className="rounded-full bg-[#691D1B15] px-2 py-1 text-xs font-semibold text-[#691D1B]">
+                                                        {user.taughtCourse || 'Belum ditugaskan'}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs text-gray-400">-</span>
+                                                )}
                                             </td>
                                             <td className="px-5 py-4">
                                                 <span className="text-sm text-gray-500">{joinDate}</span>
@@ -501,6 +528,26 @@ export default function Users({ users = { data: [] }, totalUsers = 0, stats = {}
                                     </select>
                                     {form.errors.role && <p className="text-xs text-red-500">{form.errors.role}</p>}
                                 </label>
+
+                                {form.data.role === 'tutor' && (
+                                    <label className="space-y-2">
+                                        <span className="text-sm font-semibold text-gray-700">Course yang Diajar</span>
+                                        <select
+                                            value={form.data.mentor_course_id || ''}
+                                            onChange={(event) => form.setData('mentor_course_id', event.target.value)}
+                                            disabled={isSubmitting || form.processing}
+                                            className="w-full rounded-xl border border-[#D8D7BE] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
+                                        >
+                                            <option value="">Belum ditugaskan</option>
+                                            {(courses || []).map((course) => (
+                                                <option key={course.id} value={course.id}>
+                                                    {course.title}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {form.errors.mentor_course_id && <p className="text-xs text-red-500">{form.errors.mentor_course_id}</p>}
+                                    </label>
+                                )}
 
                                 <label className="space-y-2">
                                     <span className="text-sm font-semibold text-gray-700">

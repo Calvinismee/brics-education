@@ -70,6 +70,15 @@ class ContentController extends Controller
 
         return Inertia::render('Admin/Content', [
             'contents' => $contents,
+            'courses' => DB::table('courses')
+                ->select('id', 'title')
+                ->orderBy('title')
+                ->get()
+                ->map(fn ($course) => [
+                    'id' => $course->id,
+                    'title' => $course->title,
+                    'contentCount' => DB::table('materials')->where('course_id', $course->id)->count(),
+                ]),
             'stats' => [
                 'totalContent' => $totalContent,
                 'pendingReview' => $pendingReview,

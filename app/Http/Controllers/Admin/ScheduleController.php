@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class ScheduleController extends Controller
@@ -72,7 +73,7 @@ class ScheduleController extends Controller
                     $roles['tutor'] ?? 2,
                 ])
                 ->orderBy('name')
-                ->get(['id', 'name']),
+                ->get(['id', 'name', 'mentor_course_id']),
             'stats' => [
                 'totalClasses' => Schedule::count(),
                 'upcomingClasses' => Schedule::query()
@@ -131,6 +132,14 @@ class ScheduleController extends Controller
         $endTime = Carbon::createFromFormat('Y-m-d H:i', $validated['schedule_date'].' '.$validated['end_time']);
         $courseId = DB::table('courses')->where('title', $validated['course'])->value('id');
 
+        if (! $courseId) {
+            throw ValidationException::withMessages([
+                'course' => 'Course tidak ditemukan.',
+            ]);
+        }
+
+        $this->ensureMentorCanTeachCourse($validated['tutor_id'] ?? null, (int) $courseId);
+
         return [
             'course_id' => $courseId,
             'mentor_id' => $validated['tutor_id'] ?? null,
@@ -139,5 +148,33 @@ class ScheduleController extends Controller
             'start_time' => $startTime,
             'end_time' => $endTime,
         ];
+    }
+
+    private function ensureMentorCanTeachCourse(?int $mentorId, int $courseId): void
+    {
+        if (! $mentorId) {
+            return;
+        }
+
+        $mentorCourseId = DB::table('users')
+            ->where('id', $mentorId)
+            ->value('mentor_course_id');
+
+        if ($mentorCourseId === null) {
+            DB::table('users')
+                ->where('id', $mentorId)
+                ->update([
+                    'mentor_course_id' => $courseId,
+                    'updated_at' => now(),
+                ]);
+
+            return;
+        }
+
+        if ((int) $mentorCourseId !== $courseId) {
+            throw ValidationException::withMessages([
+                'tutor_id' => 'Mentor hanya dapat mengajar course yang ditugaskan.',
+            ]);
+        }
     }
 }

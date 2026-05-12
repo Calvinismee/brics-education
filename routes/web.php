@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ContentController;
+use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\PackageController;
 use App\Http\Controllers\Admin\ReportController;
@@ -50,6 +51,7 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::post('/packages', [PackageController::class, 'store'])->name('packages.store');
         Route::put('/packages/{package}', [PackageController::class, 'update'])->whereNumber('package')->name('packages.update');
         Route::delete('/packages/{package}', [PackageController::class, 'destroy'])->whereNumber('package')->name('packages.destroy');
+        Route::get('/courses', [CourseController::class, 'index'])->name('courses');
         Route::get('/content', [ContentController::class, 'index'])->name('content');
         Route::post('/content', [ContentController::class, 'store'])->name('content.store');
         Route::match(['post', 'put'], '/content/{content}', [ContentController::class, 'update'])->whereNumber('content')->name('content.update');

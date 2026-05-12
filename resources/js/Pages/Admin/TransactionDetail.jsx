@@ -12,6 +12,7 @@ export default function TransactionDetail({ transaction }) {
 
     const rows = [
         { label: 'Invoice', value: transaction.invoiceNumber ?? '-' },
+        { label: 'Paket', value: transaction.package ?? '-' },
         { label: 'Jumlah', value: transaction.amountFormatted ?? '-' },
         { label: 'Metode', value: transaction.method ?? '-' },
         { label: 'Status asli', value: transaction.rawStatus ?? '-' },
