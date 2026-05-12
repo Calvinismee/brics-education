@@ -4,24 +4,25 @@ import LoginPanel from '@/Components/LoginPanel';
 import BricsLogo from '@/Components/BricsLogo';
 import {
   ArrowLeft,
-  Eye,
   LockKeyhole,
   Mail,
   UserRound,
+  UserPlus,
 } from 'lucide-react';
 
-export default function LoginSiswa() {
+export default function Register() {
   const { data, setData, post, processing, errors, reset } = useForm({
+    name: '',
     email: '',
     password: '',
-    remember: false,
+    password_confirmation: '',
   });
 
   const submit = (e) => {
     e.preventDefault();
 
-    post(route('login'), {
-      onFinish: () => reset('password'),
+    post(route('register'), {
+      onFinish: () => reset('password', 'password_confirmation'),
     });
   };
 
@@ -33,7 +34,7 @@ export default function LoginSiswa() {
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >
-      <Head title="Masuk - Siswa" />
+      <Head title="Daftar - Siswa" />
 
       <LoginPanel />
 
@@ -58,7 +59,7 @@ export default function LoginSiswa() {
                 className="w-12 h-12 rounded-2xl flex items-center justify-center"
                 style={{ background: '#FFE882' }}
               >
-                <UserRound className="w-6 h-6 text-[#691D1B]" />
+                <UserPlus className="w-6 h-6 text-[#691D1B]" />
               </div>
 
               <div>
@@ -66,7 +67,7 @@ export default function LoginSiswa() {
                   className="text-xs text-gray-500 uppercase tracking-widest"
                   style={{ fontWeight: 700 }}
                 >
-                  Masuk sebagai
+                  Daftar sebagai
                 </p>
                 <h1
                   className="text-2xl text-gray-900"
@@ -78,10 +79,43 @@ export default function LoginSiswa() {
             </div>
 
             <p className="text-sm text-gray-500 mb-7 leading-relaxed">
-              Masuk menggunakan email dan password siswa untuk melanjutkan pembelian course dan mengakses dashboard pembelajaran BRICS Education.
+              Buat akun siswa BRICS Education untuk membeli course, mengakses dashboard, melihat jadwal, dan mengikuti materi pembelajaran.
             </p>
 
             <form onSubmit={submit} className="space-y-5">
+              <div>
+                <label
+                  htmlFor="name"
+                  className="block text-sm text-gray-700 mb-2"
+                  style={{ fontWeight: 700 }}
+                >
+                  Nama Lengkap
+                </label>
+
+                <div className="relative">
+                  <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#691D1B]" />
+
+                  <input
+                    id="name"
+                    type="text"
+                    value={data.name}
+                    onChange={(e) => setData('name', e.target.value)}
+                    placeholder="Masukkan nama lengkap"
+                    className="w-full pl-12 pr-4 py-3 bg-[#FDFCF8] border-2 rounded-xl text-sm focus:outline-none transition-colors"
+                    style={{
+                      borderColor: errors.name ? '#dc2626' : '#D8D7BE',
+                    }}
+                    autoComplete="name"
+                  />
+                </div>
+
+                {errors.name && (
+                  <p className="text-sm text-red-600 mt-2">
+                    {errors.name}
+                  </p>
+                )}
+              </div>
+
               <div>
                 <label
                   htmlFor="email"
@@ -133,14 +167,12 @@ export default function LoginSiswa() {
                     value={data.password}
                     onChange={(e) => setData('password', e.target.value)}
                     placeholder="Masukkan password"
-                    className="w-full pl-12 pr-12 py-3 bg-[#FDFCF8] border-2 rounded-xl text-sm focus:outline-none transition-colors"
+                    className="w-full pl-12 pr-4 py-3 bg-[#FDFCF8] border-2 rounded-xl text-sm focus:outline-none transition-colors"
                     style={{
                       borderColor: errors.password ? '#dc2626' : '#D8D7BE',
                     }}
-                    autoComplete="current-password"
+                    autoComplete="new-password"
                   />
-
-                  <Eye className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 </div>
 
                 {errors.password && (
@@ -150,27 +182,41 @@ export default function LoginSiswa() {
                 )}
               </div>
 
-              <div className="flex items-center justify-between gap-4">
-                <label className="flex items-center gap-2 text-sm text-gray-600">
-                  <input
-                    type="checkbox"
-                    checked={data.remember}
-                    onChange={(e) => setData('remember', e.target.checked)}
-                    className="rounded border-[#D8D7BE]"
-                  />
-                  Ingat saya
+              <div>
+                <label
+                  htmlFor="password_confirmation"
+                  className="block text-sm text-gray-700 mb-2"
+                  style={{ fontWeight: 700 }}
+                >
+                  Konfirmasi Password
                 </label>
 
-                <Link
-                  href={route('password.request')}
-                  className="text-sm hover:underline"
-                  style={{
-                    color: '#691D1B',
-                    fontWeight: 700,
-                  }}
-                >
-                  Lupa password?
-                </Link>
+                <div className="relative">
+                  <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#691D1B]" />
+
+                  <input
+                    id="password_confirmation"
+                    type="password"
+                    value={data.password_confirmation}
+                    onChange={(e) =>
+                      setData('password_confirmation', e.target.value)
+                    }
+                    placeholder="Ulangi password"
+                    className="w-full pl-12 pr-4 py-3 bg-[#FDFCF8] border-2 rounded-xl text-sm focus:outline-none transition-colors"
+                    style={{
+                      borderColor: errors.password_confirmation
+                        ? '#dc2626'
+                        : '#D8D7BE',
+                    }}
+                    autoComplete="new-password"
+                  />
+                </div>
+
+                {errors.password_confirmation && (
+                  <p className="text-sm text-red-600 mt-2">
+                    {errors.password_confirmation}
+                  </p>
+                )}
               </div>
 
               <button
@@ -182,7 +228,7 @@ export default function LoginSiswa() {
                   fontWeight: 800,
                 }}
               >
-                {processing ? 'Memproses...' : 'Masuk ke Dashboard'}
+                {processing ? 'Memproses...' : 'Daftar Akun Siswa'}
               </button>
             </form>
 
@@ -192,22 +238,22 @@ export default function LoginSiswa() {
             />
 
             <p className="text-center text-sm text-gray-600">
-              Belum punya akun?{' '}
+              Sudah punya akun?{' '}
               <Link
-                href={route('register')}
+                href={route('login')}
                 style={{
                   color: '#691D1B',
                   fontWeight: 800,
                 }}
                 className="hover:underline"
               >
-                Daftar Sekarang
+                Masuk Sekarang
               </Link>
             </p>
           </div>
 
           <p className="text-center text-xs text-gray-400 mt-6 leading-relaxed">
-            Dengan masuk, Anda menyetujui{' '}
+            Dengan mendaftar, Anda menyetujui{' '}
             <a
               href="#"
               style={{ color: '#691D1B' }}
