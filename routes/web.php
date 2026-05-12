@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ContentController;
+use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\PackageController;
 use App\Http\Controllers\Admin\ReportController;
@@ -50,6 +51,7 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::post('/packages', [PackageController::class, 'store'])->name('packages.store');
         Route::put('/packages/{package}', [PackageController::class, 'update'])->whereNumber('package')->name('packages.update');
         Route::delete('/packages/{package}', [PackageController::class, 'destroy'])->whereNumber('package')->name('packages.destroy');
+        Route::get('/courses', [CourseController::class, 'index'])->name('courses');
         Route::get('/content', [ContentController::class, 'index'])->name('content');
         Route::post('/content', [ContentController::class, 'store'])->name('content.store');
         Route::match(['post', 'put'], '/content/{content}', [ContentController::class, 'update'])->whereNumber('content')->name('content.update');
@@ -62,6 +64,7 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::delete('/schedule/{schedule}', [ScheduleController::class, 'destroy'])->whereNumber('schedule')->name('schedule.destroy');
         Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions');
         Route::get('/transactions/export', [TransactionController::class, 'export'])->name('transactions.export');
+        Route::get('/transactions/{transaction}', [TransactionController::class, 'show'])->whereNumber('transaction')->name('transactions.show');
         Route::get('/transaction-stats', [TransactionController::class, 'stats'])->name('transaction-stats');
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
         Route::post('/notifications/{notification}/mark-as-read', [NotificationController::class, 'markAsRead'])->whereNumber('notification')->name('notifications.mark-as-read');

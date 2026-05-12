@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class NotificationSeeder extends Seeder
 {
@@ -13,7 +13,7 @@ class NotificationSeeder extends Seeder
         $adminRoleId = DB::table('roles')->where('name', 'admin')->value('id') ?? 3;
         $adminId = DB::table('users')->where('role_id', $adminRoleId)->value('id');
 
-        if (!$adminId) {
+        if (! $adminId) {
             return;
         }
 
@@ -22,32 +22,32 @@ class NotificationSeeder extends Seeder
         $notifications = [
             [
                 'title' => 'Transaksi Baru',
-                'message' => 'Siswa Budi Santosa telah melakukan pembayaran untuk kursus Matematika Dasar sebesar Rp 149.000',
+                'message' => 'Siswa Brics berhasil membeli Paket Dasar dan otomatis terenroll ke course terkait.',
                 'created_at' => $now->copy()->subDays(2),
             ],
             [
-                'title' => 'Kursus Baru Ditambahkan',
-                'message' => 'Tutor Brics telah menambahkan konten baru untuk kursus IPA Terpadu',
+                'title' => 'Konten Course Diperbarui',
+                'message' => 'Tutor IPA menambahkan bank soal baru untuk course IPA Terpadu.',
                 'created_at' => $now->copy()->subDays(1),
             ],
             [
                 'title' => 'Pengguna Baru',
-                'message' => 'Ada 5 pengguna siswa baru yang mendaftar hari ini',
+                'message' => 'Ada siswa baru yang siap dipetakan ke paket pembelajaran.',
                 'created_at' => $now,
             ],
             [
                 'title' => 'Jadwal Kelas Ditambahkan',
-                'message' => 'Jadwal kelas Bahasa Indonesia telah dijadwalkan untuk 13 Mei 2026 jam 13:00',
+                'message' => 'Kelas Bahasa Indonesia dijadwalkan dengan mentor yang sudah terikat ke course tersebut.',
                 'created_at' => $now->copy()->subHours(3),
             ],
             [
                 'title' => 'Pembayaran Tertunda',
-                'message' => 'Ada 2 pembayaran yang masih pending dan perlu diverifikasi',
+                'message' => 'Masih ada transaksi paket yang pending dan belum memicu enrollment.',
                 'created_at' => $now->copy()->subHours(6),
             ],
             [
                 'title' => 'Konten Menunggu Persetujuan',
-                'message' => 'Ada 1 materi yang menunggu persetujuan Anda',
+                'message' => 'Ada materi per course yang masih menunggu review admin.',
                 'created_at' => $now->copy()->subDays(1),
             ],
         ];

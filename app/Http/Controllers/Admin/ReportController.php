@@ -3,16 +3,24 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class ReportController extends Controller
 {
-    public function export()
+    public function export(Request $request)
     {
-        $reports = DB::table('report_exports')
+        $dateFrom = $request->date('dateFrom');
+        $dateTo = $request->date('dateTo');
+
+        $baseQuery = DB::table('report_exports')
             ->leftJoin('users', 'report_exports.user_id', '=', 'users.id')
+            ->when($dateFrom, fn ($query) => $query->where('report_exports.created_at', '>=', $dateFrom->copy()->startOfDay()))
+            ->when($dateTo, fn ($query) => $query->where('report_exports.created_at', '<=', $dateTo->copy()->endOfDay()));
+
+        $reports = (clone $baseQuery)
             ->orderByDesc('report_exports.created_at')
             ->limit(50)
             ->get([
@@ -35,15 +43,21 @@ class ReportController extends Controller
                 'status' => 'Selesai',
             ]);
 
-        $lastExport = DB::table('report_exports')->latest('created_at')->value('created_at');
+        $lastExport = (clone $baseQuery)
+            ->latest('report_exports.created_at')
+            ->value('report_exports.created_at');
 
         return Inertia::render('Admin/ReportsExport', [
             'reports' => $reports,
+            'filters' => [
+                'dateFrom' => $dateFrom?->toDateString() ?? '',
+                'dateTo' => $dateTo?->toDateString() ?? '',
+            ],
             'stats' => [
                 'lastExport' => $lastExport
                     ? Carbon::parse($lastExport)->format('d M Y H:i')
                     : null,
-                'availableReports' => DB::table('report_exports')->count(),
+                'availableReports' => (clone $baseQuery)->count('report_exports.id'),
             ],
         ]);
     }

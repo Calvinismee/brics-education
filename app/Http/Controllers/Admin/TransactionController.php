@@ -24,15 +24,18 @@ class TransactionController extends Controller
                 'transactions.id',
                 'transactions.invoice_number',
                 'transactions.amount',
+                'transactions.package_id',
                 'transactions.payment_method',
                 'transactions.payment_status',
                 'transactions.paid_at',
                 'transactions.created_at',
                 'users.name as student',
-                'courses.title as course'
+                'courses.title as course',
+                'packages.name as package_name'
             )
             ->leftJoin('users', 'transactions.user_id', 'users.id')
             ->leftJoin('courses', 'transactions.course_id', 'courses.id')
+            ->leftJoin('packages', 'transactions.package_id', 'packages.id')
             ->when($status === 'success', fn ($query) => $query->whereIn('transactions.payment_status', ['paid', 'success']))
             ->when($status === 'pending', fn ($query) => $query->where('transactions.payment_status', 'pending'))
             ->when($status === 'failed', fn ($query) => $query->where('transactions.payment_status', 'failed'))
@@ -49,8 +52,10 @@ class TransactionController extends Controller
 
             return [
                 'id' => $t->invoice_number ?? (string) $t->id,
+                'databaseId' => $t->id,
                 'student' => $t->student ?? '-',
-                'course' => $t->course ?? '-',
+                'course' => $t->course ?? ($t->package_name ? 'Paket: '.$t->package_name : '-'),
+                'package' => $t->package_name,
                 'amount' => 'Rp '.number_format((float) $t->amount, 0, ',', '.'),
                 'method' => $t->payment_method ?? '-',
                 'status' => $mapped,
@@ -89,6 +94,62 @@ class TransactionController extends Controller
                 'dateFrom' => $dateFrom?->toDateString() ?? '',
                 'dateTo' => $dateTo?->toDateString() ?? '',
                 'sort' => $sort,
+            ],
+        ]);
+    }
+
+    public function show(int $transaction)
+    {
+        $record = DB::table('transactions')
+            ->select(
+                'transactions.id',
+                'transactions.invoice_number',
+                'transactions.amount',
+                'transactions.package_id',
+                'transactions.payment_method',
+                'transactions.payment_status',
+                'transactions.payment_gateway_ref',
+                'transactions.paid_at',
+                'transactions.created_at',
+                'transactions.updated_at',
+                'users.name as student',
+                'users.email as student_email',
+                'courses.title as course',
+                'courses.description as course_description',
+                'packages.name as package_name',
+                'enrollments.status as enrollment_status'
+            )
+            ->leftJoin('users', 'transactions.user_id', '=', 'users.id')
+            ->leftJoin('courses', 'transactions.course_id', '=', 'courses.id')
+            ->leftJoin('packages', 'transactions.package_id', '=', 'packages.id')
+            ->leftJoin('enrollments', 'transactions.enrollment_id', '=', 'enrollments.id')
+            ->where('transactions.id', $transaction)
+            ->first();
+
+        abort_if(! $record, 404);
+
+        $status = $record->payment_status;
+        $mapped = in_array($status, ['paid', 'success'], true) ? 'success' : ($status === 'failed' ? 'failed' : 'pending');
+
+        return Inertia::render('Admin/TransactionDetail', [
+            'transaction' => [
+                'id' => $record->id,
+                'invoiceNumber' => $record->invoice_number,
+                'student' => $record->student ?? '-',
+                'studentEmail' => $record->student_email ?? '-',
+                'course' => $record->course ?? ($record->package_name ? 'Paket: '.$record->package_name : '-'),
+                'package' => $record->package_name,
+                'courseDescription' => $record->course_description,
+                'amount' => (float) $record->amount,
+                'amountFormatted' => 'Rp '.number_format((float) $record->amount, 0, ',', '.'),
+                'method' => $record->payment_method ?? '-',
+                'status' => $mapped,
+                'rawStatus' => $record->payment_status,
+                'gatewayReference' => $record->payment_gateway_ref,
+                'enrollmentStatus' => $record->enrollment_status,
+                'paidAt' => $record->paid_at ? Carbon::parse($record->paid_at)->format('Y-m-d H:i') : null,
+                'createdAt' => Carbon::parse($record->created_at)->format('Y-m-d H:i'),
+                'updatedAt' => Carbon::parse($record->updated_at)->format('Y-m-d H:i'),
             ],
         ]);
     }
@@ -175,9 +236,10 @@ class TransactionController extends Controller
 
         // Recent transactions
         $recentTx = DB::table('transactions')
-            ->select('transactions.id', 'transactions.invoice_number', 'transactions.amount', 'transactions.payment_method', 'transactions.payment_status', 'transactions.created_at', 'users.name as student', 'courses.title as course')
+            ->select('transactions.id', 'transactions.invoice_number', 'transactions.amount', 'transactions.payment_method', 'transactions.payment_status', 'transactions.created_at', 'users.name as student', 'courses.title as course', 'packages.name as package_name')
             ->leftJoin('users', 'transactions.user_id', 'users.id')
             ->leftJoin('courses', 'transactions.course_id', 'courses.id')
+            ->leftJoin('packages', 'transactions.package_id', 'packages.id')
             ->orderByDesc('transactions.created_at')
             ->limit(5)
             ->get();
@@ -189,7 +251,7 @@ class TransactionController extends Controller
             return [
                 'id' => $t->invoice_number ?? (string) $t->id,
                 'student' => $t->student ?? '-',
-                'course' => $t->course ?? '-',
+                'course' => $t->course ?? ($t->package_name ? 'Paket: '.$t->package_name : '-'),
                 'amount' => (float) $t->amount,
                 'method' => ucwords(str_replace('_', ' ', $t->payment_method ?? '-')),
                 'status' => $mapped,
@@ -223,14 +285,17 @@ class TransactionController extends Controller
             ->select(
                 'transactions.invoice_number',
                 'transactions.amount',
+                'transactions.package_id',
                 'transactions.payment_method',
                 'transactions.payment_status',
                 'transactions.created_at',
                 'users.name as student',
-                'courses.title as course'
+                'courses.title as course',
+                'packages.name as package_name'
             )
             ->leftJoin('users', 'transactions.user_id', 'users.id')
             ->leftJoin('courses', 'transactions.course_id', 'courses.id')
+            ->leftJoin('packages', 'transactions.package_id', 'packages.id')
             ->when($status === 'success', fn ($query) => $query->whereIn('transactions.payment_status', ['paid', 'success']))
             ->when($status === 'pending', fn ($query) => $query->where('transactions.payment_status', 'pending'))
             ->when($status === 'failed', fn ($query) => $query->where('transactions.payment_status', 'failed'))
@@ -268,7 +333,7 @@ class TransactionController extends Controller
                 fputcsv($output, [
                     $transaction->invoice_number,
                     $transaction->student ?? '-',
-                    $transaction->course ?? '-',
+                    $transaction->course ?? ($transaction->package_name ? 'Paket: '.$transaction->package_name : '-'),
                     (float) $transaction->amount,
                     $transaction->payment_method ?? '-',
                     $transaction->payment_status,

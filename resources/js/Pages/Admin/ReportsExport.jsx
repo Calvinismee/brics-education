@@ -1,10 +1,13 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
-import { BarChart3, Download, FileText, ReceiptText, Users } from 'lucide-react';
+import { useState } from 'react';
+import { BarChart3, Download, FileText, ReceiptText, Search, Users, X } from 'lucide-react';
 
-export default function ReportsExport({ reports = [], stats = {} }) {
+export default function ReportsExport({ reports = [], stats = {}, filters = {} }) {
     const availableReports = stats.availableReports ?? reports.length;
     const lastExport = stats.lastExport ?? 'Belum ada export';
+    const [dateFrom, setDateFrom] = useState(filters.dateFrom ?? '');
+    const [dateTo, setDateTo] = useState(filters.dateTo ?? '');
     const reportShortcuts = [
         {
             title: 'Laporan Transaksi',
@@ -28,6 +31,32 @@ export default function ReportsExport({ reports = [], stats = {} }) {
             action: 'Buka statistik',
         },
     ];
+
+    const applyFilters = () => {
+        const params = {};
+
+        if (dateFrom) {
+            params.dateFrom = dateFrom;
+        }
+
+        if (dateTo) {
+            params.dateTo = dateTo;
+        }
+
+        router.get(route('admin.reports.export'), params, {
+            preserveScroll: true,
+            replace: true,
+        });
+    };
+
+    const clearFilters = () => {
+        setDateFrom('');
+        setDateTo('');
+        router.get(route('admin.reports.export'), {}, {
+            preserveScroll: true,
+            replace: true,
+        });
+    };
 
     return (
         <AdminLayout title="Laporan Sistem" subtitle="Rekap operasional dan histori export.">
@@ -91,8 +120,43 @@ export default function ReportsExport({ reports = [], stats = {} }) {
                 </section>
 
                 <section className="overflow-hidden rounded-lg border border-[#D8D7BE] bg-white shadow-sm">
-                    <div className="border-b border-[#F7F2E7] px-5 py-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#F7F2E7] px-5 py-4">
                         <h2 className="text-base font-bold text-gray-900">Riwayat Export</h2>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <input
+                                type="date"
+                                value={dateFrom}
+                                onChange={(event) => setDateFrom(event.target.value)}
+                                className="min-h-10 rounded-lg border border-[#D8D7BE] px-3 text-sm outline-none focus:border-[#691D1B]"
+                                title="Dari tanggal"
+                            />
+                            <span className="text-sm text-gray-500">s/d</span>
+                            <input
+                                type="date"
+                                value={dateTo}
+                                onChange={(event) => setDateTo(event.target.value)}
+                                className="min-h-10 rounded-lg border border-[#D8D7BE] px-3 text-sm outline-none focus:border-[#691D1B]"
+                                title="Sampai tanggal"
+                            />
+                            <button
+                                type="button"
+                                onClick={applyFilters}
+                                className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[#D8D7BE] px-3 text-sm font-semibold text-gray-600 transition hover:border-[#691D1B] hover:text-[#691D1B]"
+                            >
+                                <Search className="h-4 w-4" />
+                                Filter
+                            </button>
+                            {(filters.dateFrom || filters.dateTo) && (
+                                <button
+                                    type="button"
+                                    onClick={clearFilters}
+                                    className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[#D8D7BE] px-3 text-sm font-semibold text-gray-600 transition hover:border-[#691D1B] hover:text-[#691D1B]"
+                                >
+                                    <X className="h-4 w-4" />
+                                    Reset
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     {reports.length > 0 ? (

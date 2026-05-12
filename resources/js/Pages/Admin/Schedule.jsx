@@ -156,10 +156,6 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [] }) {
 
             <div className="p-4 lg:p-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 <div className="mb-6 flex items-center justify-between gap-4">
-                    <div>
-                        <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Jadwal Kelas</h1>
-                        <p className="text-sm text-gray-500">Kelola dan monitor jadwal semua kelas</p>
-                    </div>
                     <button
                         onClick={openCreate}
                         className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm text-white transition-colors hover:bg-[#4A1412]"
