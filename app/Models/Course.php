@@ -2,12 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-
-class Course extends Model
-{
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -23,21 +20,21 @@ class Course extends Model
         'status',
     ];
 
-    public function category()
+    public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
 
-    public function materials()
+    public function materials(): HasMany
     {
         return $this->hasMany(Material::class);
     }
 
-    public function schedules()
+    public function schedules(): HasMany
     {
-    return $this->hasMany(Schedule::class);
+        return $this->hasMany(Schedule::class);
     }
-}
+
     public function packages(): BelongsToMany
     {
         return $this->belongsToMany(Package::class, 'package_course')

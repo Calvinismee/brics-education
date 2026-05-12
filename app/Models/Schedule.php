@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Schedule extends Model
 {
@@ -15,23 +16,17 @@ class Schedule extends Model
         'meeting_link',
     ];
 
-    protected $casts = [
-        'start_time' => 'datetime',
-        'end_time' => 'datetime',
-    ];
-
-    public function course()
-    {
-        return $this->belongsTo(Course::class);
-    }
-
-    public function mentor()
     protected function casts(): array
     {
         return [
             'start_time' => 'datetime',
             'end_time' => 'datetime',
         ];
+    }
+
+    public function course(): BelongsTo
+    {
+        return $this->belongsTo(Course::class);
     }
 
     public function mentor(): BelongsTo
