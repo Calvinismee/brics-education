@@ -50,7 +50,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
     const [currentMonth, setCurrentMonth] = useState(() => new Date());
     const [deleteTarget, setDeleteTarget] = useState(null);
     const form = useForm({
-        course: '',
+        course_id: '',
         tutor_id: '',
         schedule_date: '',
         start_time: '08:00',
@@ -88,7 +88,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
     const openCreate = () => {
         setEditingScheduleId(null);
         form.setData({
-            course: '',
+            course_id: '',
             tutor_id: '',
             schedule_date: '',
             start_time: '08:00',
@@ -102,7 +102,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
     const openEdit = (schedule) => {
         setEditingScheduleId(schedule.id);
         form.setData({
-            course: schedule.course || '',
+            course_id: schedule.course_id ? String(schedule.course_id) : '',
             tutor_id: schedule.tutor_id || '',
             schedule_date: formatDateKey(schedule.schedule_date),
             start_time: schedule.start_time || '08:00',
@@ -169,6 +169,9 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
     );
     const monthKey = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}`;
     const monthSchedules = normalizedSchedules.filter((schedule) => formatDateKey(schedule.schedule_date).startsWith(monthKey));
+    const editingSchedule = editingScheduleId
+        ? normalizedSchedules.find((schedule) => schedule.id === editingScheduleId)
+        : null;
 
     return (
         <AdminLayout title="Jadwal Kelas" subtitle="Kelola jadwal kelas online dan offline.">
@@ -363,6 +366,27 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div>
                                         <label className="mb-2 block text-sm font-semibold text-gray-700">Mata Pelajaran</label>
+                                        <p className="mb-2 text-xs text-gray-500">
+                                            {editingScheduleId ? 'Mata pelajaran dikunci saat edit jadwal.' : 'Pilih course SNBT yang dijadwalkan.'}
+                                        </p>
+                                        {editingScheduleId ? (
+                                            <div className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm text-gray-700">
+                                                {editingSchedule?.course || '-'}
+                                            </div>
+                                        ) : (
+                                            <select
+                                                value={form.data.course_id}
+                                                onChange={(event) => form.setData('course_id', event.target.value)}
+                                                className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
+                                            >
+                                                <option value="">Pilih course</option>
+                                                {(courses || []).map((course) => (
+                                                    <option key={course.id} value={course.id}>
+                                                        {course.title}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        )}
                                         <p className="mb-2 text-xs text-gray-500">Pilih course UTBK yang sudah tersedia.</p>
                                         <select
                                             value={form.data.course}
@@ -380,6 +404,26 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
 
                                     <div>
                                         <label className="mb-2 block text-sm font-semibold text-gray-700">Tutor</label>
+                                        <p className="mb-2 text-xs text-gray-500">
+                                            {editingScheduleId ? 'Tutor dikunci saat edit jadwal.' : 'Pilih tutor pengampu untuk jadwal ini.'}
+                                        </p>
+                                        {editingScheduleId ? (
+                                            <div className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm text-gray-700">
+                                                {editingSchedule?.tutor || '-'}
+                                            </div>
+                                        ) : (
+                                            <select
+                                                value={form.data.tutor_id}
+                                                onChange={(event) => form.setData('tutor_id', event.target.value)}
+                                                className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
+                                            >
+                                                <option value="">Pilih tutor</option>
+                                                {(tutors || []).map((tutor) => (
+                                                    <option key={tutor.id} value={tutor.id}>
+                                                        {tutor.name}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         <p className="mb-2 text-xs text-gray-500">Pilih tutor pengampu untuk jadwal ini.</p>
                                         <select
                                             value={form.data.tutor_id}
@@ -437,6 +481,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                             value={form.data.end_time}
                                             onChange={(event) => form.setData('end_time', event.target.value)}
                                             type="time"
+                                            min={form.data.start_time || undefined}
                                             className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
                                         />
                                     </div>

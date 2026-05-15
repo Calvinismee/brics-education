@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Schedule;
 use App\Models\User;
+use App\Support\AdminNotifier;
 use App\Support\TutorCourseResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,15 +18,19 @@ class ScheduleController extends Controller
 {
     public function index()
     {
-        $courses = DB::table('courses')->pluck('title', 'id');
+        $courses = DB::table('courses')
+            ->select('id', 'title')
+            ->orderBy('title')
+            ->get();
+        $courseTitles = $courses->pluck('title', 'id');
         $schedules = Schedule::query()
             ->select('id', 'course_id', 'mentor_id', 'title', 'meeting_link', 'start_time', 'end_time')
-            ->with('mentor:id,name')
+            ->with(['course:id,title', 'mentor:id,name'])
             ->orderBy('start_time')
             ->paginate(20)
             ->withQueryString();
 
-        $schedules->getCollection()->transform(function (Schedule $schedule) use ($courses) {
+        $schedules->getCollection()->transform(function (Schedule $schedule) use ($courseTitles) {
             $startTime = $schedule->start_time instanceof \DateTimeInterface
                 ? $schedule->start_time->format('H:i')
                 : (is_string($schedule->start_time) && $schedule->start_time !== ''
@@ -50,8 +55,9 @@ class ScheduleController extends Controller
 
             return [
                 'id' => $schedule->id,
-                'course' => $schedule->title ?: ($courses[$schedule->course_id] ?? '-'),
+                'course' => $schedule->course?->title ?? ($courseTitles[$schedule->course_id] ?? '-'),
                 'course_id' => $schedule->course_id,
+                'class_title' => $schedule->title,
                 'tutor_id' => $schedule->mentor_id,
                 'tutor' => $schedule->mentor?->name ?? 'Tutor',
                 'day' => $dayName,
@@ -68,6 +74,7 @@ class ScheduleController extends Controller
 
         return Inertia::render('Admin/Schedule', [
             'schedules' => $schedules,
+            'courses' => $courses,
             'courses' => DB::table('courses')
                 ->select('id', 'title')
                 ->orderBy('title')
@@ -110,7 +117,7 @@ class ScheduleController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'course' => ['required', 'string', 'max:255'],
+            'course_id' => ['required', 'integer', 'exists:courses,id'],
             'tutor_id' => ['nullable', 'integer', 'exists:users,id'],
             'schedule_date' => ['required', 'date'],
             'start_time' => ['required', 'date_format:H:i'],
@@ -118,7 +125,12 @@ class ScheduleController extends Controller
             'meeting_link' => ['nullable', 'url', 'max:1024'],
         ]);
 
-        Schedule::create($this->buildPayload($validated));
+        $schedule = Schedule::create($this->buildPayload(
+            $validated,
+            (int) $validated['course_id'],
+            $validated['tutor_id'] ?? null
+        ));
+        AdminNotifier::scheduleCreated($schedule);
 
         return redirect()->route('admin.schedule')->with('success', 'Jadwal kelas berhasil ditambahkan.');
     }
@@ -126,15 +138,18 @@ class ScheduleController extends Controller
     public function update(Request $request, Schedule $schedule): RedirectResponse
     {
         $validated = $request->validate([
-            'course' => ['required', 'string', 'max:255'],
-            'tutor_id' => ['nullable', 'integer', 'exists:users,id'],
             'schedule_date' => ['required', 'date'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
             'meeting_link' => ['nullable', 'url', 'max:1024'],
         ]);
 
-        $schedule->update($this->buildPayload($validated));
+        $schedule->update($this->buildPayload(
+            $validated,
+            (int) $schedule->course_id,
+            $schedule->mentor_id
+        ));
+        AdminNotifier::scheduleUpdated($schedule->refresh());
 
         return redirect()->route('admin.schedule')->with('success', 'Jadwal kelas berhasil diperbarui.');
     }
@@ -146,22 +161,31 @@ class ScheduleController extends Controller
         return redirect()->route('admin.schedule')->with('success', 'Jadwal kelas berhasil dihapus.');
     }
 
-    private function buildPayload(array $validated): array
+    private function buildPayload(array $validated, int $courseId, ?int $mentorId): array
     {
         $startTime = Carbon::createFromFormat('Y-m-d H:i', $validated['schedule_date'].' '.$validated['start_time']);
         $endTime = Carbon::createFromFormat('Y-m-d H:i', $validated['schedule_date'].' '.$validated['end_time']);
-        $courseId = DB::table('courses')->where('title', $validated['course'])->value('id');
+        $courseTitle = DB::table('courses')->where('id', $courseId)->value('title');
 
-        if (! $courseId) {
+        if (! $courseTitle) {
             throw ValidationException::withMessages([
-                'course' => 'Course tidak ditemukan.',
+                'course_id' => 'Course tidak ditemukan.',
             ]);
         }
 
-        $this->ensureMentorCanTeachCourse($validated['tutor_id'] ?? null, (int) $courseId);
+        if ($endTime->lessThanOrEqualTo($startTime)) {
+            throw ValidationException::withMessages([
+                'end_time' => 'Jam selesai harus setelah jam mulai.',
+            ]);
+        }
+
+        $this->ensureMentorCanTeachCourse($mentorId, $courseId);
 
         return [
             'course_id' => $courseId,
+            'mentor_id' => $mentorId,
+            'title' => $courseTitle,
+            'meeting_link' => $validated['meeting_link'] ?? null,
             'mentor_id' => $validated['tutor_id'] ?? null,
             'title' => $validated['course'],
             'meeting_link' => filled($validated['meeting_link'] ?? null) ? $validated['meeting_link'] : null,

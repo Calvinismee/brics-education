@@ -17,6 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
+        $middleware->redirectGuestsTo(function ($request) {
+            return $request->is('admin') || $request->is('admin/*')
+                ? route('login.admin')
+                : route('login');
+        });
+
         $middleware->alias([
             'admin' => \App\Http\Middleware\IsAdmin::class,
             'tutor' => \App\Http\Middleware\IsTutor::class,

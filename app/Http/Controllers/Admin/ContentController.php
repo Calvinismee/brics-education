@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\AdminNotifier;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -136,6 +137,8 @@ class ContentController extends Controller
             ]);
         }
 
+        $currentStatus = $material->approval_status;
+
         DB::table('materials')
             ->where('id', $contentId)
             ->update([
@@ -146,7 +149,10 @@ class ContentController extends Controller
                 'updated_at' => now(),
             ]);
 
-        $this->notifyReviewResult($material, $status, $comment);
+        if ($currentStatus !== $status) {
+            AdminNotifier::contentReviewed($contentId, $status);
+            $this->notifyReviewResult($material, $status, $comment);
+        }
 
         return redirect()->route('admin.content')->with('success', $message);
     }

@@ -16,6 +16,7 @@ use App\Models\Material;
 use App\Models\Notification;
 use App\Models\Schedule;
 use App\Models\User;
+use App\Support\AdminNotifier;
 use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\Admin\TutorHistoryController;
 use App\Http\Controllers\Admin\UserController;
@@ -78,10 +79,13 @@ Route::post('/checkout', function (Request $request) {
     $transaction = Transaction::create([
         'user_id' => $user->id,
         'course_id' => $course->id,
+        'invoice_number' => sprintf('INV-%s-%04d', now()->format('YmdHis'), random_int(0, 9999)),
         'amount' => $course->price,
         'payment_method' => $request->payment_method,
         'payment_status' => 'pending',
     ]);
+
+    AdminNotifier::transactionPending($user, $course->title, $transaction->invoice_number);
 
     return redirect("/payment-status/{$transaction->id}");
 })->middleware('auth');
@@ -96,6 +100,7 @@ Route::get('/payment-status/{transaction}', function (Transaction $transaction) 
 
 Route::post('/payment-status/{transaction}/confirm', function (Transaction $transaction) {
     $transaction->load('course');
+    $previousStatus = $transaction->payment_status;
 
     $transaction->update([
         'payment_status' => 'success',
@@ -112,6 +117,16 @@ Route::post('/payment-status/{transaction}/confirm', function (Transaction $tran
             'enrolled_at' => now(),
         ]
     );
+
+    $student = User::find($transaction->user_id);
+
+    if ($student && ! in_array($previousStatus, ['paid', 'success'], true)) {
+        AdminNotifier::transactionSucceeded(
+            $student,
+            $transaction->course?->title ?? 'course terkait',
+            $transaction->invoice_number
+        );
+    }
 
     return redirect()
         ->to('/payment-status/' . $transaction->id)
