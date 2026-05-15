@@ -2,1215 +2,331 @@
 
 ## 1. Purpose
 
-This document describes the current system architecture of the BRICS Education application as implemented in the codebase.
+BRICS Education is a Laravel + Inertia learning platform for SNBT preparation. It supports public course discovery, student package purchases, tutor-managed learning content and schedules, and an admin back office for operations, review, reporting, and account management.
 
-The goal is to give the team a shared reference for:
+The system is currently organized around three authenticated roles:
 
-- business domain understanding
-- module boundaries
-- database structure
-- business process flows
-- current architectural constraints
-- recommended extension points for future development
+- `student`: buys packages, accesses enrolled courses, attends schedules, and consumes materials.
+- `mentor`: the tutor role in the database. The UI often calls this role `tutor`.
+- `admin`: manages operational data, reviews tutor content, monitors transactions, exports reports, and handles notifications.
 
-This document reflects the application state in the repository, not an aspirational future design.
+`roles.id` and `users.role_id` are the source of truth for authorization. The legacy `users.role` string may still exist in older database states, but runtime code should treat it as read-only compatibility data and should not write to it.
 
----
+## 2. Technology Stack
 
-## 2. System Summary
+- Backend: PHP 8.3, Laravel 13, Laravel Breeze, Inertia Laravel 2, Laravel Sanctum, Ziggy.
+- Database: PostgreSQL in development and test environments.
+- Frontend: React, Inertia React, Tailwind CSS, Vite, lucide-react, sonner.
+- Testing: Pest for PHP feature tests, Vitest and Testing Library for React tests.
+- Styling: Tailwind with reusable React page/layout components.
 
-BRICS Education is a Laravel + Inertia + React web application for managing an education business with three main actor types:
+## 3. Runtime Layers
 
-- `student`
-- `mentor` or `tutor`
-- `admin`
+The application follows a conventional Laravel monolith structure with an Inertia React frontend.
 
-The application currently emphasizes the admin workspace, with the following operational capabilities:
+- HTTP routes live in `routes/web.php` and `routes/auth.php`.
+- Controllers coordinate validation, authorization, database writes, and Inertia responses.
+- Domain helpers in `app/Support` and services in `app/Services` keep shared behavior out of controllers.
+- Eloquent models represent persistent domain objects and selected model events.
+- React pages under `resources/js/Pages` render admin, tutor, student, and auth experiences.
+- Layouts under `resources/js/Layouts` provide role-specific navigation shells.
+- Middleware shares authenticated user data and notification data with Inertia.
 
-- user management
-- package management
-- course overview
-- content review and approval
-- schedule management
-- transaction monitoring
-- transaction statistics
-- export history and reporting
-- notification center
+Important shared helpers and services:
 
-The core business model is:
+- `PackageEnrollmentService`: creates package enrollments after successful package purchase.
+- `AdminNotifier`: creates admin-facing notifications for operational events.
+- `AdminNotificationCache`: caches notification dropdown and stat payloads per admin.
+- `TutorCourseResolver`: resolves tutor-course assignments across the legacy single-course column and the newer pivot table.
+- `TutorSettings`: normalizes tutor preference settings.
 
-1. A package contains one or more courses.
-2. A course can belong to many packages.
-3. A mentor is assigned to exactly one course.
-4. A course can have many mentors.
-5. When a student purchases a package successfully, the student is automatically enrolled into every course that belongs to that package.
-6. Content is attached to a course and uploaded by a mentor, while admin only reviews it.
+## 4. Access Model
 
----
+Authentication uses Laravel session auth. Role-specific login routes exist so users can intentionally switch between tutor and admin sessions.
 
-## 3. Technology Stack
+- Public pages include the landing page, course detail, registration, login pages, checkout, and payment flows.
+- Student pages require `auth` and include dashboard, course learning, schedules, and profile flows.
+- Admin pages require `web`, `auth`, `verified`, and `admin` middleware.
+- Tutor pages require `web`, `auth`, `verified`, and tutor/mentor middleware.
 
-### Backend
+`POST /login` remains a guest route for the generic login form. `POST /login/admin` and `POST /login/tutor` are intentionally outside the guest group so a user already logged in as another role can submit a role-specific login and get a fresh session for the requested role. Login handlers regenerate the session, clear stale intended URLs, validate the authenticated role, and redirect to the correct dashboard.
 
-- PHP 8+
-- Laravel 12 style bootstrap structure
-- Eloquent ORM
-- Query Builder for most admin reporting/query composition
-- PostgreSQL as the primary database
+## 5. Core Domain Model
 
-### Frontend
+### Users and Roles
 
-- React
-- Inertia.js
-- Tailwind CSS utility classes
-- Lucide icons
+- `roles`: canonical role records such as `student`, `mentor`, and `admin`.
+- `users.role_id`: canonical role reference.
+- `users.role`: legacy compatibility field, not the runtime source of truth.
+- `users.mentor_course_id`: legacy single-course tutor assignment.
+- Tutor profile and settings columns support tutor-facing profile, notification, and preference pages.
 
-### Other Application Concerns
+The `User` model exposes a computed role accessor derived from `role_id`. Code that creates or updates users should set `role_id`; it should not assign `role` directly.
 
-- session-based authentication
-- role-based admin access
-- notification sharing through Inertia middleware
-- short-lived cache for admin notifications and dashboard summary
+### Courses and Packages
 
----
+- `courses`: learning courses visible to students and used by materials and schedules.
+- `packages`: purchasable course bundles.
+- `package_course`: package-to-course pivot.
+- `course_tutor`: tutor-to-course pivot for multi-course tutor assignment.
 
-## 4. High-Level Architecture
+`TutorCourseResolver` provides the compatibility layer for tutor assignments. It reads `users.mentor_course_id`, reads or syncs `course_tutor` when the table exists, and exposes helper methods such as `ids`, `sync`, and `isAssigned`.
 
-The system is organized into four practical layers.
+### Purchases and Enrollment
 
-### 4.1 Presentation Layer
+- `transactions`: package purchase records with pending, paid, failed, and cancelled style states.
+- `enrollments`: student access to a course. Package purchases create one enrollment per course in the purchased package.
 
-Implemented in:
+Package purchases should go through `PackageEnrollmentService` so transaction, package, and enrollment behavior stays consistent.
 
-- `resources/js/Pages/*`
-- `resources/js/Layouts/*`
+### Materials and Content Review
 
-Responsibilities:
+- `materials`: tutor-uploaded learning materials. Key fields include `title`, `type`, `course_id`, `uploaded_by`, `file_url`, `content`, `approval_status`, `approved_by`, `approved_at`, and `rejection_comment`.
+- Approval statuses are normalized to `pending`, `approved`, and `rejected`.
 
-- page rendering
-- filtering interactions
-- modals and admin workflows
-- Inertia form submission
-- display of analytics, lists, and review actions
+Tutors upload material from the tutor workspace. Admins review content from the admin content module. Admins can approve or reject material, but admin content create/update/delete endpoints intentionally abort because admins are reviewers, not content authors.
 
-### 4.2 HTTP / Application Layer
+The admin content preview supports rich text content, linked files, PDF and office-style file links, video files, and YouTube links detected from material content or file URL.
 
-Implemented in:
+### Schedules
 
-- `app/Http/Controllers/*`
-- `app/Http/Middleware/*`
+- `schedules`: course sessions with `course_id`, `mentor_id`, `title`, `meeting_link`, `start_time`, `end_time`, and `started_at`.
 
-Responsibilities:
+Admin schedules select a course and an optional tutor. The backend validates that the tutor can teach the selected course through `TutorCourseResolver`; if the tutor has no assignment yet, the selected course can be synced as the initial assignment. Meeting links are optional but must be valid URLs when provided.
 
-- route handling
-- validation
-- orchestration of queries and writes
-- business rule enforcement at request time
-- access control
-- Inertia response composition
+Tutor schedule routes allow tutors to view classes, create class sessions in their assigned courses, start sessions, and update meeting links.
 
-### 4.3 Domain / Service Layer
+### Notifications
 
-Implemented in:
+- `notifications`: generic user notifications with `user_id`, `title`, `message`, `is_read`, and timestamps.
 
-- `app/Services/PackageEnrollmentService.php`
-- model-level helper behavior in `User`, `Package`, `Course`, `Schedule`
+Admin notifications are created through `AdminNotifier`. Tutor upload flows aggregate multiple uploaded materials into one admin notification to avoid duplicate "new content needs review" alerts. Direct `Material` creation still has a model hook for pending material notifications, but tutor uploads suppress that hook and send the aggregate notification explicitly.
 
-Responsibilities:
+Content review also notifies the tutor who uploaded the material. Approved material can notify active students enrolled in the related course.
 
-- enforce package-to-course enrollment propagation
-- role mapping helpers
-- relationship definitions
-
-### 4.4 Data Layer
-
-Implemented in:
-
-- `database/migrations/*`
-- `database/seeders/*`
-
-Responsibilities:
-
-- schema definition
-- domain persistence
-- test and local development seed data
-
----
-
-## 5. Main Actors
-
-### 5.1 Student
-
-Student responsibilities in the business domain:
-
-- purchase a package
-- receive enrollments to all courses in that package
-- consume learning content
-
-Current visible backend representation:
-
-- stored in `users`
-- identified by `role_id` linked to role `student`
-- linked to `enrollments`
-- linked to `transactions`
-
-### 5.2 Mentor / Tutor
-
-Mentor responsibilities:
-
-- teach exactly one assigned course
-- upload content for a course
-- appear in scheduling as instructor
-
-Current representation:
-
-- stored in `users`
-- role uses `mentor` in database role table, but UI/API often uses `tutor`
-- linked to a single course through `users.mentor_course_id`
-- referenced in `materials.uploaded_by`
-- referenced in `schedules.mentor_id`
-
-### 5.3 Admin
-
-Admin responsibilities:
-
-- manage users
-- assign tutor course ownership
-- manage packages and package-course mapping
-- review and approve/reject content
-- manage schedules
-- monitor transactions and exports
-- review notifications and summary metrics
-
-Constraints:
-
-- admin cannot create, edit, or delete learning content directly
-- admin access is guarded by middleware alias `admin`
-
----
-
-## 6. Business Domain Model
-
-### 6.1 Core Concepts
-
-#### User
-
-Represents all authenticated actors.
-
-Important fields:
-
-- `id`
-- `name`
-- `email`
-- `password`
-- `role_id`
-- `mentor_course_id`
-
-Important note:
-
-- `users.role` string column still exists as legacy data
-- canonical role resolution now uses `role_id` and the `roles` table
-
-#### Role
-
-Defines actor classification.
-
-Current seeded roles:
-
-- `student`
-- `mentor`
-- `admin`
-
-The frontend and tests may refer to `tutor`, but that maps to the `mentor` role internally.
-
-#### Course
-
-Represents a learning subject or teachable unit.
-
-Important properties:
-
-- title
-- description
-- price
-- status
-
-Course is the central node for:
-
-- mentor ownership
-- student enrollment
-- learning content
-- schedule
-- package composition
-
-#### Package
-
-Represents a purchasable bundle of courses.
-
-Important properties:
-
-- name
-- price
-- description
-- features
-- popular
-
-Business meaning:
-
-- a package is the commercial product
-- a course is the academic delivery unit
-
-#### Enrollment
-
-Represents a student-course membership.
-
-Important meaning:
-
-- created automatically when package purchase succeeds
-- one student can have many enrollments
-- each enrollment points to exactly one course
-- enrollments can also remember which package generated them
-
-#### Transaction
-
-Represents payment data.
-
-Important meaning:
-
-- current architecture supports package-based transactions
-- `course_id` is now nullable
-- `package_id` should be used for current package purchase flow
-- `enrollment_id` points to one enrollment record for reference, but one successful package purchase may generate multiple enrollments
-
-#### Material
-
-Represents mentor-uploaded learning content for a course.
-
-Important meaning:
-
-- belongs to one course
-- uploaded by one mentor
-- reviewed by admin
-- approval states drive the content review workflow
-
-#### Schedule
-
-Represents a class session for a course and mentor.
-
-Important meaning:
-
-- belongs to one course
-- handled by one mentor
-- mentor cannot be scheduled across different courses
-
-#### Notification
-
-Represents operational notifications shown to admin.
-
-#### Report Export
-
-Represents export history metadata only.
-
-It stores:
-
-- who exported
-- what was exported
-- row count
-- filters used
-- generated file name
-
----
-
-## 7. Business Rules and Invariants
-
-The following rules should be treated as core system invariants.
-
-### 7.1 Package and Course Rules
-
-- One package can contain many courses.
-- One course can belong to many packages.
-- Package-course mapping is stored in `package_course`.
-
-### 7.2 Mentor Assignment Rules
-
-- One mentor can only teach one course at a time.
-- One course can have many mentors.
-- The mentor-course assignment is stored on `users.mentor_course_id`.
-- If a mentor is first scheduled on a course and has no assignment yet, the system assigns that course automatically.
-- If a mentor is already assigned to a different course, schedule creation/update must reject the request.
-
-### 7.3 Student Enrollment Rules
-
-- A student does not enroll directly into a package.
-- A student enrolls into courses.
-- Package purchase is the trigger that creates course enrollments.
-- One successful package purchase creates one enrollment per course in the package.
-- Enrollments generated from package purchase store the originating `package_id`.
-
-### 7.4 Transaction Rules
-
-- Current commercial flow is package-based.
-- `transactions.package_id` is the main product pointer.
-- `transactions.course_id` exists for backward compatibility and older assumptions.
-- Only successful payment should trigger enrollment propagation.
-- Pending or failed transactions must not create active enrollments.
-
-### 7.5 Content Review Rules
-
-- Content belongs to a course.
-- Content is uploaded by mentor.
-- Admin can approve or reject content.
-- Admin cannot create, edit, or delete content directly.
-- Rejected content may contain an admin rejection comment.
-
-### 7.6 Admin Access Rules
-
-- Only admin users may access `/admin/*`.
-- Guests opening `/admin` or `/admin/*` are redirected to `/login/admin`.
-- Non-admin users are redirected to `/` with an unauthorized message.
-
-### 7.7 Student Access Rules
-
-- Only users whose resolved role name is `student` may access student dashboard, learning pages, and student schedules.
-- Student route guards must not hardcode numeric role ids because seeded or migrated role ids can vary between databases.
-
----
-
-## 8. Business Processes
-
-### 8.1 User and Role Lifecycle
-
-1. Admin creates or updates a user.
-2. Admin chooses the role: `student`, `tutor`, or `admin`.
-3. If role is tutor, admin may assign a course through `mentor_course_id`.
-4. The system maps role label to the canonical role id.
-
-Business implication:
-
-- tutor assignment is now part of user administration
-- there is no separate tutor-management module
-
-### 8.2 Package Management Process
-
-1. Admin creates a package.
-2. Admin selects one or more courses for the package.
-3. System stores package data in `packages`.
-4. System stores package-course links in `package_course`.
-
-Business implication:
-
-- package is no longer just marketing metadata
-- package is now the key product for purchase and enrollment
-
-### 8.3 Package Purchase and Enrollment Process
-
-1. Student pays for a package.
-2. Transaction is stored with `package_id`.
-3. If payment is successful, `PackageEnrollmentService::enroll()` is invoked.
-4. The service reads all courses linked to that package.
-5. The service creates or updates one enrollment per course.
-6. Enrollment status becomes `active`.
-
-Important note:
-
-- the current repository has the enrollment service and seed-driven usage, but full student-facing checkout orchestration is not yet implemented as a public purchase module
-
-### 8.4 Tutor Teaching Assignment Process
-
-1. Tutor can be assigned a course from user management, or implicitly through first valid schedule assignment.
-2. Admin schedule creation submits `course_id` from the course list; schedule titles are display metadata and must not be used as course lookup keys.
-3. Editing an existing schedule only changes date, time, and meeting link; changing course or tutor should be handled by creating a new schedule.
-4. Schedule `end_time` must be later than `start_time`.
-5. When admin creates a schedule, the selected mentor must either:
-   - have no course assignment yet, or
-   - already be assigned to the same course
-6. Otherwise, validation fails.
-
-### 8.5 Content Review Process
-
-1. Tutor uploads content for a course.
-2. Content enters `pending` state.
-3. Admin reviews content from the content page.
-4. Admin approves or rejects.
-5. Rejection may include a comment.
-6. Content page and course overview both reflect the review state.
-
-### 8.6 Reporting and Export Process
-
-1. Admin exports a user or transaction dataset.
-2. Export response streams CSV.
-3. System records export metadata into `report_exports`.
-4. Admin can review export history from the reports page.
-5. Reports page can filter history by date range.
-
-### 8.7 Notification Process
-
-1. Notifications are stored in `notifications`.
-2. Middleware shares the latest notification set with Inertia.
-3. Notification cache is stored per admin user.
-4. Read actions invalidate the cached notification payload and stats.
-5. Runtime admin notifications are broadcast to all admin users through `App\Support\AdminNotifier`.
-
-Current runtime notification triggers:
-
-- student registration
-- checkout transaction created with `pending` status
-- payment confirmation that changes a transaction to `success`
-- schedule creation
-- schedule update
-- content approval or rejection
-- future Eloquent `Material` creation with `pending` approval status
-
----
-
-## 9. Database Architecture
-
-## 9.1 Table Overview
-
-### Identity and Access
-
-#### `users`
-
-Purpose:
-
-- master table for all actors
-
-Important columns:
-
-- `id`
-- `name`
-- `email`
-- `email_verified_at`
-- `password`
-- `role`
-- `role_id`
-- `mentor_course_id`
-- `remember_token`
-- `created_at`
-- `updated_at`
-
-Notes:
-
-- `role_id` is the source of truth for authorization
-- `role` string is legacy and should not be treated as authoritative
-
-#### `roles`
-
-Purpose:
-
-- lookup table for role ids
-
-Important columns:
-
-- `id`
-- `name`
-
-### Learning Domain
-
-#### `categories`
-
-Purpose:
-
-- optional classification table for courses
-
-Current system usage:
-
-- schema exists
-- current admin UI and business flow do not actively use category management
-
-#### `courses`
-
-Purpose:
-
-- academic learning unit
-
-Important columns:
-
-- `id`
-- `category_id`
-- `title`
-- `description`
-- `price`
-- `status`
-- `created_at`
-- `updated_at`
-
-#### `packages`
-
-Purpose:
-
-- commercial bundle
-
-Important columns:
-
-- `id`
-- `name`
-- `price`
-- `description`
-- `features`
-- `students`
-- `popular`
-- `created_at`
-- `updated_at`
-
-Note:
-
-- `students` currently exists in schema but is not the source of truth for active enrollment counts
-- active enrollment counts should be derived from `enrollments`
-
-#### `package_course`
-
-Purpose:
-
-- many-to-many mapping between packages and courses
-
-Important columns:
-
-- `id`
-- `package_id`
-- `course_id`
-- timestamps
-
-Constraint:
-
-- unique pair on `package_id` and `course_id`
-
-#### `enrollments`
-
-Purpose:
-
-- student membership in a course
-
-Important columns:
-
-- `id`
-- `user_id`
-- `course_id`
-- `package_id`
-- `status`
-- `enrolled_at`
-- `created_at`
-- `updated_at`
-
-#### `materials`
-
-Purpose:
-
-- course content uploaded by mentor
-
-Important columns:
-
-- `id`
-- `course_id`
-- `uploaded_by`
-- `title`
-- `type`
-- `file_url`
-- `content`
-- `approval_status`
-- `rejection_comment`
-- `approved_by`
-- `approved_at`
-- timestamps
-
-#### `schedules`
-
-Purpose:
-
-- calendarized delivery session for one course and one mentor
-
-Important columns:
-
-- `id`
-- `course_id`
-- `mentor_id`
-- `title`
-- `start_time`
-- `end_time`
-- `meeting_link`
-- timestamps
-
-### Commerce and Analytics
-
-#### `transactions`
-
-Purpose:
-
-- payment records
-
-Important columns:
-
-- `id`
-- `user_id`
-- `course_id`
-- `package_id`
-- `enrollment_id`
-- `invoice_number`
-- `amount`
-- `payment_method`
-- `payment_status`
-- `payment_gateway_ref`
-- `paid_at`
-- timestamps
-
-Important interpretation:
-
-- `package_id` is the current product pointer
-- `course_id` is legacy-compatible and nullable
-- `enrollment_id` is a reference pointer, not a full replacement for all enrollments generated by a package purchase
-
-### Operational Support
-
-#### `notifications`
-
-Purpose:
-
-- admin-facing operational notifications
-
-Important columns:
-
-- `id`
-- `user_id`
-- `title`
-- `message`
-- `is_read`
-- timestamps
-
-#### `report_exports`
-
-Purpose:
-
-- export audit trail
-
-Important columns:
-
-- `id`
-- `user_id`
-- `type`
-- `title`
-- `file_name`
-- `row_count`
-- `filters`
-- timestamps
-
-### Platform Tables
-
-- `password_reset_tokens`
-- `sessions`
-- `cache`
-- `cache_locks`
-- `jobs`
-- `job_batches`
-- `failed_jobs`
-
----
-
-## 9.2 Relationship Diagram
+## 6. Main Relationships
 
 ```text
-roles 1 --- * users
-courses 1 --- * users (as mentor_course_id for mentors)
+roles
+  -> users.role_id
 
-packages * --- * courses   through package_course
+users
+  -> enrollments.user_id
+  -> transactions.user_id
+  -> materials.uploaded_by
+  -> schedules.mentor_id
+  -> notifications.user_id
+  -> report_exports.generated_by
+  -> course_tutor.tutor_id
 
-users 1 --- * enrollments
-courses 1 --- * enrollments
-packages 1 --- * enrollments
+courses
+  -> package_course.course_id
+  -> enrollments.course_id
+  -> materials.course_id
+  -> schedules.course_id
+  -> course_tutor.course_id
 
-users 1 --- * transactions
-packages 1 --- * transactions
-courses 1 --- * transactions (legacy-compatible, nullable)
-enrollments 1 --- * transactions (reference use)
+packages
+  -> package_course.package_id
+  -> transactions.package_id
 
-courses 1 --- * materials
-users 1 --- * materials (uploaded_by)
-users 1 --- * materials (approved_by)
-
-courses 1 --- * schedules
-users 1 --- * schedules (mentor_id)
-
-users 1 --- * notifications
-users 1 --- * report_exports
+transactions
+  -> enrollments.transaction_id
 ```
 
----
+## 7. Primary Workflows
 
-## 10. Request and Route Architecture
+### Registration and Login
 
-## 10.1 Public Routes
+Users register as students by default unless a role is explicitly provided by an admin workflow. Login redirects are role-aware:
 
-- `/`
-  Landing page
-- `/login`
-  student login
-- `/login/tutor`
-  tutor login page
-- `/login/admin`
-  admin login page
+- Admin users go to the admin dashboard.
+- Tutor/mentor users go to the tutor dashboard.
+- Student users go to the student dashboard.
 
-## 10.2 Authenticated Admin Routes
+Role-specific login endpoints prevent stale tutor/admin sessions from redirecting to the wrong dashboard after switching accounts.
 
-All admin routes use:
+### Package Purchase
 
-- `auth`
-- `verified`
-- `admin`
+Students choose a package, create a transaction, and complete payment. When payment is accepted, package courses are converted into enrollments through `PackageEnrollmentService`. Admin transaction pages expose operational views and report exports.
 
-Admin modules:
+### Tutor Content Upload and Admin Review
 
-- `/admin/dashboard`
-- `/admin/users`
-- `/admin/packages`
-- `/admin/courses`
-- `/admin/content`
-- `/admin/schedule`
-- `/admin/transactions`
-- `/admin/transaction-stats`
-- `/admin/reports/export`
-- `/admin/notifications`
-- `/admin/settings`
+Tutors upload materials against assigned courses. Uploaded content starts as `pending`. The tutor upload controller creates materials without triggering duplicate model notifications, then sends one aggregate admin notification for the upload batch.
 
-## 10.3 Authentication Flow
+Admins review pending material from the content page. Approving sets `approved_by` and `approved_at`; rejecting stores an optional rejection comment. Review results create tutor notifications and, for approved materials, student notifications for active enrollments in the course.
 
-There are two practical login paths:
+### Schedule Management
 
-- generic login
-- admin-specific login
+Admins can manage schedules globally. Tutors can manage their own classes within their course assignments. `TutorCourseResolver` protects schedule creation and update flows from direct assumptions about whether a tutor is assigned through `mentor_course_id`, `course_tutor`, or both.
 
-Important behavior:
+### Notifications
 
-- admin users authenticated through generic login are redirected to admin dashboard
-- non-admin users attempting admin login are logged out and rejected
+Authenticated users receive notification data through shared Inertia props. Admin notification dropdown data is cached per user and cleared after new admin notifications are inserted. Tutor pages receive a compact `tutorNotifications` payload with latest items and unread count.
 
----
+## 8. Backend Modules
 
-## 11. Admin Module Responsibilities
+Admin controllers:
 
-### 11.1 Dashboard
+- `AdminDashboardController`: dashboard metrics and summary cards.
+- `UserController`: user CRUD, role assignment, tutor course assignment.
+- `CourseController`: course CRUD and statistics.
+- `PackageController`: package CRUD and package-course composition.
+- `ScheduleController`: global schedule management.
+- `ContentController`: material review and content statistics.
+- `TransactionController`: transaction operations.
+- `ReportController`: report export history and generation.
+- `NotificationController`: admin notification list, mark read, and stats.
 
-Controller:
+Tutor controllers:
 
-- `AdminDashboardController`
+- `DashboardController`: tutor overview.
+- `MaterialController`: tutor material upload, listing, announcements, and deletion.
+- `ClassMonitoringController`: tutor class and student monitoring.
+- `ScheduleController`: tutor-owned schedules and session state.
+- `NotificationController`: tutor notification list and mark-read actions.
 
-Purpose:
+Auth controllers:
 
-- present high-level user metrics and growth data
+- `AuthenticatedSessionController`: generic, admin, and tutor login handling.
+- `RegisteredUserController`: student registration and role-aware creation.
+- Standard Breeze password, verification, and reset controllers.
 
-Notes:
+## 9. Frontend Architecture
 
-- heavily query-driven
-- some metric cards use synthetic placeholders such as random course/progress display for recent users
-- should be treated as a dashboard summary layer, not as the source of transactional truth
+The frontend is an Inertia React app. Server controllers return page components and serialized props rather than JSON API resources for most page loads.
 
-### 11.2 Users
+Main layout shells:
 
-Controller:
+- `AdminLayout`: admin navigation, notification dropdown, and admin page chrome.
+- `AuthenticatedLayout`: authenticated student-facing layout.
+- `GuestLayout`: auth and public form layout.
+- `TutorSidebar`: tutor workspace navigation component.
 
-- `Admin\UserController`
+Main page groups:
 
-Purpose:
+- `resources/js/Pages/Admin`: dashboard, users, courses, packages, schedules, content, transactions, reports, notifications.
+- `resources/js/Pages/Tutor`: dashboard, material upload, classes, schedule, history, profile, settings, password, notifications, student profile.
+- `resources/js/Pages/Student`: student dashboard, course learning, schedules, profile-related pages.
+- `resources/js/Pages/Auth`: login, register, password reset, verification.
 
-- CRUD for users
-- assign tutor course ownership
-- show student enrolled courses
-- export users CSV
+Admin and tutor pages are mostly form-driven Inertia views. They rely on Ziggy route names, Inertia form helpers, and server-side validation errors.
 
-### 11.3 Packages
+## 10. Database Snapshot
 
-Controller:
+Core identity tables:
 
-- `Admin\PackageController`
+- `roles`
+- `users`
+- `password_reset_tokens`
+- `sessions`
 
-Purpose:
+Learning and commerce tables:
 
-- CRUD for packages
-- maintain package-course mapping
+- `courses`
+- `packages`
+- `package_course`
+- `transactions`
+- `enrollments`
 
-### 11.4 Courses
+Tutor and learning operations:
 
-Controller:
-
-- `Admin\CourseController`
-
-Purpose:
-
-- course-centric operational overview
-
-Displays:
-
-- number of enrolled students
-- mentors assigned to course
-- package membership
-- content list by course
-
-### 11.5 Content
-
-Controller:
-
-- `Admin\ContentController`
-
-Purpose:
-
-- review-only workflow for mentor content
-
-Constraints:
-
-- store/update/destroy are forbidden for admin
-
-### 11.6 Schedule
-
-Controller:
-
-- `Admin\ScheduleController`
-
-Purpose:
-
-- create, update, delete class schedules
-- bind schedules to courses by `course_id`
-- enforce mentor-course invariant
-
-### 11.7 Transactions
-
-Controller:
-
-- `Admin\TransactionController`
-
-Purpose:
-
-- list transactions
-- filter/search/sort
-- show transaction detail
-- export CSV
-- display revenue analytics
-
-### 11.8 Reports
-
-Controller:
-
-- `Admin\ReportController`
-
-Purpose:
-
-- view export history
-- filter export records by date range
-
-### 11.9 Notifications
-
-Controller:
-
-- `Admin\NotificationController`
-
-Support:
-
-- `App\Support\AdminNotificationCache`
-- `App\Http\Middleware\ShareNotifications`
-
-Purpose:
-
-- list notifications
-- mark single notification as read
-- mark all notifications as read
-- share compact notification feed into admin layout
-
----
-
-## 12. Frontend Architecture
-
-## 12.1 Layout Strategy
-
-Primary admin shell:
-
-- `resources/js/Layouts/AdminLayout.jsx`
-
-Responsibilities:
-
-- sidebar navigation
-- mobile drawer behavior
-- top header
-- notification dropdown
-- shared admin framing
-
-## 12.2 Page Organization
-
-Admin pages are route-oriented:
-
-- one main page per operational module
-- page receives fully shaped Inertia props
-- page is mostly presentation and interaction logic
-
-Current design style:
-
-- data-heavy panels
-- card + table + modal workflows
-- minimal client-side domain logic
-
-## 12.3 State Strategy
-
-Most state is local UI state:
-
-- filters
-- modal visibility
-- form state
-- search text
-- action loading state
-
-Business data remains server-driven through Inertia page props.
-
----
-
-## 13. Caching Strategy
-
-### Dashboard Cache
-
-- key: `admin:dashboard:overview:v2`
-- TTL: 300 seconds
-
-Purpose:
-
-- reduce repeated expensive dashboard aggregation queries
-
-### Notification Cache
-
-Keys are user-scoped:
-
-- `notifications:shared:{userId}`
-- `notifications:stats:{userId}`
-
-TTL:
-
-- 60 seconds
-
-Purpose:
-
-- reduce repeated notification dropdown queries
-
-Invalidation:
-
-- read actions call `AdminNotificationCache::forgetForUser()`
-
----
-
-## 14. Seeder Architecture
-
-Seeders are designed to reflect the current package-course-enrollment model for a SNBT preparation website.
-
-### Seeded Actors
-
-- 3 students
-- 7 tutors mapped one-to-one to SNBT course subjects
-- 1 admin
-
-### Seeded Domain Data
-
-- categories for `Tes Potensi Skolastik` and `Tes Literasi`
-- 7 active SNBT courses:
-  - `Penalaran Umum`
-  - `Pengetahuan dan Pemahaman Umum`
-  - `Pemahaman Bacaan dan Menulis`
-  - `Pengetahuan Kuantitatif`
-  - `Literasi dalam Bahasa Indonesia`
-  - `Literasi dalam Bahasa Inggris`
-  - `Penalaran Matematika`
-- one commercial package: `Paket Persiapan SNBT`
-- package-course mapping from `Paket Persiapan SNBT` to all 7 SNBT courses
-- course content by tutor
-- schedules by subject tutor
-- package-based transactions
-- enrollment propagation from successful transactions
-- notifications for admin
-
-Important note:
-
-- local seed data is now aligned with the current architecture
-- package purchase is reflected in seeded transactions, not direct course purchase
-- successful seeded SNBT transactions enroll students into every course in `Paket Persiapan SNBT`
-
----
-
-## 15. Known Constraints and Technical Debt
-
-The following are important for the team to know before extending the system.
-
-### 15.1 Legacy `users.role` Column
-
-- `users.role` still exists
-- the system should use `role_id` as canonical authorization data
-- seeders and admin user writes keep `users.role` synchronized for legacy visibility
-- if future cleanup is planned, remove the string role after confirming no remaining runtime dependency
-
-### 15.2 `transactions.course_id` Is Transitional
-
-- course-specific transactions existed earlier
-- current business model is package-first
-- keep `course_id` nullable until all old logic and reporting assumptions are fully removed
-
-### 15.3 `transactions.enrollment_id` Is Only a Reference
-
-- one package purchase creates many enrollments
-- transaction stores only one reference enrollment id
-- if the team needs a perfect transaction-to-many-enrollments audit model, introduce a junction table such as `transaction_enrollments`
-
-### 15.4 Categories Are Present but Operationally Unused
-
-- `categories` table exists
-- there is no active admin module for category management
-
-### 15.5 Dashboard Includes Synthetic UI Metrics
-
-- some dashboard presentation values are placeholders or derived for display purposes
-- do not use dashboard widgets as accounting-grade analytics
-
-### 15.6 Admin Cannot Author Learning Content
-
-- this is a deliberate business constraint in current code
-- if admin authoring is needed, it should be introduced as a new workflow rather than by weakening current review endpoints
-
----
-
-## 16. Recommended Development Rules for the Team
-
-When extending this system, the team should preserve the following architectural conventions.
-
-### 16.1 Treat Course as the Academic Core
-
-- content attaches to course
-- mentors attach to course
-- schedules attach to course
-- student learning access is expressed through enrollments to course
-
-### 16.2 Treat Package as the Commercial Core
-
-- package is what students buy
-- package determines which courses are unlocked
-
-### 16.3 Keep Enrollment Derivable and Auditable
-
-- enrollment creation should remain deterministic from successful purchase
-- avoid manual enrollment writes unless the feature explicitly represents manual admin intervention
-
-### 16.4 Keep Admin Controllers Thin
-
-- orchestration belongs in services when a workflow becomes reusable or multi-step
-- `PackageEnrollmentService` is the current example and should be reused for future purchase completion flows
-
-### 16.5 Prefer `role_id` Over String Role
-
-- new code should not reintroduce business logic based on `users.role`
-
-### 16.6 Preserve Mentor Single-Course Constraint
-
-- if business changes later require multi-course mentors, that is a schema change
-- it should not be hacked around in schedules alone
-
-Current schema for the invariant:
-
-- `users.mentor_course_id`
-
-Future multi-course option:
-
-- replace with `mentor_course` pivot table
-
-### 16.7 Keep Content Workflow Explicit
-
-- `pending`
-- `approved`
-- `rejected`
-
-Do not silently publish content without a clear state change.
-
-### 16.8 Keep Architecture Documentation Current
-
-- Always update `Architecture.md` when adding or changing features, seed data, or migrations.
-
----
-
-## 17. Suggested Future Enhancements
-
-The following are natural next steps if the system grows.
-
-### 17.1 Student Purchase Module
-
-Implement a real checkout flow that:
-
-- creates package transaction
-- processes payment callback
-- calls `PackageEnrollmentService` on success
-
-### 17.2 Transaction-to-Enrollment Audit Table
-
-Introduce a dedicated mapping table if finance and learning audit must be exact at many-to-many level.
-
-### 17.3 Tutor Content Authoring Module
-
-Mentor-facing content authoring UI and API should be formalized if not already planned outside this repository slice.
-
-### 17.4 Category Management
-
-If categories are reinstated as a business concept, add:
-
-- admin CRUD
-- course filtering by category
-- reporting by category
-
-### 17.5 Better Analytics Layer
-
-Move reporting-grade metrics into dedicated read models or materialized reporting queries if the admin analytics surface keeps expanding.
-
----
-
-## 18. Practical File Map
-
-Important backend files:
-
-- `routes/web.php`
-- `app/Http/Controllers/Admin/*`
-- `app/Http/Controllers/Auth/AuthenticatedSessionController.php`
-- `app/Services/PackageEnrollmentService.php`
-- `app/Models/User.php`
-- `app/Models/Package.php`
-- `app/Models/Course.php`
-- `app/Models/Schedule.php`
-
-Important frontend files:
-
-- `resources/js/Layouts/AdminLayout.jsx`
-- `resources/js/Pages/Admin/Users.jsx`
-- `resources/js/Pages/Admin/Packages.jsx`
-- `resources/js/Pages/Admin/Courses.jsx`
-- `resources/js/Pages/Admin/Content.jsx`
-- `resources/js/Pages/Admin/Schedule.jsx`
-- `resources/js/Pages/Admin/Transactions.jsx`
-- `resources/js/Pages/Admin/TransactionDetail.jsx`
-- `resources/js/Pages/Admin/TransactionStats.jsx`
-- `resources/js/Pages/Admin/ReportsExport.jsx`
-
-Important schema files:
-
-- `database/migrations/2026_05_08_000000_create_learning_tables.php`
-- `database/migrations/2026_05_08_000001_create_packages_table.php`
-- `database/migrations/2026_05_08_000002_create_schedules_table.php`
-- `database/migrations/2026_05_10_000001_create_report_exports_table.php`
-- `database/migrations/2026_05_12_000001_add_package_course_and_mentor_course_relations.php`
-
-Important seed files:
-
-- `database/seeders/DatabaseSeeder.php`
-- `database/seeders/PackageSeeder.php`
-- `database/seeders/ContentSeeder.php`
-- `database/seeders/ScheduleSeeder.php`
-- `database/seeders/TransactionSeeder.php`
-- `database/seeders/NotificationSeeder.php`
-
----
-
-## 19. Final Guidance
-
-If the team uses this document as the base for future development, the safest mental model is:
-
-- package is what is sold
-- course is what is taught
-- enrollment is what grants access
-- mentor belongs to one course
-- content belongs to one course
-- admin governs operations, not content authorship
-
-Any future feature should first decide which of those five domain anchors it belongs to before implementation begins.
+- `course_tutor`
+- `materials`
+- `schedules`
+- `announcements` when present in the active schema
+
+Operational tables:
+
+- `notifications`
+- `report_exports`
+- `cache`
+- `jobs`
+- `failed_jobs`
+
+Important compatibility notes:
+
+- `users.mentor_course_id` remains supported for older single-course tutor assignment.
+- `course_tutor` is the multi-course assignment path.
+- `users.role` can exist in older schemas but should not drive authorization.
+- `transactions.course_id` can exist for legacy single-course purchase assumptions, but package-course enrollment is handled through package relationships.
+
+## 11. Caching and Shared Props
+
+- Admin dashboard overview data is cached briefly to reduce repeated aggregate queries.
+- Admin notification dropdown and stats are cached per user through `AdminNotificationCache`.
+- New admin notifications clear the affected admin users' notification cache entries.
+- `ShareNotifications` shares general notification data for authenticated users.
+- `HandleInertiaRequests` shares `auth.user` globally and shares compact tutor notification data only for tutor/mentor users.
+
+## 12. Architectural Rules
+
+- Use `role_id` and role records for authorization. Do not write to `users.role`.
+- Use `TutorCourseResolver` for tutor-course assignment checks and syncs.
+- Do not eager-load tutor `assignedCourses` in code paths that must work before the `course_tutor` migration has run.
+- Use `PackageEnrollmentService` for package purchase enrollment writes.
+- Use `AdminNotifier` for admin-facing notification creation so cache invalidation stays centralized.
+- Keep material review status changes explicit: `pending`, `approved`, or `rejected`.
+- Admins review tutor content; they do not author learning material through the admin content controller.
+- Keep meeting links nullable, but validate them as URLs when provided.
+- Prefer Inertia page props and server validation for admin and tutor forms unless an interaction genuinely needs an API endpoint.
+
+## 13. Known Constraints
+
+- The project still carries compatibility with older database states, especially around `users.role`, `users.mentor_course_id`, and `course_tutor`.
+- Some older flows may still assume a transaction maps to one course, while the current package model can enroll a student into many courses.
+- Dashboard statistics are operational summaries and may mix live aggregate queries with cached payloads.
+- Notification data is stored in a generic table, so title/message conventions matter for consistent UI behavior.
+- The tutor role is named `mentor` in the database and `tutor` in much of the product UI.
+
+## 14. Practical File Map
+
+```text
+app/Http/Controllers/Admin/
+  AdminDashboardController.php
+  ContentController.php
+  CourseController.php
+  NotificationController.php
+  PackageController.php
+  ReportController.php
+  ScheduleController.php
+  TransactionController.php
+  UserController.php
+
+app/Http/Controllers/Tutor/
+  ClassMonitoringController.php
+  DashboardController.php
+  MaterialController.php
+  NotificationController.php
+  ScheduleController.php
+
+app/Services/
+  PackageEnrollmentService.php
+
+app/Support/
+  AdminNotifier.php
+  AdminNotificationCache.php
+  TutorCourseResolver.php
+  TutorSettings.php
+
+resources/js/Layouts/
+  AdminLayout.jsx
+  AuthenticatedLayout.jsx
+  GuestLayout.jsx
+
+resources/js/Components/
+  TutorSidebar.jsx
+
+resources/js/Pages/Admin/
+resources/js/Pages/Tutor/
+resources/js/Pages/Student/
+resources/js/Pages/Auth/
+
+routes/
+  web.php
+  auth.php
+```
+
+## 15. Guidance for Future Changes
+
+Prefer small, role-aware changes that keep business rules close to the backend. When a feature touches assignments, purchases, review status, or notifications, update the relevant support service rather than duplicating logic in a controller or React page. When database compatibility matters, keep the compatibility layer in one place and document the eventual migration path here.

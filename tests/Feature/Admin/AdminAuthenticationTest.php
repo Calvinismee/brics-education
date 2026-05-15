@@ -16,6 +16,26 @@ test('TC_ADMIN_LOGIN_001 admin berhasil login dengan data valid', function () {
     $response->assertRedirect(route('admin.dashboard', absolute: false));
 });
 
+test('TC_ADMIN_LOGIN_004 admin dapat login setelah sesi tutor aktif', function () {
+    // Dokumentasi: tutor aktif POST kredensial admin valid; expected sesi berpindah ke admin dan redirect dashboard admin.
+    $tutor = tutorUser([
+        'email' => 'tutor@brics.com',
+        'password' => hashedPasswordForTest('password123'),
+    ]);
+    $admin = adminUser([
+        'email' => 'admin@brics.com',
+        'password' => hashedPasswordForTest('password123'),
+    ]);
+
+    $response = $this->actingAs($tutor)->post(route('login.admin.store'), [
+        'email' => 'admin@brics.com',
+        'password' => 'password123',
+    ]);
+
+    $this->assertAuthenticatedAs($admin);
+    $response->assertRedirect(route('admin.dashboard', absolute: false));
+});
+
 test('TC_ADMIN_LOGIN_002 admin gagal login dengan password salah', function () {
     // Dokumentasi: POST email admin valid dengan password salah; expected tetap guest dan error email.
     adminUser([

@@ -18,18 +18,28 @@ class UserController extends Controller
     public function index()
     {
         $roles = User::adminRoleIds();
+        $courseTitles = DB::table('courses')->pluck('title', 'id');
 
         $users = User::query()
             ->select('id', 'name', 'email', 'role_id', 'mentor_course_id', 'created_at')
             ->with('role:id,name')
             ->with('mentorCourse:id,title')
-            ->with('assignedCourses:id,title')
             ->orderBy('created_at', 'desc')
             ->paginate(15)
             ->withQueryString();
 
-        $users->getCollection()->transform(function (User $user) {
+        $users->getCollection()->transform(function (User $user) use ($courseTitles) {
             $role = strtolower((string) User::roleNameFor($user->role_id));
+            $mentorCourseIds = in_array($role, ['mentor', 'tutor'], true)
+                ? TutorCourseResolver::ids($user)
+                : collect();
+            $taughtCourses = $mentorCourseIds
+                ->map(fn (int $courseId) => [
+                    'id' => $courseId,
+                    'title' => $courseTitles[$courseId] ?? null,
+                ])
+                ->filter(fn (array $course) => $course['title'] !== null)
+                ->values();
 
             return [
                 'id' => $user->id,
@@ -39,24 +49,9 @@ class UserController extends Controller
                 'role' => $user->role,
                 'created_at' => $user->created_at,
                 'mentor_course_id' => $user->mentor_course_id,
-                'mentor_course_ids' => in_array($role, ['mentor', 'tutor'], true)
-                    ? TutorCourseResolver::ids($user)->all()
-                    : [],
-                'taughtCourses' => in_array($role, ['mentor', 'tutor'], true)
-                    ? $user->assignedCourses
-                        ->when($user->mentorCourse, fn ($courses) => $courses->push($user->mentorCourse))
-                        ->unique('id')
-                        ->values()
-                        ->map(fn ($course) => ['id' => $course->id, 'title' => $course->title])
-                        ->all()
-                    : [],
-                'taughtCourse' => in_array($role, ['mentor', 'tutor'], true)
-                    ? $user->assignedCourses
-                        ->when($user->mentorCourse, fn ($courses) => $courses->push($user->mentorCourse))
-                        ->unique('id')
-                        ->pluck('title')
-                        ->implode(', ')
-                    : null,
+                'mentor_course_ids' => $mentorCourseIds->all(),
+                'taughtCourses' => $taughtCourses->all(),
+                'taughtCourse' => $taughtCourses->pluck('title')->implode(', ') ?: null,
                 'enrolledCourses' => $role === 'student'
                     ? DB::table('enrollments')
                         ->join('courses', 'enrollments.course_id', '=', 'courses.id')
@@ -105,7 +100,6 @@ class UserController extends Controller
         ]);
 
         $roles = User::adminRoleIds();
-        $legacyRole = $this->legacyRoleFor($validated['role']);
 
         $user = User::create([
             'name' => $validated['name'],
@@ -115,7 +109,6 @@ class UserController extends Controller
             'mentor_course_id' => $validated['role'] === 'tutor' ? ($validated['mentor_course_id'] ?? null) : null,
         ]);
 
-        $user->forceFill(['role' => $legacyRole])->save();
         TutorCourseResolver::sync($user, $this->mentorCourseIdsFrom($validated));
 
         return redirect()->route('admin.users')->with('success', 'Pengguna berhasil ditambahkan.');
@@ -134,11 +127,9 @@ class UserController extends Controller
         ]);
 
         $roles = User::adminRoleIds();
-        $legacyRole = $this->legacyRoleFor($validated['role']);
 
         $user->name = $validated['name'];
         $user->email = $validated['email'];
-        $user->role = $legacyRole;
         $user->role_id = $roles[$validated['role']] ?? $user->role_id;
         $user->mentor_course_id = null;
 
@@ -170,11 +161,6 @@ class UserController extends Controller
             ->unique()
             ->values()
             ->all();
-    }
-
-    private function legacyRoleFor(string $role): string
-    {
-        return $role === 'tutor' ? 'mentor' : $role;
     }
 
     public function destroy(User $user): RedirectResponse

@@ -57,23 +57,25 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
         end_time: '10:00',
         meeting_link: '',
     });
-    const tutorCanTeachCourse = (tutor, courseTitle) => {
-        if (!courseTitle) {
+    const tutorCanTeachCourse = (tutor, courseId) => {
+        if (!courseId) {
             return true;
         }
 
-        return (tutor.course_titles || []).includes(courseTitle);
+        const courseIds = (tutor.course_ids || []).map(String);
+
+        return courseIds.length === 0 || courseIds.includes(String(courseId));
     };
-    const availableTutors = (tutors || []).filter((tutor) => tutorCanTeachCourse(tutor, form.data.course));
+    const availableTutors = (tutors || []).filter((tutor) => tutorCanTeachCourse(tutor, form.data.course_id));
 
     const handleCourseChange = (event) => {
-        const nextCourse = event.target.value;
+        const nextCourseId = event.target.value;
         const currentTutor = (tutors || []).find((tutor) => String(tutor.id) === String(form.data.tutor_id));
-        const tutorStillAvailable = currentTutor && tutorCanTeachCourse(currentTutor, nextCourse);
+        const tutorStillAvailable = currentTutor && tutorCanTeachCourse(currentTutor, nextCourseId);
 
         form.setData({
             ...form.data,
-            course: nextCourse,
+            course_id: nextCourseId,
             tutor_id: tutorStillAvailable ? form.data.tutor_id : '',
         });
     };
@@ -376,7 +378,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                         ) : (
                                             <select
                                                 value={form.data.course_id}
-                                                onChange={(event) => form.setData('course_id', event.target.value)}
+                                                onChange={handleCourseChange}
                                                 className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
                                             >
                                                 <option value="">Pilih course</option>
@@ -387,19 +389,6 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                                 ))}
                                             </select>
                                         )}
-                                        <p className="mb-2 text-xs text-gray-500">Pilih course UTBK yang sudah tersedia.</p>
-                                        <select
-                                            value={form.data.course}
-                                            onChange={handleCourseChange}
-                                            className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
-                                        >
-                                            <option value="">Pilih course</option>
-                                            {(courses || []).map((course) => (
-                                                <option key={course.id} value={course.title}>
-                                                    {course.title}
-                                                </option>
-                                            ))}
-                                        </select>
                                     </div>
 
                                     <div>
@@ -412,33 +401,23 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                                 {editingSchedule?.tutor || '-'}
                                             </div>
                                         ) : (
-                                            <select
-                                                value={form.data.tutor_id}
-                                                onChange={(event) => form.setData('tutor_id', event.target.value)}
-                                                className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
-                                            >
-                                                <option value="">Pilih tutor</option>
-                                                {(tutors || []).map((tutor) => (
-                                                    <option key={tutor.id} value={tutor.id}>
-                                                        {tutor.name}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        <p className="mb-2 text-xs text-gray-500">Pilih tutor pengampu untuk jadwal ini.</p>
-                                        <select
-                                            value={form.data.tutor_id}
-                                            onChange={(event) => form.setData('tutor_id', event.target.value)}
-                                            className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
-                                        >
-                                            <option value="">Pilih tutor</option>
-                                            {availableTutors.map((tutor) => (
-                                                <option key={tutor.id} value={tutor.id}>
-                                                    {tutor.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {form.data.course && availableTutors.length === 0 && (
-                                            <p className="mt-2 text-xs text-red-500">Belum ada tutor yang ditugaskan untuk course ini.</p>
+                                            <>
+                                                <select
+                                                    value={form.data.tutor_id}
+                                                    onChange={(event) => form.setData('tutor_id', event.target.value)}
+                                                    className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
+                                                >
+                                                    <option value="">Pilih tutor</option>
+                                                    {availableTutors.map((tutor) => (
+                                                        <option key={tutor.id} value={tutor.id}>
+                                                            {tutor.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                {form.data.course_id && availableTutors.length === 0 && (
+                                                    <p className="mt-2 text-xs text-red-500">Belum ada tutor yang ditugaskan untuk course ini.</p>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 </div>

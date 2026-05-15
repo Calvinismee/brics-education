@@ -47,7 +47,6 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
             'role_id' => $studentRoleId,
         ]);
-        $user->forceFill(['role' => 'student'])->save();
 
         event(new Registered($user));
         AdminNotifier::studentRegistered($user);

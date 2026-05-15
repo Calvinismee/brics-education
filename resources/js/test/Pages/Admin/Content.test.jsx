@@ -106,6 +106,24 @@ describe('Admin Content page', () => {
         expect(screen.getByRole('link', { name: /Buka file/i })).toHaveAttribute('href', 'https://files.test/penalaran-umum.mp4');
     });
 
+    it('embeds youtube video links in the detail modal', async () => {
+        const user = userEvent.setup();
+        const youtubeContent = [{
+            ...contents[0],
+            id: 200,
+            title: 'Video YouTube UTBK',
+            content: 'https://youtu.be/abc123XYZ89',
+            file_url: null,
+        }];
+
+        render(<Content contents={youtubeContent} courses={courses} />);
+
+        await user.click(screen.getByTitle('Lihat konten'));
+
+        expect(screen.getByTitle('Video Video YouTube UTBK')).toHaveAttribute('src', 'https://www.youtube.com/embed/abc123XYZ89');
+        expect(screen.getByRole('link', { name: /Buka video/i })).toHaveAttribute('href', 'https://youtu.be/abc123XYZ89');
+    });
+
     it('posts approve and reject actions', async () => {
         const user = userEvent.setup();
 

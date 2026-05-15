@@ -95,6 +95,23 @@ class AdminNotifier
         );
     }
 
+    public static function contentPendingUpload(User $tutor, array $materials): void
+    {
+        if ($materials === []) {
+            return;
+        }
+
+        $firstMaterial = $materials[0];
+        $courseTitle = DB::table('courses')->where('id', $firstMaterial->course_id)->value('title') ?? 'course terkait';
+        $materialCount = count($materials);
+        $materialText = $materialCount === 1 ? $firstMaterial->title : "{$materialCount} materi";
+
+        self::notifyAdmins(
+            'Konten Menunggu Persetujuan',
+            "{$tutor->name} mengunggah \"{$materialText}\" untuk {$courseTitle} dan menunggu review admin."
+        );
+    }
+
     public static function contentReviewed(int $materialId, string $status): void
     {
         $material = DB::table('materials')

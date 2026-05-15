@@ -75,30 +75,26 @@ class ScheduleController extends Controller
         return Inertia::render('Admin/Schedule', [
             'schedules' => $schedules,
             'courses' => $courses,
-            'courses' => DB::table('courses')
-                ->select('id', 'title')
-                ->orderBy('title')
-                ->get(),
             'tutors' => User::query()
                 ->whereIn('role_id', [
                     $roles['mentor'] ?? ($roles['tutor'] ?? 2),
                     $roles['tutor'] ?? 2,
                 ])
-                ->with(['assignedCourses:id,title', 'mentorCourse:id,title'])
                 ->orderBy('name')
                 ->get(['id', 'name', 'mentor_course_id'])
-                ->map(function (User $tutor) {
-                    $courses = $tutor->assignedCourses
-                        ->when($tutor->mentorCourse, fn ($assignedCourses) => $assignedCourses->push($tutor->mentorCourse))
-                        ->unique('id')
-                        ->values();
+                ->map(function (User $tutor) use ($courseTitles) {
+                    $courseIds = TutorCourseResolver::ids($tutor);
 
                     return [
                         'id' => $tutor->id,
                         'name' => $tutor->name,
                         'mentor_course_id' => $tutor->mentor_course_id,
-                        'course_ids' => $courses->pluck('id')->all(),
-                        'course_titles' => $courses->pluck('title')->all(),
+                        'course_ids' => $courseIds->all(),
+                        'course_titles' => $courseIds
+                            ->map(fn (int $courseId) => $courseTitles[$courseId] ?? null)
+                            ->filter()
+                            ->values()
+                            ->all(),
                     ];
                 }),
             'stats' => [
@@ -117,7 +113,8 @@ class ScheduleController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'course_id' => ['required', 'integer', 'exists:courses,id'],
+            'course_id' => ['nullable', 'integer', 'exists:courses,id'],
+            'course' => ['nullable', 'string', 'max:255'],
             'tutor_id' => ['nullable', 'integer', 'exists:users,id'],
             'schedule_date' => ['required', 'date'],
             'start_time' => ['required', 'date_format:H:i'],
@@ -125,9 +122,11 @@ class ScheduleController extends Controller
             'meeting_link' => ['nullable', 'url', 'max:1024'],
         ]);
 
+        $courseId = $this->resolveCourseId($validated);
+
         $schedule = Schedule::create($this->buildPayload(
             $validated,
-            (int) $validated['course_id'],
+            $courseId,
             $validated['tutor_id'] ?? null
         ));
         AdminNotifier::scheduleCreated($schedule);
@@ -138,16 +137,22 @@ class ScheduleController extends Controller
     public function update(Request $request, Schedule $schedule): RedirectResponse
     {
         $validated = $request->validate([
+            'course_id' => ['nullable', 'integer', 'exists:courses,id'],
+            'course' => ['nullable', 'string', 'max:255'],
+            'tutor_id' => ['nullable', 'integer', 'exists:users,id'],
             'schedule_date' => ['required', 'date'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
             'meeting_link' => ['nullable', 'url', 'max:1024'],
         ]);
 
+        $courseId = $this->resolveCourseId($validated, $schedule->course_id ? (int) $schedule->course_id : null);
+        $mentorId = array_key_exists('tutor_id', $validated) ? $validated['tutor_id'] : $schedule->mentor_id;
+
         $schedule->update($this->buildPayload(
             $validated,
-            (int) $schedule->course_id,
-            $schedule->mentor_id
+            $courseId,
+            $mentorId
         ));
         AdminNotifier::scheduleUpdated($schedule->refresh());
 
@@ -185,13 +190,39 @@ class ScheduleController extends Controller
             'course_id' => $courseId,
             'mentor_id' => $mentorId,
             'title' => $courseTitle,
-            'meeting_link' => $validated['meeting_link'] ?? null,
-            'mentor_id' => $validated['tutor_id'] ?? null,
-            'title' => $validated['course'],
             'meeting_link' => filled($validated['meeting_link'] ?? null) ? $validated['meeting_link'] : null,
             'start_time' => $startTime,
             'end_time' => $endTime,
         ];
+    }
+
+    private function resolveCourseId(array $validated, ?int $fallbackCourseId = null): int
+    {
+        if (! empty($validated['course_id'])) {
+            return (int) $validated['course_id'];
+        }
+
+        if (! empty($validated['course'])) {
+            $courseId = DB::table('courses')
+                ->where('title', $validated['course'])
+                ->value('id');
+
+            if ($courseId) {
+                return (int) $courseId;
+            }
+
+            throw ValidationException::withMessages([
+                'course' => 'Course tidak ditemukan.',
+            ]);
+        }
+
+        if ($fallbackCourseId) {
+            return $fallbackCourseId;
+        }
+
+        throw ValidationException::withMessages([
+            'course_id' => 'Course wajib dipilih.',
+        ]);
     }
 
     private function ensureMentorCanTeachCourse(?int $mentorId, int $courseId): void
@@ -200,7 +231,21 @@ class ScheduleController extends Controller
             return;
         }
 
-        if (! TutorCourseResolver::isAssigned($mentorId, $courseId)) {
+        $mentor = User::query()->find($mentorId);
+
+        if (! $mentor) {
+            return;
+        }
+
+        $assignedCourseIds = TutorCourseResolver::ids($mentor);
+
+        if ($assignedCourseIds->isEmpty()) {
+            TutorCourseResolver::sync($mentor, [$courseId]);
+
+            return;
+        }
+
+        if (! $assignedCourseIds->contains($courseId)) {
             throw ValidationException::withMessages([
                 'tutor_id' => 'Tutor belum ditugaskan untuk course ini. Assign course tutor dari menu Users terlebih dahulu.',
             ]);

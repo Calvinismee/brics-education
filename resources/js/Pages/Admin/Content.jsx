@@ -45,6 +45,7 @@ const fileExtension = (value) => {
     return clean.includes('.') ? clean.split('.').pop().toLowerCase() : '';
 };
 const isOfficeUrl = (value) => ['doc', 'docx', 'ppt', 'pptx'].includes(fileExtension(value));
+const isVideoFileUrl = (value) => ['mp4', 'webm', 'ogg'].includes(fileExtension(value));
 const absoluteUrl = (value) => {
     const raw = String(value || '');
     if (/^https?:\/\//i.test(raw)) return raw;
@@ -63,6 +64,40 @@ const officePreviewUrl = (value) => {
     const url = absoluteUrl(value);
     if (!/^https?:\/\//i.test(url) || isLocalUrl(url)) return null;
     return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+};
+const firstUrl = (value) => {
+    const match = String(value || '').match(/https?:\/\/[^\s"'<>]+/i);
+
+    return match ? match[0] : '';
+};
+const youtubeEmbedUrl = (value) => {
+    const rawUrl = firstUrl(value) || String(value || '').trim();
+
+    if (!rawUrl) {
+        return null;
+    }
+
+    try {
+        const url = new URL(rawUrl);
+        const hostname = url.hostname.replace(/^www\./, '').toLowerCase();
+        let videoId = '';
+
+        if (hostname === 'youtu.be') {
+            videoId = url.pathname.split('/').filter(Boolean)[0] || '';
+        } else if (hostname === 'youtube.com' || hostname === 'm.youtube.com' || hostname === 'youtube-nocookie.com') {
+            if (url.pathname.startsWith('/embed/')) {
+                videoId = url.pathname.split('/').filter(Boolean)[1] || '';
+            } else if (url.pathname.startsWith('/shorts/')) {
+                videoId = url.pathname.split('/').filter(Boolean)[1] || '';
+            } else {
+                videoId = url.searchParams.get('v') || '';
+            }
+        }
+
+        return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+    } catch {
+        return null;
+    }
 };
 
 export default function Content({ contents = [], courses = [], stats = {} }) {
@@ -113,6 +148,8 @@ export default function Content({ contents = [], courses = [], stats = {} }) {
         approved: (contentList || []).filter((content) => content.status === 'approved').length,
         rejected: (contentList || []).filter((content) => content.status === 'rejected').length,
     };
+    const viewYoutubeEmbedUrl = viewTarget ? youtubeEmbedUrl(viewTarget.content) || youtubeEmbedUrl(viewTarget.file_url) : null;
+    const viewYoutubeSourceUrl = viewTarget ? firstUrl(viewTarget.content) || firstUrl(viewTarget.file_url) : '';
 
     const openRejectConfirm = (content) => {
         setRejectTarget(content);
@@ -373,12 +410,22 @@ export default function Content({ contents = [], courses = [], stats = {} }) {
 
                                 {viewTarget.file_url && (
                                     <div className="space-y-3">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">File Terlampir</p>
                                         {isPdfUrl(viewTarget.file_url) && (
                                             <iframe
                                                 src={viewTarget.file_url}
                                                 title={viewTarget.title}
                                                 className="h-[420px] w-full rounded-xl border border-[#D8D7BE] bg-white"
                                             />
+                                        )}
+                                        {isVideoFileUrl(viewTarget.file_url) && (
+                                            <video
+                                                src={viewTarget.file_url}
+                                                controls
+                                                className="max-h-[420px] w-full rounded-xl border border-[#D8D7BE] bg-black"
+                                            >
+                                                Browser tidak dapat memutar video ini.
+                                            </video>
                                         )}
                                         {isOfficeUrl(viewTarget.file_url) && officePreviewUrl(viewTarget.file_url) && (
                                             <iframe
@@ -400,6 +447,28 @@ export default function Content({ contents = [], courses = [], stats = {} }) {
                                         >
                                             <ExternalLink className="h-4 w-4" />
                                             Buka file
+                                        </a>
+                                    </div>
+                                )}
+
+                                {viewYoutubeEmbedUrl && (
+                                    <div className="space-y-3">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Video YouTube</p>
+                                        <iframe
+                                            src={viewYoutubeEmbedUrl}
+                                            title={`Video ${viewTarget.title}`}
+                                            className="aspect-video w-full rounded-xl border border-[#D8D7BE] bg-black"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                            allowFullScreen
+                                        />
+                                        <a
+                                            href={viewYoutubeSourceUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex items-center gap-2 rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm font-semibold text-[#691D1B] transition-colors hover:bg-[#F7F2E7]"
+                                        >
+                                            <ExternalLink className="h-4 w-4" />
+                                            Buka video
                                         </a>
                                     </div>
                                 )}

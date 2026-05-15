@@ -23,7 +23,7 @@ const navigationGroups = [
             { label: 'Transaksi', href: route('admin.transactions'), badge: 'TR' },
             { label: 'Paket', href: route('admin.packages'), badge: 'PK' },
             { label: 'Course', href: route('admin.courses'), badge: 'CR' },
-            { label: 'Konten', href: route('admin.content'), badge: 'CT' },
+            { label: 'Review Materi', href: route('admin.content'), badge: 'RM' },
             { label: 'Jadwal', href: route('admin.schedule'), badge: 'SC' },
             { label: 'Riwayat Tutor', href: route('admin.tutor-history'), badge: 'RT' },
         ],

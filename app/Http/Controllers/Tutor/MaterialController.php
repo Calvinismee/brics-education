@@ -7,8 +7,7 @@ use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\Material;
 use App\Models\Notification;
-use App\Models\Schedule;
-use App\Models\User;
+use App\Support\AdminNotifier;
 use App\Support\TutorCourseResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -177,7 +176,7 @@ class MaterialController extends Controller
 
     private function createMaterial(Request $request, array $validated, string $type, ?string $fileUrl, ?string $content): Material
     {
-        return Material::create([
+        return Material::withoutEvents(fn () => Material::create([
             'course_id' => $validated['course_id'],
             'uploaded_by' => $request->user()->id,
             'title' => $this->titleForType($validated['title'], $type),
@@ -185,35 +184,12 @@ class MaterialController extends Controller
             'file_url' => $fileUrl,
             'content' => $content,
             'approval_status' => 'pending',
-        ]);
+        ]));
     }
 
     private function notifyAdmins($tutor, array $materials): void
     {
-        if ($materials === []) {
-            return;
-        }
-
-        $adminRoleId = User::roleIdFor('admin');
-
-        if ($adminRoleId === null) {
-            return;
-        }
-
-        $course = Course::query()->find($materials[0]->course_id);
-        $materialCount = count($materials);
-        $title = 'Materi baru menunggu review';
-        $message = $tutor->name.' mengupload '.$materialCount.' materi untuk '.($course?->title ?? 'course UTBK').'.';
-
-        User::query()
-            ->where('role_id', $adminRoleId)
-            ->get(['id'])
-            ->each(fn (User $admin) => Notification::create([
-                'user_id' => $admin->id,
-                'title' => $title,
-                'message' => $message,
-                'is_read' => false,
-            ]));
+        AdminNotifier::contentPendingUpload($tutor, $materials);
     }
 
     private function titleForType(string $title, string $type): string
