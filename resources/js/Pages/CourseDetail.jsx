@@ -196,7 +196,7 @@ export default function CourseDetail({ course }) {
                   {formatPrice(course?.price)}
                 </p>
                 <p className="text-xs text-[#D8D7BE] mt-2">
-                  Harga mengikuti data pada database.
+                  Harga dapat berubah sesuai paket yang tersedia.
                 </p>
               </div>
             </div>
@@ -333,7 +333,7 @@ export default function CourseDetail({ course }) {
                     {formatPrice(course?.price)}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Harga mengikuti data pada database Supabase.
+                    Harga dapat berubah sesuai paket yang tersedia.
                   </p>
                 </div>
 

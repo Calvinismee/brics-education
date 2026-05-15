@@ -19,7 +19,20 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'admin' => \App\Http\Middleware\IsAdmin::class,
+            'tutor' => \App\Http\Middleware\IsTutor::class,
         ]);
+
+        $middleware->redirectGuestsTo(function (\Illuminate\Http\Request $request): string {
+            if ($request->is('tutor') || $request->is('tutor/*')) {
+                return route('login.tutor');
+            }
+
+            if ($request->is('admin') || $request->is('admin/*')) {
+                return route('login.admin');
+            }
+
+            return route('login');
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

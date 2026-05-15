@@ -16,6 +16,7 @@ import {
   User,
   Video,
   ClipboardList,
+  ExternalLink,
   X,
 } from 'lucide-react';
 
@@ -72,6 +73,8 @@ export default function StudentDashboard({
   enrollments = [],
   transactions = [],
   schedules = [],
+  materials = [],
+  notifications: serverNotifications = [],
 }) {
   const [activeTab, setActiveTab] = useState('beranda');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -88,8 +91,12 @@ export default function StudentDashboard({
   const pendingTransactions = transactions.filter(
     (item) => item.payment_status === 'pending'
   );
+  const notificationItems = Array.isArray(serverNotifications)
+    ? serverNotifications
+    : Object.values(serverNotifications ?? {});
+  const materialItems = Array.isArray(materials) ? materials : Object.values(materials ?? {});
 
-  const subtesItems = [
+  const fallbackSubtesItems = [
     {
       title: 'Penalaran Umum',
       progress: 0,
@@ -136,13 +143,36 @@ export default function StudentDashboard({
         'Kemampuan menyelesaikan masalah matematika berbasis penalaran.',
     },
   ];
+  const courseColors = ['#691D1B', '#0F7A45', '#2447C6', '#D5A018', '#7C3AED', '#C2410C', '#0F766E'];
+  const learningItems = activeEnrollments.length > 0
+    ? activeEnrollments.map((enrollment, index) => {
+      const course = enrollment.course ?? {};
+      const color = courseColors[index % courseColors.length];
+
+      return {
+        id: enrollment.course_id,
+        title: course.title || `Course ${index + 1}`,
+        category: getCategoryName(course),
+        progress: 0,
+        color,
+        iconBg: '#F8EDED',
+        iconColor: color,
+        description: course.description || 'Course aktif yang sudah terdaftar di akun siswa.',
+        href: `/course/${enrollment.course_id}/learn`,
+      };
+    })
+    : fallbackSubtesItems.map((item) => ({
+      ...item,
+      category: currentCategoryName,
+      href: '/#katalog',
+    }));
 
   const averageProgress = Math.round(
-    subtesItems.reduce((total, item) => total + item.progress, 0) /
-      subtesItems.length
+    learningItems.reduce((total, item) => total + item.progress, 0) /
+      Math.max(learningItems.length, 1)
   );
 
-  const notifications = [
+  const fallbackNotifications = [
     {
       id: 1,
       title: 'Course aktif',
@@ -171,6 +201,15 @@ export default function StudentDashboard({
       time: 'Info',
     },
   ];
+  const notifications = notificationItems.length > 0
+    ? notificationItems.map((notification) => ({
+      id: notification.id,
+      title: notification.title || 'Notifikasi',
+      message: notification.message || 'Ada informasi baru untuk akun belajarmu.',
+      type: notification.is_read ? 'info' : 'course',
+      time: notification.created_at ? formatDate(notification.created_at) : 'Terbaru',
+    }))
+    : fallbackNotifications;
 
   const logout = () => {
     router.post(route('logout'));
@@ -322,7 +361,7 @@ export default function StudentDashboard({
 
         {subtesOpen && (
           <div className="ml-5 pl-3.5 border-l border-white/20 space-y-3 py-2">
-            {subtesItems.map((item) => (
+            {learningItems.map((item) => (
               <button
                 key={item.title}
                 type="button"
@@ -552,7 +591,7 @@ export default function StudentDashboard({
           <BookOpen className="w-5 h-5 text-[#691D1B]" />
         </div>
         <p className="text-2xl text-gray-900" style={{ fontWeight: 900 }}>
-          {subtesItems.length}
+          {learningItems.length}
         </p>
         <p className="text-sm text-gray-500">Subtes UTBK</p>
       </div>
@@ -601,7 +640,7 @@ export default function StudentDashboard({
       </div>
 
       <div className="divide-y divide-[#F7F2E7]">
-        {subtesItems.slice(0, 3).map((item) => (
+        {learningItems.slice(0, 3).map((item) => (
           <div key={item.title} className="px-5 py-4 flex items-center gap-4">
             <div
               className="w-11 h-11 rounded-xl flex items-center justify-center"
@@ -692,7 +731,7 @@ export default function StudentDashboard({
                   <Video className="w-5 h-5" />
                 </div>
 
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <p className="font-bold text-gray-900 text-sm">
                       {schedule.title}
@@ -706,6 +745,23 @@ export default function StudentDashboard({
                     {' '}• {schedule.course?.title || currentPackageName}
                   </p>
                 </div>
+
+                {schedule.meeting_link ? (
+                  <a
+                    href={schedule.meeting_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hidden sm:inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs text-white hover:bg-[#4A1412]"
+                    style={{ background: '#691D1B', fontWeight: 900 }}
+                  >
+                    Join
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                ) : (
+                  <span className="hidden sm:inline-flex rounded-xl bg-gray-100 px-3 py-2 text-xs font-bold text-gray-400">
+                    Belum ada link
+                  </span>
+                )}
               </div>
             ))}
 
@@ -751,6 +807,54 @@ export default function StudentDashboard({
     </section>
   );
 
+  const MaterialPreviewCard = () => (
+    <section className="mt-5 bg-white rounded-2xl border border-[#D8D7BE] shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-[#F7F2E7] flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <FileText className="w-5 h-5 text-[#691D1B]" />
+          <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
+            Materi Terbaru
+          </h2>
+        </div>
+        {latestEnrollment && (
+          <Link
+            href={`/course/${latestEnrollment.course_id}/learn`}
+            className="inline-flex items-center gap-1 text-sm text-[#691D1B]"
+            style={{ fontWeight: 800 }}
+          >
+            Buka Materi
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        )}
+      </div>
+
+      {materialItems.length === 0 ? (
+        <div className="p-5 text-sm text-gray-600">
+          Belum ada materi yang disetujui untuk course aktifmu.
+        </div>
+      ) : (
+        <div className="divide-y divide-[#F7F2E7]">
+          {materialItems.map((material) => (
+            <Link
+              key={material.id}
+              href={`/course/${material.course_id}/learn`}
+              className="flex items-center gap-4 px-5 py-4 hover:bg-[#F7F2E7] transition-colors"
+            >
+              <div className="w-10 h-10 rounded-xl bg-[#F8EDED] flex items-center justify-center text-[#691D1B]">
+                {material.type === 'video' ? <Video className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-gray-900 truncate">{material.title}</p>
+                <p className="text-xs text-gray-400 truncate">{material.course?.title || currentPackageName}</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-300" />
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+
   const BerandaPage = () => (
     <>
       <Topbar title="Beranda" subtitle={currentPackageName} />
@@ -764,6 +868,7 @@ export default function StudentDashboard({
           <SchedulePreviewCard />
         </div>
 
+        <MaterialPreviewCard />
         <ContinueCard />
       </main>
     </>
@@ -797,7 +902,7 @@ export default function StudentDashboard({
           </div>
 
           <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {subtesItems.map((subtes) => (
+            {learningItems.map((subtes) => (
               <div
                 key={subtes.title}
                 className="rounded-2xl border border-[#D8D7BE] bg-white p-4 shadow-sm hover:shadow-md transition-shadow"
@@ -822,7 +927,7 @@ export default function StudentDashboard({
                         fontWeight: 900,
                       }}
                     >
-                      {currentCategoryName}
+                      {subtes.category || currentCategoryName}
                     </span>
 
                     <h3 className="text-base text-gray-900 mb-2" style={{ fontWeight: 900 }}>
@@ -855,9 +960,9 @@ export default function StudentDashboard({
                       </span>
                     </div>
 
-                    {latestEnrollment ? (
+                    {activeEnrollments.length > 0 ? (
                       <Link
-                        href={`/course/${latestEnrollment.course_id}/learn`}
+                        href={subtes.href}
                         className="block text-center px-4 py-2.5 rounded-xl text-sm text-white"
                         style={{ background: '#691D1B', fontWeight: 900 }}
                       >

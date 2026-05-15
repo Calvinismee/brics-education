@@ -21,7 +21,7 @@ class ScheduleSeeder extends Seeder
                 'schedule_date' => '2026-05-14',
                 'start_time' => '08:00',
                 'end_time' => '09:30',
-                'meeting_link' => 'https://zoom.us/j/1234567101',
+                'meeting_link' => null,
             ],
             [
                 'course' => 'Pengetahuan dan Pemahaman Umum',
@@ -30,7 +30,7 @@ class ScheduleSeeder extends Seeder
                 'schedule_date' => '2026-05-15',
                 'start_time' => '10:00',
                 'end_time' => '11:30',
-                'meeting_link' => 'https://zoom.us/j/1234567102',
+                'meeting_link' => null,
             ],
             [
                 'course' => 'Pemahaman Bacaan dan Menulis',
@@ -39,7 +39,7 @@ class ScheduleSeeder extends Seeder
                 'schedule_date' => '2026-05-18',
                 'start_time' => '13:00',
                 'end_time' => '14:30',
-                'meeting_link' => 'https://zoom.us/j/1234567103',
+                'meeting_link' => null,
             ],
             [
                 'course' => 'Pengetahuan Kuantitatif',
@@ -48,7 +48,7 @@ class ScheduleSeeder extends Seeder
                 'schedule_date' => '2026-05-19',
                 'start_time' => '15:30',
                 'end_time' => '17:00',
-                'meeting_link' => 'https://zoom.us/j/1234567104',
+                'meeting_link' => null,
             ],
             [
                 'course' => 'Literasi dalam Bahasa Indonesia',
@@ -57,7 +57,7 @@ class ScheduleSeeder extends Seeder
                 'schedule_date' => '2026-05-20',
                 'start_time' => '08:00',
                 'end_time' => '09:30',
-                'meeting_link' => 'https://zoom.us/j/1234567105',
+                'meeting_link' => null,
             ],
             [
                 'course' => 'Literasi dalam Bahasa Inggris',
@@ -66,7 +66,7 @@ class ScheduleSeeder extends Seeder
                 'schedule_date' => '2026-05-21',
                 'start_time' => '10:00',
                 'end_time' => '11:30',
-                'meeting_link' => 'https://zoom.us/j/1234567106',
+                'meeting_link' => null,
             ],
             [
                 'course' => 'Penalaran Matematika',
@@ -75,7 +75,7 @@ class ScheduleSeeder extends Seeder
                 'schedule_date' => '2026-05-22',
                 'start_time' => '19:00',
                 'end_time' => '20:30',
-                'meeting_link' => 'https://zoom.us/j/1234567107',
+                'meeting_link' => null,
             ],
         ];
 
@@ -92,6 +92,16 @@ class ScheduleSeeder extends Seeder
                 'mentor_course_id' => $courseId,
                 'updated_at' => now(),
             ]);
+            DB::table('course_tutor')->updateOrInsert(
+                [
+                    'course_id' => $courseId,
+                    'tutor_id' => $mentorId,
+                ],
+                [
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
 
             $start = Carbon::createFromFormat('Y-m-d H:i', $scheduleDate->format('Y-m-d').' '.$scheduleData['start_time']);
             $end = Carbon::createFromFormat('Y-m-d H:i', $scheduleDate->format('Y-m-d').' '.$scheduleData['end_time']);
@@ -106,6 +116,7 @@ class ScheduleSeeder extends Seeder
                     'mentor_id' => $mentorId,
                     'title' => $scheduleData['title'],
                     'meeting_link' => $scheduleData['meeting_link'] ?? null,
+                    'started_at' => null,
                     'start_time' => $start,
                     'end_time' => $end,
                 ]

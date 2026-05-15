@@ -68,8 +68,48 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             PackageSeeder::class,
+        ]);
+
+        $devTutorCourseId = DB::table('courses')->where('title', 'Penalaran Umum')->value('id');
+
+        User::updateOrCreate(
+            ['email' => 'tutor@bricsedu.id'],
+            [
+                'name' => 'Tutor Dev',
+                'password' => bcrypt('password123'),
+                'role_id' => $tutorRole,
+                'mentor_course_id' => $devTutorCourseId,
+            ]
+        );
+
+        DB::table('users')
+            ->where('email', 'tutor@bricsedu.id')
+            ->update([
+                'role' => 'mentor',
+                'updated_at' => now(),
+            ]);
+
+        User::updateOrCreate(
+            ['email' => 'tutor@brics.com'],
+            [
+                'name' => 'Tutor Dev Alias',
+                'password' => bcrypt('password123'),
+                'role_id' => $tutorRole,
+                'mentor_course_id' => $devTutorCourseId,
+            ]
+        );
+
+        DB::table('users')
+            ->where('email', 'tutor@brics.com')
+            ->update([
+                'role' => 'mentor',
+                'updated_at' => now(),
+            ]);
+
+        $this->call([
             ContentSeeder::class,
             ScheduleSeeder::class,
+            TutorDemoDataSeeder::class,
             TransactionSeeder::class,
             NotificationSeeder::class,
         ]);

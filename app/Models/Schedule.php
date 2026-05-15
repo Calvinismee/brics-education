@@ -14,6 +14,7 @@ class Schedule extends Model
         'start_time',
         'end_time',
         'meeting_link',
+        'started_at',
     ];
 
     protected function casts(): array
@@ -21,6 +22,7 @@ class Schedule extends Model
         return [
             'start_time' => 'datetime',
             'end_time' => 'datetime',
+            'started_at' => 'datetime',
         ];
     }
 

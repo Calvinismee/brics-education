@@ -45,4 +45,10 @@ class Course extends Model
     {
         return $this->hasMany(User::class, 'mentor_course_id');
     }
+
+    public function assignedTutors(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'course_tutor', 'course_id', 'tutor_id')
+            ->withTimestamps();
+    }
 }

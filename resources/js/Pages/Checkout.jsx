@@ -223,7 +223,7 @@ export default function Checkout({ course }) {
                   Pilih Metode Pembayaran
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  Pilih salah satu metode pembayaran simulasi.
+                  Pilih salah satu metode pembayaran yang tersedia.
                 </p>
               </div>
 
@@ -299,7 +299,7 @@ export default function Checkout({ course }) {
               <div className="p-6 space-y-4 text-sm text-gray-700">
                 <div className="flex gap-3">
                   <CheckCircle className="w-5 h-5 text-[#691D1B] flex-shrink-0" />
-                  <span>Transaksi akan tersimpan di database dengan status awal pending.</span>
+                  <span>Transaksi akan dibuat dengan status awal menunggu pembayaran.</span>
                 </div>
 
                 <div className="flex gap-3">
@@ -309,7 +309,7 @@ export default function Checkout({ course }) {
 
                 <div className="flex gap-3">
                   <Shield className="w-5 h-5 text-[#691D1B] flex-shrink-0" />
-                  <span>Untuk tahap ini pembayaran masih berupa simulasi sistem.</span>
+                  <span>Pembayaran akan diverifikasi setelah transaksi dikirim.</span>
                 </div>
               </div>
             </section>
