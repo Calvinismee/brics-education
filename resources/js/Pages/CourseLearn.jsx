@@ -9,6 +9,8 @@ import {
   ChevronDown,
   Circle,
   Download,
+  Eye,
+  ExternalLink,
   FileText,
   HelpCircle,
   Home,
@@ -20,7 +22,9 @@ import {
   SkipForward,
   Star,
   User,
+  Video,
   Volume2,
+  X,
 } from 'lucide-react';
 
 function getInitials(name) {
@@ -59,8 +63,108 @@ function formatDate(dateString) {
 function getMaterialLabel(type) {
   if (type === 'video') return 'Video';
   if (type === 'module') return 'Modul PDF';
-  if (type === 'bank_soal') return 'Bank Soal';
+  if (type === 'bank_soal' || type === 'quiz') return 'Bank Soal';
   return 'Materi';
+}
+
+function getMaterialUrl(material) {
+  return material?.file_url || material?.content || '';
+}
+
+function isPdfUrl(value) {
+  return String(value || '').toLowerCase().split('?')[0].endsWith('.pdf');
+}
+
+function fileExtension(value) {
+  const clean = String(value || '').split('?')[0].split('#')[0];
+  return clean.includes('.') ? clean.split('.').pop().toLowerCase() : '';
+}
+
+function isOfficeUrl(value) {
+  return ['doc', 'docx', 'ppt', 'pptx'].includes(fileExtension(value));
+}
+
+function isExternalUrl(value) {
+  return /^https?:\/\//i.test(String(value || ''));
+}
+
+function absoluteUrl(value) {
+  const raw = String(value || '');
+  if (isExternalUrl(raw)) return raw;
+  if (raw.startsWith('/') && typeof window !== 'undefined') {
+    return `${window.location.origin}${raw}`;
+  }
+  return raw;
+}
+
+function isLocalUrl(value) {
+  try {
+    const host = new URL(value).hostname;
+    return ['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(host);
+  } catch {
+    return true;
+  }
+}
+
+function officePreviewUrl(value) {
+  const url = absoluteUrl(value);
+  if (!isExternalUrl(url) || isLocalUrl(url)) return null;
+  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+}
+
+function youtubeEmbedUrl(value) {
+  try {
+    const raw = String(value || '');
+    const url = new URL(isExternalUrl(raw) ? raw : `https://${raw}`);
+    const host = url.hostname.replace(/^www\./, '');
+
+    if (host === 'youtu.be') {
+      const id = url.pathname.split('/').filter(Boolean)[0];
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+
+    if (host.endsWith('youtube.com')) {
+      if (url.pathname === '/watch') {
+        const id = url.searchParams.get('v');
+        return id ? `https://www.youtube.com/embed/${id}` : null;
+      }
+
+      const parts = url.pathname.split('/').filter(Boolean);
+      if (['embed', 'shorts', 'live'].includes(parts[0]) && parts[1]) {
+        return `https://www.youtube.com/embed/${parts[1]}`;
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function youtubeWatchUrl(value) {
+  try {
+    const raw = String(value || '');
+    const url = new URL(isExternalUrl(raw) ? raw : `https://${raw}`);
+    const host = url.hostname.replace(/^www\./, '');
+
+    if (host === 'youtu.be') {
+      const id = url.pathname.split('/').filter(Boolean)[0];
+      return id ? `https://www.youtube.com/watch?v=${id}` : raw;
+    }
+
+    if (host.endsWith('youtube.com')) {
+      if (url.pathname === '/watch') return url.toString();
+
+      const parts = url.pathname.split('/').filter(Boolean);
+      if (['embed', 'shorts', 'live'].includes(parts[0]) && parts[1]) {
+        return `https://www.youtube.com/watch?v=${parts[1]}`;
+      }
+    }
+
+    return url.toString();
+  } catch {
+    return String(value || '');
+  }
 }
 
 function getMaterialDuration(index) {
@@ -83,25 +187,37 @@ export default function CourseLearn({
   course,
   materials = [],
   enrollment,
+  enrollments = [],
 }) {
-  const [activeMaterialIndex, setActiveMaterialIndex] = useState(0);
-  const [activeResourceTab, setActiveResourceTab] = useState('module');
+  const [activeMaterialIndex, setActiveMaterialIndex] = useState(null);
+  const [activeResourceTab, setActiveResourceTab] = useState('video');
+  const [videoPreview, setVideoPreview] = useState(null);
+  const [filePreview, setFilePreview] = useState(null);
 
   const courseTitle = course?.title || 'Bundling Tryout UTBK-SNBT';
   const categoryName = getCategoryName(course);
 
   const normalizedMaterials = useMemo(() => {
-    return materials.map((material, index) => ({
-      ...material,
-      title: material.title || `Materi ${index + 1}`,
-      duration: getMaterialDuration(index),
-    }));
+    return [...materials]
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+      .map((material, index) => ({
+        ...material,
+        title: material.title || `Materi ${index + 1}`,
+        duration: getMaterialDuration(index),
+      }));
   }, [materials]);
 
   const hasMaterials = normalizedMaterials.length > 0;
+  const videoMaterials = normalizedMaterials.filter(
+    (material) => material.type === 'video' && youtubeEmbedUrl(material.content)
+  );
+  const latestVideoIndex = normalizedMaterials.findIndex(
+    (material) => material.type === 'video' && youtubeEmbedUrl(material.content)
+  );
+  const resolvedActiveIndex = activeMaterialIndex ?? (latestVideoIndex >= 0 ? latestVideoIndex : 0);
 
   const activeMaterial = hasMaterials
-    ? normalizedMaterials[activeMaterialIndex] || normalizedMaterials[0]
+    ? normalizedMaterials[resolvedActiveIndex] || normalizedMaterials[0]
     : null;
 
   const moduleMaterials = normalizedMaterials.filter(
@@ -109,52 +225,42 @@ export default function CourseLearn({
   );
 
   const bankMaterials = normalizedMaterials.filter(
-    (material) => material.type === 'bank_soal'
+    (material) => material.type === 'bank_soal' || material.type === 'quiz'
   );
 
   const completedCount = Math.min(2, normalizedMaterials.length);
+  const courseColors = ['#691D1B', '#0F7A45', '#2447C6', '#D5A018', '#7C3AED', '#C2410C', '#0F766E'];
+  const activeEnrollments = Array.isArray(enrollments) ? enrollments : Object.values(enrollments ?? {});
+  const sidebarCourseItems = activeEnrollments.length > 0
+    ? activeEnrollments.map((item, index) => {
+      const enrolledCourse = item.course ?? {};
+      const color = courseColors[index % courseColors.length];
 
-  const subtesItems = [
-    {
-      title: 'Penalaran Umum',
-      description: 'Kemampuan memahami, menganalisis, dan menarik kesimpulan dari informasi.',
-      progress: hasMaterials ? 20 : 0,
-      color: '#691D1B',
-      active: true,
-    },
-    {
-      title: 'Pengetahuan Kuantitatif',
-      description: 'Kemampuan menggunakan angka, logika matematika, dan penalaran kuantitatif.',
-      progress: hasMaterials ? 15 : 0,
-      color: '#0F7A45',
-      active: false,
-    },
-    {
-      title: 'Literasi Bahasa Indonesia',
-      description: 'Kemampuan memahami bacaan, struktur teks, dan makna bahasa Indonesia.',
-      progress: hasMaterials ? 10 : 0,
-      color: '#2447C6',
-      active: false,
-    },
-    {
-      title: 'Literasi Bahasa Inggris',
-      description: 'Kemampuan memahami teks bahasa Inggris dalam konteks akademik.',
-      progress: hasMaterials ? 10 : 0,
-      color: '#D5A018',
-      active: false,
-    },
-    {
-      title: 'Penalaran Matematika',
-      description: 'Kemampuan menyelesaikan masalah matematika berbasis penalaran.',
-      progress: hasMaterials ? 25 : 0,
-      color: '#7C3AED',
-      active: false,
-    },
-  ];
+      return {
+        id: item.course_id,
+        title: enrolledCourse.title || `Course ${index + 1}`,
+        description: enrolledCourse.description || 'Course aktif yang sudah terdaftar di akun siswa.',
+        progress: 0,
+        color,
+        active: Number(item.course_id) === Number(course?.id),
+        href: `/course/${item.course_id}/learn`,
+      };
+    })
+    : [
+      {
+        id: course?.id ?? 'current',
+        title: courseTitle,
+        description: course?.description || 'Course aktif yang sudah terdaftar di akun siswa.',
+        progress: hasMaterials ? 20 : 0,
+        color: '#691D1B',
+        active: true,
+        href: course?.id ? `/course/${course.id}/learn` : '/dashboard',
+      },
+    ];
 
   const averageProgress = Math.round(
-    subtesItems.reduce((total, item) => total + item.progress, 0) /
-      subtesItems.length
+    sidebarCourseItems.reduce((total, item) => total + item.progress, 0) /
+      Math.max(sidebarCourseItems.length, 1)
   );
 
   const logout = () => {
@@ -162,9 +268,21 @@ export default function CourseLearn({
   };
 
   const openMaterial = (material) => {
-    if (material?.file_url) {
-      window.open(material.file_url, '_blank', 'noopener,noreferrer');
+    const url = getMaterialUrl(material);
+
+    if (url && (isExternalUrl(url) || url.startsWith('/'))) {
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
+  };
+
+  const openFilePreview = (material) => {
+    const materialIndex = normalizedMaterials.findIndex((item) => item.id === material.id);
+
+    if (materialIndex >= 0) {
+      setActiveMaterialIndex(materialIndex);
+    }
+
+    setFilePreview(material);
   };
 
   return (
@@ -291,10 +409,11 @@ export default function CourseLearn({
               </div>
 
               <div className="ml-6 pl-4 border-l border-white/20 space-y-4 py-2">
-                {subtesItems.map((item) => (
-                  <div
-                    key={item.title}
-                    className={`rounded-xl px-3 py-2 ${
+                {sidebarCourseItems.map((item) => (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    className={`block rounded-xl px-3 py-2 ${
                       item.active ? 'bg-[#FFE882] text-[#691D1B]' : ''
                     }`}
                   >
@@ -335,7 +454,7 @@ export default function CourseLearn({
                         {item.progress}% selesai
                       </p>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
 
@@ -456,15 +575,15 @@ export default function CourseLearn({
                     Daftar Subtes UTBK
                   </h2>
                   <p className="text-sm text-gray-500 mt-1">
-                    Paket bundling ini berisi beberapa subtes UTBK. Materi, video, modul PDF, dan bank soal akan tampil setelah data materi ditambahkan ke database.
+                    Paket bundling ini berisi beberapa subtes UTBK. Materi, video, modul PDF, dan bank soal akan tampil setelah tersedia.
                   </p>
                 </div>
 
                 <div className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {subtesItems.map((subtes) => (
+                    {sidebarCourseItems.map((subtes) => (
                       <div
-                        key={subtes.title}
+                        key={subtes.id}
                         className="border border-[#D8D7BE] rounded-2xl p-5 bg-[#FDFCF8] hover:shadow-md transition-shadow"
                       >
                         <div className="flex items-start gap-4">
@@ -521,14 +640,24 @@ export default function CourseLearn({
                               />
                             </div>
 
-                            <button
-                              type="button"
-                              disabled
-                              className="w-full py-3 rounded-xl text-sm bg-[#F7F2E7] text-gray-400 cursor-not-allowed"
-                              style={{ fontWeight: 900 }}
-                            >
-                              Materi belum tersedia
-                            </button>
+                            {subtes.active ? (
+                              <button
+                                type="button"
+                                disabled
+                                className="w-full py-3 rounded-xl text-sm bg-[#F7F2E7] text-gray-400 cursor-not-allowed"
+                                style={{ fontWeight: 900 }}
+                              >
+                                Materi belum tersedia
+                              </button>
+                            ) : (
+                              <Link
+                                href={subtes.href}
+                                className="block w-full py-3 rounded-xl text-center text-sm text-white"
+                                style={{ background: '#691D1B', fontWeight: 900 }}
+                              >
+                                Buka Course
+                              </Link>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -537,7 +666,7 @@ export default function CourseLearn({
 
                   <div className="mt-8 rounded-2xl bg-[#F7F2E7] border border-[#D8D7BE] p-5">
                     <p className="text-sm text-gray-600 leading-relaxed">
-                      Catatan: saat ini paket sudah aktif di akun siswa, tetapi materi untuk subtes belum tersedia di database. Setelah admin menambahkan data pada tabel <strong>materials</strong> untuk course ini, halaman belajar akan otomatis menampilkan video player, daftar materi, modul PDF, dan bank soal.
+                      Catatan: saat ini paket sudah aktif di akun siswa, tetapi materi untuk subtes belum tersedia. Setelah materi disetujui, halaman belajar akan otomatis menampilkan video player, daftar materi, modul PDF, dan bank soal.
                     </p>
                   </div>
 
@@ -568,29 +697,59 @@ export default function CourseLearn({
                 <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-8 mb-8">
                   <section className="bg-white rounded-2xl border border-[#D8D7BE] shadow-sm overflow-hidden">
                     <div className="relative h-[360px] lg:h-[520px] bg-[#0F172A] flex items-center justify-center">
-                      <div className="text-center">
-                        <button
-                          type="button"
-                          onClick={() => openMaterial(activeMaterial)}
-                          className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5 hover:scale-105 transition-transform"
-                          style={{
-                            background: '#FFE882',
-                            color: '#691D1B',
-                          }}
-                        >
-                          <Play className="w-10 h-10 ml-1" />
-                        </button>
+                      {activeMaterial?.file_url && isPdfUrl(activeMaterial.file_url) ? (
+                        <iframe
+                          src={activeMaterial.file_url}
+                          title={activeMaterial.title}
+                          className="h-full w-full border-0 bg-white"
+                        />
+                      ) : activeMaterial?.file_url && isOfficeUrl(activeMaterial.file_url) && officePreviewUrl(activeMaterial.file_url) ? (
+                        <iframe
+                          src={officePreviewUrl(activeMaterial.file_url)}
+                          title={activeMaterial.title}
+                          className="h-full w-full border-0 bg-white"
+                        />
+                      ) : activeMaterial?.file_url && isOfficeUrl(activeMaterial.file_url) ? (
+                        <div className="max-w-md px-6 text-center">
+                          <FileText className="mx-auto mb-4 h-14 w-14 text-[#FFE882]" />
+                          <p className="text-lg font-bold text-white">Preview DOC/PPT membutuhkan URL publik</p>
+                          <p className="mt-2 text-sm text-gray-300">
+                            Di localhost file tetap bisa dibuka atau diunduh lewat tombol di bawah.
+                          </p>
+                        </div>
+                      ) : activeMaterial?.type === 'video' && youtubeEmbedUrl(activeMaterial?.content) ? (
+                        <iframe
+                          src={youtubeEmbedUrl(activeMaterial.content)}
+                          title={activeMaterial.title}
+                          className="h-full w-full border-0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      ) : (
+                        <div className="text-center">
+                          <button
+                            type="button"
+                            onClick={() => openMaterial(activeMaterial)}
+                            className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5 hover:scale-105 transition-transform"
+                            style={{
+                              background: '#FFE882',
+                              color: '#691D1B',
+                            }}
+                          >
+                            <Play className="w-10 h-10 ml-1" />
+                          </button>
 
-                        <p className="text-white text-lg">
-                          {activeMaterial?.type === 'video'
-                            ? 'Klik untuk memulai video'
-                            : 'Klik untuk membuka materi'}
-                        </p>
+                          <p className="text-white text-lg">
+                            {activeMaterial?.type === 'video'
+                              ? 'Klik untuk memulai video'
+                              : 'Klik untuk membuka materi'}
+                          </p>
 
-                        <p className="text-gray-400 text-sm mt-2">
-                          {activeMaterial?.title}
-                        </p>
-                      </div>
+                          <p className="text-gray-400 text-sm mt-2">
+                            {activeMaterial?.title}
+                          </p>
+                        </div>
+                      )}
 
                       <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-gray-600">
                         <div
@@ -696,7 +855,7 @@ export default function CourseLearn({
                     <div className="max-h-[520px] overflow-y-auto divide-y divide-[#F7F2E7]">
                       {normalizedMaterials.map((material, index) => {
                         const isDone = index < completedCount;
-                        const isActive = index === activeMaterialIndex;
+                        const isActive = index === resolvedActiveIndex;
 
                         return (
                           <button
@@ -739,6 +898,20 @@ export default function CourseLearn({
                   <div className="flex border-b border-[#D8D7BE]">
                     <button
                       type="button"
+                      onClick={() => setActiveResourceTab('video')}
+                      className={`flex items-center gap-2 px-8 py-5 text-lg ${
+                        activeResourceTab === 'video'
+                          ? 'text-[#691D1B] border-b-2 border-[#691D1B]'
+                          : 'text-gray-500'
+                      }`}
+                      style={{ fontWeight: 800 }}
+                    >
+                      <Video className="w-5 h-5" />
+                      Video
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => setActiveResourceTab('module')}
                       className={`flex items-center gap-2 px-8 py-5 text-lg ${
                         activeResourceTab === 'module'
@@ -767,6 +940,73 @@ export default function CourseLearn({
                   </div>
 
                   <div className="p-6 space-y-5">
+                    {activeResourceTab === 'video' && (
+                      <>
+                        {videoMaterials.length === 0 ? (
+                          <div className="text-center py-10">
+                            <Video className="w-12 h-12 mx-auto mb-3 text-[#691D1B]" />
+                            <h3 className="text-[#691D1B] font-black">
+                              Belum Ada Video
+                            </h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                              Video YouTube untuk course ini belum tersedia.
+                            </p>
+                          </div>
+                        ) : (
+                          videoMaterials.map((material, index) => {
+                            const materialIndex = normalizedMaterials.findIndex((item) => item.id === material.id);
+
+                            return (
+                              <div
+                                key={`video-${material.id}`}
+                                className="border border-[#D8D7BE] rounded-2xl p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                              >
+                                <div className="flex items-center gap-4">
+                                  <div className="w-14 h-14 rounded-xl bg-[#F8EDED] flex items-center justify-center text-[#691D1B]">
+                                    <Video className="w-6 h-6" />
+                                  </div>
+
+                                  <div>
+                                    <h3 className="text-lg text-gray-900" style={{ fontWeight: 900 }}>
+                                      {material.title || `Video ${index + 1}`}
+                                    </h3>
+                                    <p className="text-sm text-gray-400">
+                                      YouTube - {index === 0 ? 'Terbaru' : `Video ${index + 1}`}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveMaterialIndex(materialIndex);
+                                      setVideoPreview(material);
+                                    }}
+                                    className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-white"
+                                    style={{ background: '#741A18', fontWeight: 900 }}
+                                  >
+                                    <Play className="w-4 h-4" />
+                                    Preview
+                                  </button>
+                                  <a
+                                    href={youtubeWatchUrl(material.content)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-[#741A18] text-[#741A18]"
+                                    style={{ fontWeight: 900 }}
+                                  >
+                                    <ExternalLink className="w-4 h-4" />
+                                    YouTube
+                                  </a>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </>
+                    )}
+
                     {activeResourceTab === 'module' && (
                       <>
                         {moduleMaterials.length === 0 ? (
@@ -806,19 +1046,31 @@ export default function CourseLearn({
                               </div>
 
                               {material.file_url ? (
-                                <a
-                                  href={material.file_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-white"
-                                  style={{
-                                    background: '#741A18',
-                                    fontWeight: 900,
-                                  }}
-                                >
-                                  <Download className="w-4 h-4" />
-                                  Unduh
-                                </a>
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => openFilePreview(material)}
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-white"
+                                    style={{
+                                      background: '#741A18',
+                                      fontWeight: 900,
+                                    }}
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                    Preview
+                                  </button>
+
+                                  <a
+                                    href={material.file_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#741A18] px-5 py-3 text-[#741A18]"
+                                    style={{ fontWeight: 900 }}
+                                  >
+                                    <Download className="w-4 h-4" />
+                                    Unduh
+                                  </a>
+                                </div>
                               ) : (
                                 <button
                                   type="button"
@@ -894,17 +1146,32 @@ export default function CourseLearn({
                                   </div>
                                 </div>
 
-                                <button
-                                  type="button"
-                                  onClick={() => openMaterial(material)}
-                                  className="inline-flex items-center justify-center px-5 py-3 rounded-xl text-white"
-                                  style={{
-                                    background: '#741A18',
-                                    fontWeight: 900,
-                                  }}
-                                >
-                                  Kerjakan
-                                </button>
+                                <div className="flex flex-wrap gap-2">
+                                  {material.file_url && (
+                                    <button
+                                      type="button"
+                                      onClick={() => openFilePreview(material)}
+                                      className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-white"
+                                      style={{
+                                        background: '#741A18',
+                                        fontWeight: 900,
+                                      }}
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                      Preview
+                                    </button>
+                                  )}
+
+                                  <button
+                                    type="button"
+                                    onClick={() => openMaterial(material)}
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#741A18] px-5 py-3 text-[#741A18]"
+                                    style={{ fontWeight: 900 }}
+                                  >
+                                    {material.file_url && <Download className="w-4 h-4" />}
+                                    {material.file_url ? 'Unduh' : 'Kerjakan'}
+                                  </button>
+                                </div>
                               </div>
                             );
                           })
@@ -918,6 +1185,139 @@ export default function CourseLearn({
           </main>
         </div>
       </div>
+
+      {videoPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#F7F2E7] px-5 py-4">
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-[0.25em] text-[#A56D6B]">
+                  Preview Video
+                </p>
+                <h3 className="truncate text-lg text-gray-900" style={{ fontWeight: 900 }}>
+                  {videoPreview.title}
+                </h3>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setVideoPreview(null)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-[#F7F2E7] hover:text-[#691D1B]"
+                title="Tutup preview"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="aspect-video bg-[#0F172A]">
+              <iframe
+                src={youtubeEmbedUrl(videoPreview.content)}
+                title={videoPreview.title}
+                className="h-full w-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+
+            <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-gray-500">
+                Video ini berasal dari materi yang sudah disetujui untuk course ini.
+              </p>
+
+              <a
+                href={youtubeWatchUrl(videoPreview.content)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm text-white"
+                style={{ background: '#741A18', fontWeight: 900 }}
+              >
+                <ExternalLink className="h-4 w-4" />
+                Tonton di YouTube
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {filePreview && (() => {
+        const previewUrl = getMaterialUrl(filePreview);
+        const officeUrl = officePreviewUrl(previewUrl);
+        const canEmbedPdf = isPdfUrl(previewUrl);
+        const canEmbedOffice = isOfficeUrl(previewUrl) && officeUrl;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
+            <div className="flex h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+              <div className="flex items-center justify-between border-b border-[#F7F2E7] px-5 py-4">
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase tracking-[0.25em] text-[#A56D6B]">
+                    Preview Materi
+                  </p>
+                  <h3 className="truncate text-lg text-gray-900" style={{ fontWeight: 900 }}>
+                    {filePreview.title}
+                  </h3>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setFilePreview(null)}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-[#F7F2E7] hover:text-[#691D1B]"
+                  title="Tutup preview"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="min-h-0 flex-1 bg-[#0F172A]">
+                {canEmbedPdf ? (
+                  <iframe
+                    src={previewUrl}
+                    title={filePreview.title}
+                    className="h-full w-full border-0 bg-white"
+                  />
+                ) : canEmbedOffice ? (
+                  <iframe
+                    src={officeUrl}
+                    title={filePreview.title}
+                    className="h-full w-full border-0 bg-white"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center px-6 text-center">
+                    <div className="max-w-md">
+                      <FileText className="mx-auto mb-4 h-14 w-14 text-[#FFE882]" />
+                      <p className="text-lg font-bold text-white">
+                        Preview belum tersedia untuk file ini
+                      </p>
+                      <p className="mt-2 text-sm text-gray-300">
+                        File tetap bisa dibuka atau diunduh lewat tombol di bawah.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-3 border-t border-[#F7F2E7] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-gray-500">
+                  Preview mendukung PDF serta DOC/PPT yang tersedia melalui URL publik.
+                </p>
+
+                {previewUrl && (
+                  <a
+                    href={previewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm text-white"
+                    style={{ background: '#741A18', fontWeight: 900 }}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Buka File
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

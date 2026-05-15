@@ -22,12 +22,14 @@ const typeIcon = {
     video: <Video className="h-4 w-4" />,
     module: <FileText className="h-4 w-4" />,
     bank_soal: <HelpCircle className="h-4 w-4" />,
+    quiz: <HelpCircle className="h-4 w-4" />,
 };
 
 const typeLabels = {
     video: 'Video',
     module: 'Modul',
     bank_soal: 'Bank Soal',
+    quiz: 'Bank Soal',
 };
 
 const statusConfig = {
@@ -37,6 +39,31 @@ const statusConfig = {
 };
 
 const stripHtml = (value) => String(value || '').replace(/<[^>]*>/g, '').trim();
+const isPdfUrl = (value) => String(value || '').toLowerCase().split('?')[0].endsWith('.pdf');
+const fileExtension = (value) => {
+    const clean = String(value || '').split('?')[0].split('#')[0];
+    return clean.includes('.') ? clean.split('.').pop().toLowerCase() : '';
+};
+const isOfficeUrl = (value) => ['doc', 'docx', 'ppt', 'pptx'].includes(fileExtension(value));
+const absoluteUrl = (value) => {
+    const raw = String(value || '');
+    if (/^https?:\/\//i.test(raw)) return raw;
+    if (raw.startsWith('/') && typeof window !== 'undefined') return `${window.location.origin}${raw}`;
+    return raw;
+};
+const isLocalUrl = (value) => {
+    try {
+        const host = new URL(value).hostname;
+        return ['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(host);
+    } catch {
+        return true;
+    }
+};
+const officePreviewUrl = (value) => {
+    const url = absoluteUrl(value);
+    if (!/^https?:\/\//i.test(url) || isLocalUrl(url)) return null;
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+};
 
 export default function Content({ contents = [], courses = [], stats = {} }) {
     const contentList = Array.isArray(contents?.data) ? contents.data : contents;
@@ -345,15 +372,36 @@ export default function Content({ contents = [], courses = [], stats = {} }) {
                                 </div>
 
                                 {viewTarget.file_url && (
-                                    <a
-                                        href={viewTarget.file_url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="inline-flex items-center gap-2 rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm font-semibold text-[#691D1B] transition-colors hover:bg-[#F7F2E7]"
-                                    >
-                                        <ExternalLink className="h-4 w-4" />
-                                        Buka file
-                                    </a>
+                                    <div className="space-y-3">
+                                        {isPdfUrl(viewTarget.file_url) && (
+                                            <iframe
+                                                src={viewTarget.file_url}
+                                                title={viewTarget.title}
+                                                className="h-[420px] w-full rounded-xl border border-[#D8D7BE] bg-white"
+                                            />
+                                        )}
+                                        {isOfficeUrl(viewTarget.file_url) && officePreviewUrl(viewTarget.file_url) && (
+                                            <iframe
+                                                src={officePreviewUrl(viewTarget.file_url)}
+                                                title={viewTarget.title}
+                                                className="h-[420px] w-full rounded-xl border border-[#D8D7BE] bg-white"
+                                            />
+                                        )}
+                                        {isOfficeUrl(viewTarget.file_url) && !officePreviewUrl(viewTarget.file_url) && (
+                                            <div className="rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] p-4 text-sm text-gray-600">
+                                                Preview DOC/PPT membutuhkan URL publik. Untuk localhost, gunakan tombol buka file.
+                                            </div>
+                                        )}
+                                        <a
+                                            href={viewTarget.file_url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex items-center gap-2 rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm font-semibold text-[#691D1B] transition-colors hover:bg-[#F7F2E7]"
+                                        >
+                                            <ExternalLink className="h-4 w-4" />
+                                            Buka file
+                                        </a>
+                                    </div>
                                 )}
 
                                 <div className="max-h-72 overflow-y-auto rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] p-4">

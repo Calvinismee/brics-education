@@ -13,13 +13,20 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Transaction;
 use App\Models\Enrollment;
 use App\Models\Material;
+use App\Models\Notification;
 use App\Models\Schedule;
 use App\Models\User;
 use App\Support\AdminNotifier;
 use App\Http\Controllers\Admin\TransactionController;
+use App\Http\Controllers\Admin\TutorHistoryController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Tutor\ClassMonitoringController as TutorClassMonitoringController;
+use App\Http\Controllers\Tutor\DashboardController as TutorDashboardController;
+use App\Http\Controllers\Tutor\MaterialController as TutorMaterialController;
+use App\Http\Controllers\Tutor\NotificationController as TutorNotificationController;
+use App\Http\Controllers\Tutor\ScheduleController as TutorScheduleController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -133,14 +140,18 @@ Route::get('/dashboard', function () {
 
     $user = auth()->user();
 
-    if (strtolower((string) User::roleNameFor($user->role_id)) !== 'student') {
-        auth()->logout();
+    $role = strtolower((string) User::roleNameFor($user->role_id));
 
-        return redirect()
-            ->route('login')
-            ->withErrors([
-                'email' => 'Akun ini bukan akun siswa.',
-            ]);
+    if ($role !== 'student') {
+        if ($user->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        if (in_array($role, ['tutor', 'mentor'], true)) {
+            return redirect()->route('tutor.dashboard');
+        }
+
+        return redirect()->route('login');
     }
 
     $enrollments = Enrollment::with('course.category')
@@ -163,11 +174,24 @@ Route::get('/dashboard', function () {
         ->take(3)
         ->get();
 
+    $materials = Material::with('course:id,title')
+        ->whereIn('course_id', $activeCourseIds)
+        ->where('approval_status', 'approved')
+        ->latest()
+        ->take(5)
+        ->get(['id', 'course_id', 'title', 'type', 'file_url', 'content', 'created_at']);
+
     return Inertia::render('StudentDashboard', [
         'user' => $user,
         'enrollments' => $enrollments,
         'transactions' => $transactions,
         'schedules' => $schedules,
+        'materials' => $materials,
+        'notifications' => Notification::query()
+            ->where('user_id', $user->id)
+            ->latest()
+            ->take(5)
+            ->get(['id', 'title', 'message', 'is_read', 'created_at']),
     ]);
 })->name('dashboard');
 
@@ -178,14 +202,18 @@ Route::get('/course/{course}/learn', function (Course $course) {
 
     $user = auth()->user();
 
-    if (strtolower((string) User::roleNameFor($user->role_id)) !== 'student') {
-        auth()->logout();
+    $role = strtolower((string) User::roleNameFor($user->role_id));
 
-        return redirect()
-            ->route('login')
-            ->withErrors([
-                'email' => 'Akun ini bukan akun siswa.',
-            ]);
+    if ($role !== 'student') {
+        if ($user->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        if (in_array($role, ['tutor', 'mentor'], true)) {
+            return redirect()->route('tutor.dashboard');
+        }
+
+        return redirect()->route('login');
     }
 
     $enrollment = Enrollment::where('user_id', $user->id)
@@ -208,11 +236,18 @@ Route::get('/course/{course}/learn', function (Course $course) {
         ->orderBy('created_at')
         ->get();
 
+    $enrollments = Enrollment::with('course.category')
+        ->where('user_id', $user->id)
+        ->where('status', 'active')
+        ->orderBy('created_at', 'desc')
+        ->get();
+
     return Inertia::render('CourseLearn', [
         'user' => $user,
         'course' => $course,
         'materials' => $materials,
         'enrollment' => $enrollment,
+        'enrollments' => $enrollments,
     ]);
 })->name('course.learn');
 
@@ -223,14 +258,18 @@ Route::get('/student/schedules', function () {
 
     $user = auth()->user();
 
-    if (strtolower((string) User::roleNameFor($user->role_id)) !== 'student') {
-        auth()->logout();
+    $role = strtolower((string) User::roleNameFor($user->role_id));
 
-        return redirect()
-            ->route('login')
-            ->withErrors([
-                'email' => 'Akun ini bukan akun siswa.',
-            ]);
+    if ($role !== 'student') {
+        if ($user->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        if (in_array($role, ['tutor', 'mentor'], true)) {
+            return redirect()->route('tutor.dashboard');
+        }
+
+        return redirect()->route('login');
     }
 
     $activeCourseIds = Enrollment::where('user_id', $user->id)
@@ -283,6 +322,7 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::put('/schedule/{schedule}', [ScheduleController::class, 'update'])->whereNumber('schedule')->name('schedule.update');
         Route::delete('/schedule/{schedule}', [ScheduleController::class, 'destroy'])->whereNumber('schedule')->name('schedule.destroy');
         Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions');
+        Route::get('/tutor-history', [TutorHistoryController::class, 'index'])->name('tutor-history');
         Route::get('/transactions/export', [TransactionController::class, 'export'])->name('transactions.export');
         Route::get('/transactions/{transaction}', [TransactionController::class, 'show'])->whereNumber('transaction')->name('transactions.show');
         Route::get('/transaction-stats', [TransactionController::class, 'stats'])->name('transaction-stats');
@@ -292,6 +332,45 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
         Route::get('/settings', [SettingController::class, 'index'])->name('settings');
         Route::get('/settings/notifications', fn () => Inertia::render('Admin/Settings', ['initialTab' => 'notifications']))->name('settings.notifications');
+    });
+
+Route::middleware(['auth', 'verified', 'tutor'])
+    ->prefix('tutor')
+    ->name('tutor.')
+    ->group(function () {
+        Route::get('/', function () {
+            return redirect()->route('tutor.dashboard');
+        })->name('home');
+
+        Route::get('/dashboard', [TutorDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/history', [TutorDashboardController::class, 'history'])->name('history');
+        Route::get('/profile', [TutorDashboardController::class, 'profile'])->name('profile');
+        Route::patch('/profile', [TutorDashboardController::class, 'updateProfile'])->name('profile.update');
+        Route::get('/settings', [TutorDashboardController::class, 'settings'])->name('settings');
+        Route::patch('/settings', [TutorDashboardController::class, 'updateSettings'])->name('settings.update');
+        Route::get('/password', [TutorDashboardController::class, 'password'])->name('password');
+        Route::patch('/password', [TutorDashboardController::class, 'updatePassword'])->name('password.update');
+        Route::get('/notifications', [TutorNotificationController::class, 'index'])->name('notifications');
+        Route::post('/notifications/{notification}/mark-as-read', [TutorNotificationController::class, 'markAsRead'])->whereNumber('notification')->name('notifications.mark-as-read');
+        Route::post('/notifications/mark-all-as-read', [TutorNotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
+
+        Route::get('/upload', [TutorMaterialController::class, 'index'])->name('upload');
+        Route::get('/material', [TutorMaterialController::class, 'index'])->name('material');
+        Route::get('/materials', [TutorMaterialController::class, 'index'])->name('materials');
+        Route::post('/upload', [TutorMaterialController::class, 'store'])->name('materials.store');
+        Route::post('/announcements', [TutorMaterialController::class, 'announce'])->name('announcements.store');
+        Route::delete('/materials/{material}', [TutorMaterialController::class, 'destroy'])->whereNumber('material')->name('materials.destroy');
+
+        Route::get('/classes', [TutorClassMonitoringController::class, 'index'])->name('classes');
+        Route::get('/class', [TutorClassMonitoringController::class, 'index'])->name('class');
+        Route::get('/students/{student}', [TutorClassMonitoringController::class, 'showStudent'])->whereNumber('student')->name('students.show');
+
+        Route::get('/schedule', [TutorScheduleController::class, 'index'])->name('schedule');
+        Route::post('/schedule', [TutorScheduleController::class, 'store'])->name('schedule.store');
+        Route::get('/schedule/{schedule}/start', [TutorScheduleController::class, 'startSession'])->whereNumber('schedule')->name('schedule.start');
+        Route::patch('/schedule/{schedule}/meeting-link', [TutorScheduleController::class, 'updateMeetingLink'])->whereNumber('schedule')->name('schedule.meeting-link');
+        Route::put('/schedule/{schedule}', [TutorScheduleController::class, 'update'])->whereNumber('schedule')->name('schedule.update');
+        Route::delete('/schedule/{schedule}', [TutorScheduleController::class, 'destroy'])->whereNumber('schedule')->name('schedule.destroy');
     });
 
 Route::middleware('auth')->group(function () {

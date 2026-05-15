@@ -8,12 +8,13 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
-#[Fillable(['name', 'email', 'password', 'role_id', 'mentor_course_id'])]
+#[Fillable(['name', 'email', 'password', 'role_id', 'mentor_course_id', 'tutor_settings', 'tutor_profile'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -34,6 +35,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'tutor_settings' => 'array',
+            'tutor_profile' => 'array',
         ];
     }
 
@@ -103,6 +106,12 @@ class User extends Authenticatable
     public function mentorCourse(): BelongsTo
     {
         return $this->belongsTo(Course::class, 'mentor_course_id');
+    }
+
+    public function assignedCourses(): BelongsToMany
+    {
+        return $this->belongsToMany(Course::class, 'course_tutor', 'tutor_id', 'course_id')
+            ->withTimestamps();
     }
 
     public function isAdmin(): bool

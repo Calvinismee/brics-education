@@ -57,6 +57,26 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
         end_time: '10:00',
         meeting_link: '',
     });
+    const tutorCanTeachCourse = (tutor, courseTitle) => {
+        if (!courseTitle) {
+            return true;
+        }
+
+        return (tutor.course_titles || []).includes(courseTitle);
+    };
+    const availableTutors = (tutors || []).filter((tutor) => tutorCanTeachCourse(tutor, form.data.course));
+
+    const handleCourseChange = (event) => {
+        const nextCourse = event.target.value;
+        const currentTutor = (tutors || []).find((tutor) => String(tutor.id) === String(form.data.tutor_id));
+        const tutorStillAvailable = currentTutor && tutorCanTeachCourse(currentTutor, nextCourse);
+
+        form.setData({
+            ...form.data,
+            course: nextCourse,
+            tutor_id: tutorStillAvailable ? form.data.tutor_id : '',
+        });
+    };
 
     const closeForm = () => {
         setShowForm(false);
@@ -339,7 +359,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                         <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
                             <div className="border-b border-[#F7F2E7] p-5" style={{ background: '#691D1B' }}>
                                 <h3 className="font-bold text-white">{editingScheduleId ? 'Edit Jadwal Kelas' : 'Tambah Jadwal Kelas'}</h3>
-                                <p className="mt-1 text-xs text-white/70">Isi kelas, tutor, tanggal, jam, dan link pertemuan.</p>
+                                <p className="mt-1 text-xs text-white/70">Isi kelas, tutor, tanggal, jam, dan link pertemuan jika sudah tersedia.</p>
                             </div>
 
                             <form onSubmit={handleSubmit} className="flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
@@ -367,6 +387,19 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                                 ))}
                                             </select>
                                         )}
+                                        <p className="mb-2 text-xs text-gray-500">Pilih course UTBK yang sudah tersedia.</p>
+                                        <select
+                                            value={form.data.course}
+                                            onChange={handleCourseChange}
+                                            className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
+                                        >
+                                            <option value="">Pilih course</option>
+                                            {(courses || []).map((course) => (
+                                                <option key={course.id} value={course.title}>
+                                                    {course.title}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
 
                                     <div>
@@ -391,6 +424,21 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                                     </option>
                                                 ))}
                                             </select>
+                                        <p className="mb-2 text-xs text-gray-500">Pilih tutor pengampu untuk jadwal ini.</p>
+                                        <select
+                                            value={form.data.tutor_id}
+                                            onChange={(event) => form.setData('tutor_id', event.target.value)}
+                                            className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
+                                        >
+                                            <option value="">Pilih tutor</option>
+                                            {availableTutors.map((tutor) => (
+                                                <option key={tutor.id} value={tutor.id}>
+                                                    {tutor.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {form.data.course && availableTutors.length === 0 && (
+                                            <p className="mt-2 text-xs text-red-500">Belum ada tutor yang ditugaskan untuk course ini.</p>
                                         )}
                                     </div>
                                 </div>
@@ -406,7 +454,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                         />
                                     </div>
                                     <div>
-                                        <label className="mb-2 block text-sm font-semibold text-gray-700">Link Pertemuan (Zoom)</label>
+                                        <label className="mb-2 block text-sm font-semibold text-gray-700">Link Pertemuan (Zoom, opsional)</label>
                                         <input
                                             value={form.data.meeting_link}
                                             onChange={(event) => form.setData('meeting_link', event.target.value)}

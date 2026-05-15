@@ -3,6 +3,7 @@ import laravel from 'laravel-vite-plugin';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath } from 'node:url';
+import path from 'path';
 
 export default defineConfig(({ mode }) => ({
     ...(mode === 'test'
@@ -31,3 +32,9 @@ export default defineConfig(({ mode }) => ({
         setupFiles: 'resources/js/test/setup.jsx',
     },
 }));
+    resolve: {
+        alias: {
+            '@': path.resolve(__dirname, 'resources/js'),
+        },
+    },
+});

@@ -15,6 +15,7 @@ class Material extends Model
         'file_url',
         'content',
         'approval_status',
+        'rejection_comment',
         'approved_by',
         'approved_at',
     ];

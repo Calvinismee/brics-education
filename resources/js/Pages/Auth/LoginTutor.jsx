@@ -1,5 +1,5 @@
 import React from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import { BookOpen, Eye, EyeOff } from 'lucide-react';
 import LoginPanel from '@/Components/LoginPanel';
 import BricsLogo from '@/Components/BricsLogo';
@@ -17,7 +17,7 @@ export default function LoginTutor() {
 
   const submit = (e) => {
     e.preventDefault();
-    post(route('login'), {
+    post('/login/tutor', {
       onFinish: () => reset('password'),
       onError: (formErrors) => {
         toast.error(Object.values(formErrors)[0] || 'Login tutor gagal.');
@@ -96,7 +96,7 @@ export default function LoginTutor() {
             )}
           </form>
 
-          <p className="text-center text-sm text-gray-600">Belum terdaftar sebagai Tutor? <Link href={route('register')} className="hover:underline" style={{ fontWeight: 700, color: 'var(--brics-maroon)' }}>Daftar Sekarang</Link></p>
+          <p className="text-center text-sm text-gray-600">Akun tutor dibuat dan diberikan oleh admin BRICS Education.</p>
         </div>
       </div>
     </div>

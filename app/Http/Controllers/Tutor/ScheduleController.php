@@ -1,0 +1,274 @@
+<?php
+
+namespace App\Http\Controllers\Tutor;
+
+use App\Http\Controllers\Controller;
+use App\Models\Course;
+use App\Models\Enrollment;
+use App\Models\Material;
+use App\Models\Notification;
+use App\Models\Schedule;
+use App\Support\TutorCourseResolver;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+
+class ScheduleController extends Controller
+{
+    public function index(Request $request)
+    {
+        $user = $request->user();
+        $courseIds = $this->tutorCourseIds($user);
+        $weekStart = Carbon::now()->startOfWeek(Carbon::MONDAY)->startOfDay();
+        $weekEnd = Carbon::now()->endOfWeek(Carbon::SUNDAY)->endOfDay();
+
+        $scheduleEvents = Schedule::query()
+            ->with('course:id,title')
+            ->where('mentor_id', $user->id)
+            ->whereIn('course_id', $courseIds)
+            ->whereBetween('start_time', [$weekStart, $weekEnd])
+            ->orderBy('start_time')
+            ->get()
+            ->map(fn (Schedule $schedule) => [
+                'id' => $schedule->id,
+                'date' => $schedule->start_time?->locale('id')->translatedFormat('l, j F Y'),
+                'dateShort' => $schedule->start_time?->locale('id')->translatedFormat('D, j M'),
+                'dayKey' => $schedule->start_time?->toDateString(),
+                'time' => $this->timeRange($schedule),
+                'title' => $schedule->title,
+                'course' => $schedule->course?->title ?? $schedule->title,
+                'course_id' => $schedule->course_id,
+                'students' => Enrollment::query()
+                    ->where('course_id', $schedule->course_id)
+                    ->where('status', 'active')
+                    ->count(),
+                'type' => $this->eventType($schedule),
+                'location' => $schedule->meeting_link ? 'Online Meeting' : 'Platform Brics',
+                'meeting_link' => $schedule->meeting_link,
+                'started_at' => $schedule->started_at,
+                'status' => $this->scheduleStatus($schedule),
+                'start_session_url' => route('tutor.schedule.start', $schedule),
+                'start_time' => $schedule->start_time,
+                'end_time' => $schedule->end_time,
+            ]);
+        $eventsByDate = $scheduleEvents->groupBy('dayKey');
+        $weekDays = collect(range(0, 6))->map(function (int $offset) use ($weekStart, $eventsByDate) {
+            $date = $weekStart->copy()->addDays($offset)->locale('id');
+            $dayKey = $date->toDateString();
+
+            return [
+                'date' => $date->translatedFormat('l, j F Y'),
+                'dateShort' => $date->translatedFormat('D, j M'),
+                'dayKey' => $dayKey,
+                'isToday' => $date->isToday(),
+                'events' => $eventsByDate->get($dayKey, collect())->values(),
+            ];
+        });
+
+        return Inertia::render('Tutor/TutorSchedule', [
+            'user' => $user,
+            'tutorClasses' => Course::query()
+                ->withCount([
+                    'materials',
+                    'materials as approved_materials_count' => fn ($query) => $query->where('approval_status', 'approved'),
+                ])
+                ->whereIn('id', $courseIds)
+                ->orderBy('title')
+                ->get()
+                ->map(fn (Course $course) => [
+                    'id' => $course->id,
+                    'title' => $course->title,
+                    'name' => $course->title,
+                    'students' => Enrollment::query()
+                        ->where('course_id', $course->id)
+                        ->where('status', 'active')
+                        ->count(),
+                    'weeklySchedule' => TutorCourseResolver::currentWeekScheduleLabel($user, $course->id),
+                ]),
+            'schedules' => $weekDays,
+            'week' => [
+                'start' => $weekStart->toDateString(),
+                'end' => $weekEnd->toDateString(),
+                'label' => $weekStart->copy()->locale('id')->translatedFormat('j M').' - '.$weekEnd->copy()->locale('id')->translatedFormat('j M Y'),
+            ],
+            'stats' => [
+                'totalThisWeek' => $scheduleEvents->count(),
+                'totalLive' => $scheduleEvents->where('type', 'live')->count(),
+                'totalDeadlines' => $scheduleEvents->where('type', 'deadline')->count(),
+                'totalReviews' => $scheduleEvents->where('type', 'review')->count(),
+            ],
+        ]);
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $courseIds = $this->tutorCourseIds($request->user())->all();
+
+        $validated = $request->validate([
+            'course_id' => ['required', 'integer', Rule::in($courseIds)],
+            'title' => ['required', 'string', 'max:255'],
+            'schedule_date' => ['required', 'date'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
+            'meeting_link' => ['nullable', 'url', 'max:1024'],
+        ]);
+
+        Schedule::create($this->payload($request, $validated));
+
+        return redirect()->route('tutor.schedule')->with('success', 'Jadwal berhasil dibuat.');
+    }
+
+    public function update(Request $request, Schedule $schedule): RedirectResponse
+    {
+        abort_unless((int) $schedule->mentor_id === (int) $request->user()->id, 403);
+
+        $courseIds = $this->tutorCourseIds($request->user())->all();
+
+        $validated = $request->validate([
+            'course_id' => ['required', 'integer', Rule::in($courseIds)],
+            'title' => ['required', 'string', 'max:255'],
+            'schedule_date' => ['required', 'date'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
+            'meeting_link' => ['nullable', 'url', 'max:1024'],
+        ]);
+
+        $schedule->update($this->payload($request, $validated));
+
+        return redirect()->route('tutor.schedule')->with('success', 'Jadwal berhasil diperbarui.');
+    }
+
+    public function destroy(Request $request, Schedule $schedule): RedirectResponse
+    {
+        abort_unless((int) $schedule->mentor_id === (int) $request->user()->id, 403);
+
+        $schedule->delete();
+
+        return back()->with('success', 'Jadwal berhasil dihapus.');
+    }
+
+    public function updateMeetingLink(Request $request, Schedule $schedule): RedirectResponse
+    {
+        abort_unless((int) $schedule->mentor_id === (int) $request->user()->id, 403);
+        abort_unless(TutorCourseResolver::ids($request->user())->contains((int) $schedule->course_id), 403);
+
+        if ($schedule->end_time < now()) {
+            return back()->withErrors([
+                'meeting_link' => 'Sesi ini sudah berakhir. Link meeting tidak bisa ditambahkan atau diubah.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'meeting_link' => ['nullable', 'url', 'max:1024'],
+        ]);
+
+        if ($schedule->started_at && blank($validated['meeting_link'] ?? null)) {
+            return back()->withErrors([
+                'meeting_link' => 'Link meeting sesi yang sudah dimulai tidak bisa dikosongkan.',
+            ]);
+        }
+
+        $previousLink = $schedule->meeting_link;
+        $schedule->update([
+            'meeting_link' => filled($validated['meeting_link'] ?? null) ? $validated['meeting_link'] : null,
+        ]);
+
+        if ($schedule->meeting_link && $schedule->meeting_link !== $previousLink) {
+            $schedule->load('course:id,title');
+            $this->notifyStudentsAboutMeetingLink($request, $schedule);
+        }
+
+        return back()->with('success', 'Link meeting berhasil diperbarui.');
+    }
+
+    public function startSession(Request $request, Schedule $schedule)
+    {
+        abort_unless((int) $schedule->mentor_id === (int) $request->user()->id, 403);
+        abort_unless(TutorCourseResolver::ids($request->user())->contains((int) $schedule->course_id), 403);
+
+        if (blank($schedule->meeting_link)) {
+            return back()->withErrors([
+                'meeting_link' => 'Tambahkan link meeting terlebih dahulu sebelum memulai sesi.',
+            ]);
+        }
+
+        if ($schedule->end_time < now()) {
+            return back()->withErrors([
+                'schedule' => 'Sesi ini sudah berakhir dan tidak bisa dimulai ulang.',
+            ]);
+        }
+
+        if (! $schedule->started_at) {
+            $schedule->update(['started_at' => now()]);
+        }
+
+        return redirect()->away($schedule->meeting_link);
+    }
+
+    private function payload(Request $request, array $validated): array
+    {
+        return [
+            'course_id' => $validated['course_id'],
+            'mentor_id' => $request->user()->id,
+            'title' => $validated['title'],
+            'start_time' => Carbon::createFromFormat('Y-m-d H:i', $validated['schedule_date'].' '.$validated['start_time']),
+            'end_time' => Carbon::createFromFormat('Y-m-d H:i', $validated['schedule_date'].' '.$validated['end_time']),
+            'meeting_link' => $validated['meeting_link'] ?? null,
+        ];
+    }
+
+    private function eventType(Schedule $schedule): string
+    {
+        $title = strtolower($schedule->title);
+
+        return match (true) {
+            str_contains($title, 'deadline') => 'deadline',
+            str_contains($title, 'review') => 'review',
+            str_contains($title, 'konsultasi') || str_contains($title, 'consult') => 'consultation',
+            default => 'live',
+        };
+    }
+
+    private function timeRange(Schedule $schedule): string
+    {
+        return $schedule->start_time?->format('H:i').' - '.$schedule->end_time?->format('H:i');
+    }
+
+    private function scheduleStatus(Schedule $schedule): string
+    {
+        if ($schedule->end_time < now()) {
+            return 'completed';
+        }
+
+        if ($schedule->start_time <= now() && $schedule->end_time >= now()) {
+            return 'in-progress';
+        }
+
+        return 'upcoming';
+    }
+
+    private function tutorCourseIds($user)
+    {
+        return TutorCourseResolver::ids($user);
+    }
+
+    private function notifyStudentsAboutMeetingLink(Request $request, Schedule $schedule): void
+    {
+        $studentIds = Enrollment::query()
+            ->where('course_id', $schedule->course_id)
+            ->where('status', 'active')
+            ->pluck('user_id')
+            ->unique();
+
+        foreach ($studentIds as $studentId) {
+            Notification::create([
+                'user_id' => $studentId,
+                'title' => 'Link live class tersedia',
+                'message' => ($schedule->course?->title ?? 'Course UTBK').' - '.$request->user()->name.' sudah menambahkan link meeting untuk '.$schedule->title.'.',
+                'is_read' => false,
+            ]);
+        }
+    }
+}

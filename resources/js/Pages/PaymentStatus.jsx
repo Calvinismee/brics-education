@@ -141,7 +141,7 @@ export default function PaymentStatus({ transaction }) {
 
               <p className="text-[#D8D7BE] text-sm lg:text-base leading-relaxed">
                 {isPending
-                  ? 'Transaksi kamu sudah tercatat di sistem dan menunggu simulasi konfirmasi pembayaran.'
+                  ? 'Transaksi kamu sudah tercatat dan menunggu konfirmasi pembayaran.'
                   : 'Status pembayaran sudah berhasil. Course dapat diakses melalui dashboard siswa.'}
               </p>
             </div>
@@ -162,7 +162,7 @@ export default function PaymentStatus({ transaction }) {
                   Detail Transaksi
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  Informasi pembayaran yang tersimpan di database.
+                  Informasi pembayaran untuk transaksi ini.
                 </p>
               </div>
             </div>
@@ -289,7 +289,7 @@ export default function PaymentStatus({ transaction }) {
                     >
                       {isSuccess
                         ? 'Pembayaran sudah berhasil. Kamu dapat membuka dashboard siswa untuk mengakses course, materi, dan jadwal pembelajaran.'
-                        : 'Untuk tahap development ini, transaksi sudah berhasil tersimpan di database dengan status pending. Klik tombol simulasi untuk mengubah status menjadi success.'}
+                        : 'Transaksi sudah dibuat dan sedang menunggu konfirmasi pembayaran. Setelah pembayaran berhasil, course akan aktif.'}
                     </p>
                   </div>
                 </div>
@@ -346,7 +346,7 @@ export default function PaymentStatus({ transaction }) {
                     style={{ background: '#691D1B', fontWeight: 900 }}
                   >
                     <CheckCircle className="w-5 h-5" />
-                    Simulasikan Pembayaran Berhasil
+                    Konfirmasi Pembayaran Berhasil
                   </button>
                 ) : (
                   <Link

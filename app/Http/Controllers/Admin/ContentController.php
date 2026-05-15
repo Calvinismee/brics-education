@@ -125,9 +125,19 @@ class ContentController extends Controller
     private function updateApprovalStatus(int $contentId, string $status, string $message, ?string $comment = null): RedirectResponse
     {
         $comment = trim((string) $comment);
-        $currentStatus = DB::table('materials')
-            ->where('id', $contentId)
-            ->value('approval_status');
+        $material = DB::table('materials')
+            ->leftJoin('courses', 'materials.course_id', '=', 'courses.id')
+            ->where('materials.id', $contentId)
+            ->select('materials.*', 'courses.title as course_title')
+            ->first();
+
+        if (! $material) {
+            return redirect()->route('admin.content')->withErrors([
+                'content' => 'Konten tidak ditemukan.',
+            ]);
+        }
+
+        $currentStatus = $material->approval_status;
 
         DB::table('materials')
             ->where('id', $contentId)
@@ -139,10 +149,54 @@ class ContentController extends Controller
                 'updated_at' => now(),
             ]);
 
-        if ($currentStatus !== null && $currentStatus !== $status) {
+        if ($currentStatus !== $status) {
             AdminNotifier::contentReviewed($contentId, $status);
+            $this->notifyReviewResult($material, $status, $comment);
         }
 
         return redirect()->route('admin.content')->with('success', $message);
+    }
+
+    private function notifyReviewResult(object $material, string $status, ?string $comment = null): void
+    {
+        $now = now();
+        $courseTitle = $material->course_title ?: 'course UTBK';
+        $notifications = [];
+
+        if ($material->uploaded_by) {
+            $notifications[] = [
+                'user_id' => $material->uploaded_by,
+                'title' => $status === 'approved' ? 'Materi disetujui' : 'Materi ditolak',
+                'message' => $status === 'approved'
+                    ? 'Materi "'.$material->title.'" untuk '.$courseTitle.' sudah disetujui admin.'
+                    : 'Materi "'.$material->title.'" untuk '.$courseTitle.' ditolak admin.'.($comment ? ' Catatan: '.$comment : ''),
+                'is_read' => false,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        if ($status === 'approved') {
+            $studentIds = DB::table('enrollments')
+                ->where('course_id', $material->course_id)
+                ->where('status', 'active')
+                ->pluck('user_id')
+                ->unique();
+
+            foreach ($studentIds as $studentId) {
+                $notifications[] = [
+                    'user_id' => $studentId,
+                    'title' => 'Materi baru tersedia',
+                    'message' => 'Materi "'.$material->title.'" sudah tersedia di '.$courseTitle.'.',
+                    'is_read' => false,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+        }
+
+        if ($notifications !== []) {
+            DB::table('notifications')->insert($notifications);
+        }
     }
 }
