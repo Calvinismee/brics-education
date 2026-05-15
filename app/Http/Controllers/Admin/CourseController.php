@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 
 class CourseController extends Controller
@@ -40,15 +41,26 @@ class CourseController extends Controller
                             : '-',
                     ]);
 
-                $mentors = DB::table('users')
-                    ->where('mentor_course_id', $course->id)
-                    ->orderBy('name')
-                    ->get(['id', 'name', 'email'])
-                    ->map(fn ($mentor) => [
-                        'id' => $mentor->id,
-                        'name' => $mentor->name,
-                        'email' => $mentor->email,
-                    ]);
+                $mentorQuery = DB::table('users')
+                    ->select('users.id', 'users.name', 'users.email')
+                    ->when(Schema::hasTable('course_tutor'), function ($query) {
+                        $query->leftJoin('course_tutor', 'users.id', '=', 'course_tutor.tutor_id');
+                    })
+                    ->where(function ($query) use ($course) {
+                        $query->where('users.mentor_course_id', $course->id);
+
+                        if (Schema::hasTable('course_tutor')) {
+                            $query->orWhere('course_tutor.course_id', $course->id);
+                        }
+                    })
+                    ->distinct()
+                    ->orderBy('users.name');
+
+                $mentors = $mentorQuery->get()->map(fn ($mentor) => [
+                    'id' => $mentor->id,
+                    'name' => $mentor->name,
+                    'email' => $mentor->email,
+                ]);
 
                 $contents = DB::table('materials')
                     ->leftJoin('users', 'materials.uploaded_by', '=', 'users.id')
@@ -107,9 +119,27 @@ class CourseController extends Controller
             'stats' => [
                 'totalCourses' => $courses->count(),
                 'totalEnrollments' => DB::table('enrollments')->count(),
-                'totalMentors' => DB::table('users')->whereNotNull('mentor_course_id')->count(),
+                'totalMentors' => $this->totalAssignedMentors(),
                 'totalContents' => DB::table('materials')->count(),
             ],
         ]);
+    }
+
+    private function totalAssignedMentors(): int
+    {
+        $query = DB::table('users');
+
+        if (Schema::hasTable('course_tutor')) {
+            return $query
+                ->leftJoin('course_tutor', 'users.id', '=', 'course_tutor.tutor_id')
+                ->where(function ($subQuery) {
+                    $subQuery->whereNotNull('users.mentor_course_id')
+                        ->orWhereNotNull('course_tutor.course_id');
+                })
+                ->distinct('users.id')
+                ->count('users.id');
+        }
+
+        return $query->whereNotNull('mentor_course_id')->count();
     }
 }

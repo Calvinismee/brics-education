@@ -24,6 +24,7 @@ const emptyForm = {
     password: '',
     role: 'student',
     mentor_course_id: '',
+    mentor_course_ids: [],
 };
 
 const normalizeRoleName = (role) => {
@@ -110,6 +111,9 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
             password: '',
             role: extractRoleName(user),
             mentor_course_id: user.mentor_course_id || '',
+            mentor_course_ids: Array.isArray(user.mentor_course_ids)
+                ? user.mentor_course_ids.map((courseId) => Number(courseId))
+                : (user.mentor_course_id ? [Number(user.mentor_course_id)] : []),
         });
         form.clearErrors();
         setShowForm(true);
@@ -158,9 +162,27 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
 
         if (payload.role !== 'tutor') {
             delete payload.mentor_course_id;
+            delete payload.mentor_course_ids;
+        } else {
+            payload.mentor_course_ids = (payload.mentor_course_ids || []).map((courseId) => Number(courseId));
+            payload.mentor_course_id = payload.mentor_course_ids[0] || '';
         }
 
         return payload;
+    };
+
+    const toggleTutorCourse = (courseId) => {
+        const normalizedCourseId = Number(courseId);
+        const selectedCourseIds = (form.data.mentor_course_ids || []).map((id) => Number(id));
+        const nextCourseIds = selectedCourseIds.includes(normalizedCourseId)
+            ? selectedCourseIds.filter((id) => id !== normalizedCourseId)
+            : [...selectedCourseIds, normalizedCourseId];
+
+        form.setData({
+            ...form.data,
+            mentor_course_ids: nextCourseIds,
+            mentor_course_id: nextCourseIds[0] || '',
+        });
     };
 
     const submitForm = () => {
@@ -404,9 +426,17 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
                                                         )}
                                                     </div>
                                                 ) : roleName === 'tutor' ? (
-                                                    <span className="rounded-full bg-[#691D1B15] px-2 py-1 text-xs font-semibold text-[#691D1B]">
-                                                        {user.taughtCourse || 'Belum ditugaskan'}
-                                                    </span>
+                                                    <div className="flex max-w-xs flex-wrap gap-1.5">
+                                                        {(user.taughtCourses || []).length > 0 ? (
+                                                            user.taughtCourses.map((course) => (
+                                                                <span key={course.id} className="rounded-full bg-[#691D1B15] px-2 py-1 text-xs font-semibold text-[#691D1B]">
+                                                                    {course.title}
+                                                                </span>
+                                                            ))
+                                                        ) : (
+                                                            <span className="text-xs text-gray-400">Belum ditugaskan</span>
+                                                        )}
+                                                    </div>
                                                 ) : (
                                                     <span className="text-xs text-gray-400">-</span>
                                                 )}
@@ -530,23 +560,30 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
                                 </label>
 
                                 {form.data.role === 'tutor' && (
-                                    <label className="space-y-2">
+                                    <div className="space-y-2">
                                         <span className="text-sm font-semibold text-gray-700">Course yang Diajar</span>
-                                        <select
-                                            value={form.data.mentor_course_id || ''}
-                                            onChange={(event) => form.setData('mentor_course_id', event.target.value)}
-                                            disabled={isSubmitting || form.processing}
-                                            className="w-full rounded-xl border border-[#D8D7BE] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
-                                        >
-                                            <option value="">Belum ditugaskan</option>
-                                            {(courses || []).map((course) => (
-                                                <option key={course.id} value={course.id}>
-                                                    {course.title}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="grid max-h-52 gap-2 overflow-y-auto rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] p-3 sm:grid-cols-2">
+                                            {(courses || []).map((course) => {
+                                                const selected = (form.data.mentor_course_ids || []).map((id) => Number(id)).includes(Number(course.id));
+
+                                                return (
+                                                    <label key={course.id} className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${selected ? 'border-[#691D1B] bg-white text-[#691D1B]' : 'border-transparent bg-white/70 text-gray-700 hover:bg-white'}`}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selected}
+                                                            onChange={() => toggleTutorCourse(course.id)}
+                                                            disabled={isSubmitting || form.processing}
+                                                            className="mt-0.5 h-4 w-4 rounded border-[#D8D7BE] text-[#691D1B] focus:ring-[#691D1B]"
+                                                        />
+                                                        <span className="font-semibold">{course.title}</span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                        <p className="text-xs text-gray-500">Admin bisa menugaskan satu tutor ke lebih dari satu course UTBK.</p>
                                         {form.errors.mentor_course_id && <p className="text-xs text-red-500">{form.errors.mentor_course_id}</p>}
-                                    </label>
+                                        {form.errors.mentor_course_ids && <p className="text-xs text-red-500">{form.errors.mentor_course_ids}</p>}
+                                    </div>
                                 )}
 
                                 <label className="space-y-2">

@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use App\Models\User;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -32,12 +33,19 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $request->session()->regenerate();
+        $request->session()->forget('url.intended');
 
         $user = auth()->user();
 
         // Redirect admin users to admin dashboard
         if ($user && $user->isAdmin()) {
             return redirect()->route('admin.dashboard');
+        }
+
+        $role = strtolower((string) User::roleNameFor($user?->role_id));
+
+        if (in_array($role, ['tutor', 'mentor'], true)) {
+            return redirect()->route('tutor.dashboard');
         }
 
         return redirect()->intended(route('dashboard', absolute: false));
@@ -51,6 +59,7 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $request->session()->regenerate();
+        $request->session()->forget('url.intended');
 
         if (! auth()->user()?->isAdmin()) {
             Auth::guard('web')->logout();
@@ -63,6 +72,31 @@ class AuthenticatedSessionController extends Controller
         }
 
         return redirect()->route('admin.dashboard');
+    }
+
+    /**
+     * Handle an incoming tutor authentication request.
+     */
+    public function storeTutor(LoginRequest $request): RedirectResponse
+    {
+        $request->authenticate();
+
+        $request->session()->regenerate();
+        $request->session()->forget('url.intended');
+
+        $role = strtolower((string) User::roleNameFor(auth()->user()?->role_id));
+
+        if (! in_array($role, ['tutor', 'mentor'], true)) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login.tutor')->withErrors([
+                'email' => 'Akun ini tidak memiliki akses tutor.',
+            ]);
+        }
+
+        return redirect()->route('tutor.dashboard');
     }
 
     /**
@@ -80,6 +114,12 @@ class AuthenticatedSessionController extends Controller
 
         if ($user?->isAdmin()) {
             return redirect()->route('login.admin');
+        }
+
+        $role = strtolower((string) User::roleNameFor($user?->role_id));
+
+        if (in_array($role, ['tutor', 'mentor'], true)) {
+            return redirect()->route('login.tutor');
         }
 
         return redirect('/');

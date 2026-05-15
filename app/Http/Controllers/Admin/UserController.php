@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\TutorCourseResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +23,7 @@ class UserController extends Controller
             ->select('id', 'name', 'email', 'role_id', 'mentor_course_id', 'created_at')
             ->with('role:id,name')
             ->with('mentorCourse:id,title')
+            ->with('assignedCourses:id,title')
             ->orderBy('created_at', 'desc')
             ->paginate(15)
             ->withQueryString();
@@ -37,7 +39,24 @@ class UserController extends Controller
                 'role' => $user->role,
                 'created_at' => $user->created_at,
                 'mentor_course_id' => $user->mentor_course_id,
-                'taughtCourse' => in_array($role, ['mentor', 'tutor'], true) ? $user->mentorCourse?->title : null,
+                'mentor_course_ids' => in_array($role, ['mentor', 'tutor'], true)
+                    ? TutorCourseResolver::ids($user)->all()
+                    : [],
+                'taughtCourses' => in_array($role, ['mentor', 'tutor'], true)
+                    ? $user->assignedCourses
+                        ->when($user->mentorCourse, fn ($courses) => $courses->push($user->mentorCourse))
+                        ->unique('id')
+                        ->values()
+                        ->map(fn ($course) => ['id' => $course->id, 'title' => $course->title])
+                        ->all()
+                    : [],
+                'taughtCourse' => in_array($role, ['mentor', 'tutor'], true)
+                    ? $user->assignedCourses
+                        ->when($user->mentorCourse, fn ($courses) => $courses->push($user->mentorCourse))
+                        ->unique('id')
+                        ->pluck('title')
+                        ->implode(', ')
+                    : null,
                 'enrolledCourses' => $role === 'student'
                     ? DB::table('enrollments')
                         ->join('courses', 'enrollments.course_id', '=', 'courses.id')
@@ -81,6 +100,8 @@ class UserController extends Controller
             'password' => ['required', 'string', 'min:8'],
             'role' => ['required', Rule::in(['student', 'tutor', 'admin'])],
             'mentor_course_id' => ['nullable', 'integer', 'exists:courses,id'],
+            'mentor_course_ids' => ['nullable', 'array'],
+            'mentor_course_ids.*' => ['integer', 'exists:courses,id'],
         ]);
 
         $roles = User::adminRoleIds();
@@ -95,6 +116,7 @@ class UserController extends Controller
         ]);
 
         $user->forceFill(['role' => $legacyRole])->save();
+        TutorCourseResolver::sync($user, $this->mentorCourseIdsFrom($validated));
 
         return redirect()->route('admin.users')->with('success', 'Pengguna berhasil ditambahkan.');
     }
@@ -107,6 +129,8 @@ class UserController extends Controller
             'password' => ['nullable', 'string', 'min:8'],
             'role' => ['required', Rule::in(['student', 'tutor', 'admin'])],
             'mentor_course_id' => ['nullable', 'integer', 'exists:courses,id'],
+            'mentor_course_ids' => ['nullable', 'array'],
+            'mentor_course_ids.*' => ['integer', 'exists:courses,id'],
         ]);
 
         $roles = User::adminRoleIds();
@@ -116,15 +140,36 @@ class UserController extends Controller
         $user->email = $validated['email'];
         $user->role = $legacyRole;
         $user->role_id = $roles[$validated['role']] ?? $user->role_id;
-        $user->mentor_course_id = $validated['role'] === 'tutor' ? ($validated['mentor_course_id'] ?? null) : null;
+        $user->mentor_course_id = null;
 
         if (! empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
         }
 
         $user->save();
+        TutorCourseResolver::sync($user, $this->mentorCourseIdsFrom($validated));
 
         return redirect()->route('admin.users')->with('success', 'Pengguna berhasil diperbarui.');
+    }
+
+    private function mentorCourseIdsFrom(array $validated): array
+    {
+        if (($validated['role'] ?? null) !== 'tutor') {
+            return [];
+        }
+
+        $courseIds = collect($validated['mentor_course_ids'] ?? []);
+
+        if ($courseIds->isEmpty() && ! empty($validated['mentor_course_id'])) {
+            $courseIds->push($validated['mentor_course_id']);
+        }
+
+        return $courseIds
+            ->filter()
+            ->map(fn ($courseId) => (int) $courseId)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function legacyRoleFor(string $role): string

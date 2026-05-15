@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Schedule;
 use App\Models\User;
+use App\Support\TutorCourseResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -67,13 +68,32 @@ class ScheduleController extends Controller
 
         return Inertia::render('Admin/Schedule', [
             'schedules' => $schedules,
+            'courses' => DB::table('courses')
+                ->select('id', 'title')
+                ->orderBy('title')
+                ->get(),
             'tutors' => User::query()
                 ->whereIn('role_id', [
                     $roles['mentor'] ?? ($roles['tutor'] ?? 2),
                     $roles['tutor'] ?? 2,
                 ])
+                ->with(['assignedCourses:id,title', 'mentorCourse:id,title'])
                 ->orderBy('name')
-                ->get(['id', 'name', 'mentor_course_id']),
+                ->get(['id', 'name', 'mentor_course_id'])
+                ->map(function (User $tutor) {
+                    $courses = $tutor->assignedCourses
+                        ->when($tutor->mentorCourse, fn ($assignedCourses) => $assignedCourses->push($tutor->mentorCourse))
+                        ->unique('id')
+                        ->values();
+
+                    return [
+                        'id' => $tutor->id,
+                        'name' => $tutor->name,
+                        'mentor_course_id' => $tutor->mentor_course_id,
+                        'course_ids' => $courses->pluck('id')->all(),
+                        'course_titles' => $courses->pluck('title')->all(),
+                    ];
+                }),
             'stats' => [
                 'totalClasses' => Schedule::count(),
                 'upcomingClasses' => Schedule::query()
@@ -95,7 +115,7 @@ class ScheduleController extends Controller
             'schedule_date' => ['required', 'date'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
-            'meeting_link' => ['required', 'string', 'max:1024'],
+            'meeting_link' => ['nullable', 'url', 'max:1024'],
         ]);
 
         Schedule::create($this->buildPayload($validated));
@@ -111,7 +131,7 @@ class ScheduleController extends Controller
             'schedule_date' => ['required', 'date'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
-            'meeting_link' => ['required', 'string', 'max:1024'],
+            'meeting_link' => ['nullable', 'url', 'max:1024'],
         ]);
 
         $schedule->update($this->buildPayload($validated));
@@ -144,7 +164,7 @@ class ScheduleController extends Controller
             'course_id' => $courseId,
             'mentor_id' => $validated['tutor_id'] ?? null,
             'title' => $validated['course'],
-            'meeting_link' => $validated['meeting_link'] ?? null,
+            'meeting_link' => filled($validated['meeting_link'] ?? null) ? $validated['meeting_link'] : null,
             'start_time' => $startTime,
             'end_time' => $endTime,
         ];
@@ -156,24 +176,9 @@ class ScheduleController extends Controller
             return;
         }
 
-        $mentorCourseId = DB::table('users')
-            ->where('id', $mentorId)
-            ->value('mentor_course_id');
-
-        if ($mentorCourseId === null) {
-            DB::table('users')
-                ->where('id', $mentorId)
-                ->update([
-                    'mentor_course_id' => $courseId,
-                    'updated_at' => now(),
-                ]);
-
-            return;
-        }
-
-        if ((int) $mentorCourseId !== $courseId) {
+        if (! TutorCourseResolver::isAssigned($mentorId, $courseId)) {
             throw ValidationException::withMessages([
-                'tutor_id' => 'Mentor hanya dapat mengajar course yang ditugaskan.',
+                'tutor_id' => 'Tutor belum ditugaskan untuk course ini. Assign course tutor dari menu Users terlebih dahulu.',
             ]);
         }
     }
