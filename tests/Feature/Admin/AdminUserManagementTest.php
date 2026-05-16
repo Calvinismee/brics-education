@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Support\Facades\DB;
+
 test('TC_ADMIN_USER_001 admin berhasil menambah user', function () {
     // Dokumentasi: admin POST data user tutor baru; expected user tersimpan dan muncul di database.
     $admin = adminUser();
@@ -19,6 +21,45 @@ test('TC_ADMIN_USER_001 admin berhasil menambah user', function () {
         'name' => 'Fajar',
         'email' => 'fajar@gmail.com',
         'role_id' => roleIdForTest('tutor'),
+    ]);
+});
+
+test('TC_ADMIN_TUTOR_001 admin berhasil menambah data tutor dengan assignment course', function () {
+    // Dokumentasi: admin POST data tutor baru beserta course yang diajar; expected tutor tersimpan dan relasi course tutor dibuat.
+    $admin = adminUser();
+    $firstCourse = courseRecord(['title' => 'Penalaran Umum']);
+    $secondCourse = courseRecord(['title' => 'Literasi Bahasa Inggris']);
+
+    $response = $this->actingAs($admin)->post(route('admin.users.store'), [
+        'name' => 'Tutor Baru',
+        'role' => 'tutor',
+        'email' => 'tutor-baru@example.com',
+        'password' => 'password123',
+        'mentor_course_ids' => [$firstCourse['id'], $secondCourse['id']],
+    ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('admin.users', absolute: false));
+
+    $tutorId = DB::table('users')->where('email', 'tutor-baru@example.com')->value('id');
+
+    $this->assertDatabaseHas('users', [
+        'id' => $tutorId,
+        'name' => 'Tutor Baru',
+        'email' => 'tutor-baru@example.com',
+        'role_id' => roleIdForTest('tutor'),
+        'mentor_course_id' => $firstCourse['id'],
+    ]);
+
+    $this->assertDatabaseHas('course_tutor', [
+        'tutor_id' => $tutorId,
+        'course_id' => $firstCourse['id'],
+    ]);
+
+    $this->assertDatabaseHas('course_tutor', [
+        'tutor_id' => $tutorId,
+        'course_id' => $secondCourse['id'],
     ]);
 });
 
