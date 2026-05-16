@@ -9,6 +9,7 @@ class Enrollment extends Model
     protected $fillable = [
         'user_id',
         'course_id',
+        'package_id',
         'status',
         'enrolled_at',
     ];
@@ -21,5 +22,10 @@ class Enrollment extends Model
     public function course()
     {
         return $this->belongsTo(Course::class);
+    }
+
+    public function package()
+    {
+        return $this->belongsTo(Package::class);
     }
 }

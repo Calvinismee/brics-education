@@ -11,6 +11,8 @@ import {
   ChevronRight,
   AlertCircle,
   Receipt,
+  Layers,
+  Package as PackageIcon,
 } from 'lucide-react';
 
 function formatPrice(price) {
@@ -23,10 +25,30 @@ function formatPrice(price) {
   return String(price || '-');
 }
 
-function getCategoryName(course) {
-  if (!course?.category) return 'Course';
+function asArray(value) {
+  if (Array.isArray(value)) return value;
+  return Object.values(value ?? {});
+}
+
+function getCourseCategoryName(course) {
+  if (!course?.category) return 'Paket';
   if (typeof course.category === 'string') return course.category;
-  return course.category.name || 'Course';
+  return course.category.name || 'Paket';
+}
+
+function getPackageCourses(learningPackage) {
+  return asArray(learningPackage?.courses);
+}
+
+function getPackageCategoryLabel(learningPackage) {
+  const categories = Array.from(
+    new Set(getPackageCourses(learningPackage).map((course) => getCourseCategoryName(course)).filter(Boolean))
+  );
+
+  if (categories.length === 0) return 'Paket Belajar';
+  if (categories.length === 1) return categories[0];
+
+  return 'Paket Lengkap';
 }
 
 function formatPaymentMethod(method) {
@@ -39,6 +61,11 @@ function formatPaymentMethod(method) {
 
 export default function PaymentStatus({ transaction }) {
   const course = transaction.course;
+  const learningPackage = transaction.package;
+  const packageCourses = getPackageCourses(learningPackage);
+  const isPackageTransaction = !!learningPackage;
+  const productName = isPackageTransaction ? learningPackage.name : (course?.title || 'Course');
+  const productCategory = isPackageTransaction ? getPackageCategoryLabel(learningPackage) : getCourseCategoryName(course);
   const isSuccess = transaction.payment_status === 'success';
   const isPending = transaction.payment_status === 'pending';
 
@@ -142,7 +169,7 @@ export default function PaymentStatus({ transaction }) {
               <p className="text-[#D8D7BE] text-sm lg:text-base leading-relaxed">
                 {isPending
                   ? 'Transaksi kamu sudah tercatat dan menunggu konfirmasi pembayaran.'
-                  : 'Status pembayaran sudah berhasil. Course dapat diakses melalui dashboard siswa.'}
+                  : 'Status pembayaran sudah berhasil. Paket dapat diakses melalui dashboard siswa.'}
               </p>
             </div>
           </div>
@@ -172,7 +199,7 @@ export default function PaymentStatus({ transaction }) {
                 <div className="border border-[#D8D7BE] rounded-2xl p-5 bg-[#FDFCF8]">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-11 h-11 rounded-xl bg-[#F8EDED] flex items-center justify-center text-[#691D1B]">
-                      <BookOpen className="w-5 h-5" />
+                      {isPackageTransaction ? <PackageIcon className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
                     </div>
 
                     <div>
@@ -180,10 +207,10 @@ export default function PaymentStatus({ transaction }) {
                         className="text-gray-900"
                         style={{ fontWeight: 900 }}
                       >
-                        Detail Course
+                        {isPackageTransaction ? 'Detail Paket' : 'Detail Course'}
                       </h3>
                       <p className="text-xs text-gray-500">
-                        Course yang dibeli siswa.
+                        {isPackageTransaction ? 'Paket yang dibeli siswa.' : 'Course yang dibeli siswa.'}
                       </p>
                     </div>
                   </div>
@@ -192,7 +219,7 @@ export default function PaymentStatus({ transaction }) {
                     className="text-lg text-[#691D1B] mb-2"
                     style={{ fontWeight: 900 }}
                   >
-                    {course?.title || 'Course'}
+                    {productName}
                   </p>
 
                   <span
@@ -203,8 +230,28 @@ export default function PaymentStatus({ transaction }) {
                       fontWeight: 800,
                     }}
                   >
-                    {getCategoryName(course)}
+                    {productCategory}
                   </span>
+
+                  {isPackageTransaction && (
+                    <div className="mt-4 rounded-xl border border-[#D8D7BE] bg-white p-3">
+                      <div className="mb-2 flex items-center gap-2 text-xs uppercase text-gray-500" style={{ fontWeight: 900 }}>
+                        <Layers className="w-3.5 h-3.5 text-[#691D1B]" />
+                        Course aktif
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {packageCourses.length > 0 ? (
+                          packageCourses.map((item) => (
+                            <span key={item.id} className="rounded-full bg-[#F7F2E7] px-2.5 py-1 text-xs text-gray-600" style={{ fontWeight: 800 }}>
+                              {item.title}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-gray-500">Belum ada course terhubung.</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="border border-[#D8D7BE] rounded-2xl p-5 bg-[#FDFCF8]">
@@ -279,7 +326,7 @@ export default function PaymentStatus({ transaction }) {
                       className={isSuccess ? 'text-green-800' : 'text-yellow-800'}
                       style={{ fontWeight: 900 }}
                     >
-                      {isSuccess ? 'Course sudah aktif' : 'Menunggu konfirmasi pembayaran'}
+                      {isSuccess ? 'Paket sudah aktif' : 'Menunggu konfirmasi pembayaran'}
                     </p>
 
                     <p
@@ -288,8 +335,8 @@ export default function PaymentStatus({ transaction }) {
                       }`}
                     >
                       {isSuccess
-                        ? 'Pembayaran sudah berhasil. Kamu dapat membuka dashboard siswa untuk mengakses course, materi, dan jadwal pembelajaran.'
-                        : 'Transaksi sudah dibuat dan sedang menunggu konfirmasi pembayaran. Setelah pembayaran berhasil, course akan aktif.'}
+                        ? 'Pembayaran sudah berhasil. Kamu dapat membuka dashboard siswa untuk mengakses semua course dalam paket, materi, dan jadwal pembelajaran.'
+                        : 'Transaksi sudah dibuat dan sedang menunggu konfirmasi pembayaran. Setelah pembayaran berhasil, paket akan aktif.'}
                     </p>
                   </div>
                 </div>
@@ -385,7 +432,7 @@ export default function PaymentStatus({ transaction }) {
                   <div className="flex gap-3">
                     <Shield className="w-5 h-5 text-[#691D1B] flex-shrink-0" />
                     <p className="text-xs text-gray-600 leading-relaxed">
-                      Data transaksi ini tersimpan pada sistem dan digunakan untuk mengaktifkan akses course siswa.
+                      Data transaksi ini tersimpan pada sistem dan digunakan untuk mengaktifkan akses paket siswa.
                     </p>
                   </div>
                 </div>

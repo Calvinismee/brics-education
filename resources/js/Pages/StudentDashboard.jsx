@@ -16,9 +16,27 @@ import {
   User,
   Video,
   ClipboardList,
+  CheckCircle,
+  CreditCard,
   ExternalLink,
+  Package as PackageIcon,
   X,
 } from 'lucide-react';
+
+function asArray(value) {
+  if (Array.isArray(value)) return value;
+  return Object.values(value ?? {});
+}
+
+function formatPrice(price) {
+  const numericPrice = Number(price);
+
+  if (!Number.isNaN(numericPrice)) {
+    return `Rp ${numericPrice.toLocaleString('id-ID')}`;
+  }
+
+  return String(price || '-');
+}
 
 function formatDate(dateString) {
   if (!dateString) return '-';
@@ -72,6 +90,7 @@ export default function StudentDashboard({
   user,
   enrollments = [],
   transactions = [],
+  availablePackages = [],
   schedules = [],
   materials = [],
   notifications: serverNotifications = [],
@@ -82,15 +101,21 @@ export default function StudentDashboard({
   const [notificationOpen, setNotificationOpen] = useState(false);
 
   const activeEnrollments = enrollments.filter((item) => item.status === 'active');
-  const latestEnrollment = activeEnrollments[0];
+  const activePackageEnrollments = activeEnrollments.filter((item) => item.package_id || item.package?.id);
+  const hasActivePackage = activePackageEnrollments.length > 0;
+  const latestEnrollment = activePackageEnrollments[0];
   const activeCourse = latestEnrollment?.course;
 
-  const currentPackageName = activeCourse?.title || 'Bundling Tryout UTBK-SNBT';
+  const currentPackageName = hasActivePackage
+    ? (latestEnrollment?.package?.name || activeCourse?.title || 'Bundling Tryout UTBK-SNBT')
+    : 'Belum ada paket aktif';
   const currentCategoryName = getCategoryName(activeCourse);
+  const packageOptions = asArray(availablePackages);
 
   const pendingTransactions = transactions.filter(
     (item) => item.payment_status === 'pending'
   );
+  const pendingPackageTransactions = pendingTransactions.filter((item) => item.package_id || item.package?.id);
   const notificationItems = Array.isArray(serverNotifications)
     ? serverNotifications
     : Object.values(serverNotifications ?? {});
@@ -144,8 +169,8 @@ export default function StudentDashboard({
     },
   ];
   const courseColors = ['#691D1B', '#0F7A45', '#2447C6', '#D5A018', '#7C3AED', '#C2410C', '#0F766E'];
-  const learningItems = activeEnrollments.length > 0
-    ? activeEnrollments.map((enrollment, index) => {
+  const learningItems = hasActivePackage
+    ? activePackageEnrollments.map((enrollment, index) => {
       const course = enrollment.course ?? {};
       const color = courseColors[index % courseColors.length];
       const materialCount = Number(course.approved_materials_count ?? 0);
@@ -179,35 +204,55 @@ export default function StudentDashboard({
       Math.max(learningItems.length, 1)
   );
 
-  const fallbackNotifications = [
-    {
-      id: 1,
-      title: 'Course aktif',
-      message: `${currentPackageName} sedang aktif dan bisa kamu akses dari menu Subtes UTBK.`,
-      type: 'course',
-      time: 'Terbaru',
-    },
-    {
-      id: 2,
-      title: 'Jadwal pembelajaran',
-      message:
-        schedules.length > 0
-          ? `${schedules.length} jadwal tersedia untuk course aktifmu.`
-          : 'Belum ada jadwal terbaru.',
-      type: 'schedule',
-      time: 'Hari ini',
-    },
-    {
-      id: 3,
-      title: 'Status pembayaran',
-      message:
-        pendingTransactions.length > 0
-          ? `${pendingTransactions.length} transaksi masih pending.`
-          : 'Tidak ada transaksi pending.',
-      type: 'payment',
-      time: 'Info',
-    },
-  ];
+  const fallbackNotifications = hasActivePackage
+    ? [
+      {
+        id: 1,
+        title: 'Paket aktif',
+        message: `${currentPackageName} sedang aktif dan bisa kamu akses dari menu Subtes UTBK.`,
+        type: 'course',
+        time: 'Terbaru',
+      },
+      {
+        id: 2,
+        title: 'Jadwal pembelajaran',
+        message:
+          schedules.length > 0
+            ? `${schedules.length} jadwal tersedia untuk course aktifmu.`
+            : 'Belum ada jadwal terbaru.',
+        type: 'schedule',
+        time: 'Hari ini',
+      },
+      {
+        id: 3,
+        title: 'Status pembayaran',
+        message:
+          pendingTransactions.length > 0
+            ? `${pendingTransactions.length} transaksi masih pending.`
+            : 'Tidak ada transaksi pending.',
+        type: 'payment',
+        time: 'Info',
+      },
+    ]
+    : [
+      {
+        id: 1,
+        title: 'Pilih paket',
+        message: 'Beli paket belajar untuk membuka akses subtes, materi, dan jadwal.',
+        type: 'payment',
+        time: 'Info',
+      },
+      {
+        id: 2,
+        title: 'Status pembayaran',
+        message:
+          pendingPackageTransactions.length > 0
+            ? `${pendingPackageTransactions.length} transaksi paket masih pending.`
+            : 'Belum ada paket aktif.',
+        type: 'payment',
+        time: 'Info',
+      },
+    ];
   const notifications = notificationItems.length > 0
     ? notificationItems.map((notification) => ({
       id: notification.id,
@@ -516,14 +561,16 @@ export default function StudentDashboard({
     <header className="bg-white border-b border-[#D8D7BE] sticky top-0 z-40 shadow-sm">
       <div className="px-5 lg:px-6 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden w-9 h-9 rounded-xl border border-[#D8D7BE] flex items-center justify-center text-[#691D1B]"
-            aria-label="Buka menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+          {hasActivePackage && (
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden w-9 h-9 rounded-xl border border-[#D8D7BE] flex items-center justify-center text-[#691D1B]"
+              aria-label="Buka menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
 
           <div>
             <p className="text-[10px] tracking-[0.32em] text-[#A56D6B] mb-1">
@@ -589,13 +636,13 @@ export default function StudentDashboard({
   const StatusBar = () => (
     <div className="bg-white border-b border-[#D8D7BE] px-5 lg:px-6 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
+        <span className={`w-2.5 h-2.5 rounded-full ${hasActivePackage ? 'bg-green-500' : 'bg-yellow-500'}`} />
         <span className="text-gray-900 text-sm font-bold">
-          {currentPackageName} — Aktif
+          {hasActivePackage ? `${currentPackageName} — Aktif` : 'Belum ada paket aktif'}
         </span>
         <span className="text-gray-400 hidden sm:inline">|</span>
         <span className="text-sm text-gray-500">
-          Valid hingga 30 Juni 2025
+          {hasActivePackage ? 'Valid hingga 30 Juni 2025' : 'Pilih paket untuk membuka akses belajar'}
         </span>
       </div>
 
@@ -607,9 +654,144 @@ export default function StudentDashboard({
           fontWeight: 900,
         }}
       >
-        63 hari
+        {hasActivePackage ? '63 hari' : 'Pilih Paket'}
       </span>
     </div>
+  );
+
+  const PackagePurchasePanel = () => (
+    <section className="space-y-5">
+      {pendingPackageTransactions.length > 0 && (
+        <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex gap-3">
+              <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-yellow-100 text-yellow-700">
+                <Clock className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-base text-yellow-900" style={{ fontWeight: 900 }}>
+                  Transaksi paket menunggu pembayaran
+                </h2>
+                <p className="mt-1 text-sm text-yellow-800">
+                  Selesaikan konfirmasi pembayaran agar paket aktif di dashboard.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href={`/payment-status/${pendingPackageTransactions[0].id}`}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#691D1B] px-4 py-2.5 text-sm text-white"
+              style={{ fontWeight: 900 }}
+            >
+              Lihat Status
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      )}
+
+      <section className="rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
+        <div className="border-b border-[#F7F2E7] px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F8EDED] text-[#691D1B]">
+              <PackageIcon className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
+                Pilih Paket Belajar
+              </h2>
+              <p className="text-sm text-gray-500">
+                Beli paket untuk membuka akses subtes, materi, jadwal, dan dashboard belajar.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {packageOptions.length === 0 ? (
+          <div className="p-6 text-sm text-gray-600">
+            Belum ada paket aktif yang tersedia.
+          </div>
+        ) : (
+          <div className="grid gap-4 p-5 lg:grid-cols-2">
+            {packageOptions.map((pkg) => {
+              const packageCourses = asArray(pkg.courses);
+              const packageFeatures = Array.isArray(pkg.features) ? pkg.features : [];
+
+              return (
+                <article key={pkg.id} className="flex flex-col rounded-2xl border border-[#D8D7BE] bg-[#FDFCF8] p-5">
+                  <div className="mb-4 flex items-start justify-between gap-4">
+                    <div>
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        {pkg.popular && (
+                          <span className="rounded-full bg-[#FFE882] px-3 py-1 text-xs text-[#691D1B]" style={{ fontWeight: 900 }}>
+                            Paling Populer
+                          </span>
+                        )}
+                        <span className="rounded-full bg-white px-3 py-1 text-xs text-gray-600" style={{ fontWeight: 800 }}>
+                          {packageCourses.length} course
+                        </span>
+                      </div>
+
+                      <h3 className="text-lg text-gray-900" style={{ fontWeight: 900 }}>
+                        {pkg.name}
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {pkg.description || 'Paket belajar BRICS Education.'}
+                      </p>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">Harga</p>
+                      <p className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
+                        {formatPrice(pkg.price)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {packageFeatures.length > 0 && (
+                    <ul className="mb-4 space-y-2">
+                      {packageFeatures.slice(0, 3).map((feature) => (
+                        <li key={feature} className="flex items-start gap-2 text-sm text-gray-600">
+                          <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#0F7A45]" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <div className="mb-5 rounded-xl border border-[#D8D7BE] bg-white p-3">
+                    <p className="mb-2 text-xs uppercase text-gray-500" style={{ fontWeight: 900 }}>
+                      Course dalam paket
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {packageCourses.slice(0, 5).map((course) => (
+                        <span key={course.id} className="rounded-full bg-[#F7F2E7] px-2.5 py-1 text-xs text-gray-600" style={{ fontWeight: 800 }}>
+                          {course.title}
+                        </span>
+                      ))}
+                      {packageCourses.length > 5 && (
+                        <span className="rounded-full bg-[#F7F2E7] px-2.5 py-1 text-xs text-gray-600" style={{ fontWeight: 800 }}>
+                          +{packageCourses.length - 5} course
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <Link
+                    href={`/checkout/package/${pkg.id}`}
+                    className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[#691D1B] px-4 py-3 text-sm text-white hover:bg-[#4A1412]"
+                    style={{ fontWeight: 900 }}
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    Beli Paket
+                  </Link>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </section>
   );
 
   const StatsCards = () => (
@@ -896,29 +1078,41 @@ export default function StudentDashboard({
 
   const BerandaPage = () => (
     <>
-      <Topbar title="Beranda" subtitle={currentPackageName} />
+      <Topbar
+        title="Beranda"
+        subtitle={hasActivePackage ? currentPackageName : 'Pilih paket belajar untuk mulai akses dashboard'}
+      />
       <StatusBar />
 
       <main className="px-5 lg:px-6 py-6">
-        <StatsCards />
+        {hasActivePackage ? (
+          <>
+            <StatsCards />
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-          <SubtesCard />
-          <SchedulePreviewCard />
-        </div>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+              <SubtesCard />
+              <SchedulePreviewCard />
+            </div>
 
-        <MaterialPreviewCard />
-        <ContinueCard />
+            <MaterialPreviewCard />
+            <ContinueCard />
+          </>
+        ) : (
+          <PackagePurchasePanel />
+        )}
       </main>
     </>
   );
 
   const SubtesPage = () => (
     <>
-      <Topbar title="Subtes UTBK" subtitle={currentPackageName} />
+      <Topbar title={hasActivePackage ? 'Subtes UTBK' : 'Pilih Paket'} subtitle={currentPackageName} />
       <StatusBar />
 
       <main className="px-5 lg:px-6 py-6">
+        {!hasActivePackage ? (
+          <PackagePurchasePanel />
+        ) : (
         <section className="bg-white rounded-2xl border border-[#D8D7BE] shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-[#F7F2E7] flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -1014,7 +1208,7 @@ export default function StudentDashboard({
                       </span>
                     </div>
 
-                    {activeEnrollments.length > 0 ? (
+                    {hasActivePackage ? (
                       <Link
                         href={subtes.href}
                         className="block rounded-xl px-4 py-2.5 text-center text-sm transition-colors"
@@ -1033,7 +1227,7 @@ export default function StudentDashboard({
                         className="block text-center px-4 py-2.5 rounded-xl text-sm text-white"
                         style={{ background: '#691D1B', fontWeight: 900 }}
                       >
-                        Pilih Course
+                        Pilih Paket
                       </Link>
                     )}
                   </div>
@@ -1042,16 +1236,21 @@ export default function StudentDashboard({
             ))}
           </div>
         </section>
+        )}
       </main>
     </>
   );
 
   const JadwalPage = () => (
     <>
-      <Topbar title="Jadwal" subtitle={currentPackageName} />
+      <Topbar title={hasActivePackage ? 'Jadwal' : 'Pilih Paket'} subtitle={currentPackageName} />
       <StatusBar />
 
       <main className="px-5 lg:px-6 py-6">
+        {!hasActivePackage ? (
+          <PackagePurchasePanel />
+        ) : (
+        <>
         <div className="flex flex-wrap items-center gap-4 mb-5">
           <span className="inline-flex items-center gap-2 text-sm font-bold text-[#691D1B]">
             <Video className="w-4 h-4" />
@@ -1226,6 +1425,8 @@ export default function StudentDashboard({
             </div>
           </div>
         </section>
+        </>
+        )}
       </main>
     </>
   );
@@ -1334,13 +1535,15 @@ export default function StudentDashboard({
       }}
     >
       <div className="flex min-h-screen">
-        <aside className="hidden lg:block w-64 flex-shrink-0">
-          <div className="sticky top-0 h-screen">
-            {renderSidebarContent()}
-          </div>
-        </aside>
+        {hasActivePackage && (
+          <aside className="hidden lg:block w-64 flex-shrink-0">
+            <div className="sticky top-0 h-screen">
+              {renderSidebarContent()}
+            </div>
+          </aside>
+        )}
 
-        {sidebarOpen && (
+        {hasActivePackage && sidebarOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <button
               type="button"

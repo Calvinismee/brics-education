@@ -79,7 +79,7 @@ export default function Register() {
             </div>
 
             <p className="text-sm text-gray-500 mb-7 leading-relaxed">
-              Buat akun siswa BRICS Education untuk membeli course, mengakses dashboard, melihat jadwal, dan mengikuti materi pembelajaran.
+              Buat akun siswa BRICS Education untuk membeli paket, mengakses dashboard, melihat jadwal, dan mengikuti materi pembelajaran.
             </p>
 
             <form onSubmit={submit} className="space-y-5">

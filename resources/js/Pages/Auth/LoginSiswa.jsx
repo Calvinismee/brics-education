@@ -78,7 +78,7 @@ export default function LoginSiswa() {
             </div>
 
             <p className="text-sm text-gray-500 mb-7 leading-relaxed">
-              Masuk menggunakan email dan password siswa untuk melanjutkan pembelian course dan mengakses dashboard pembelajaran BRICS Education.
+              Masuk menggunakan email dan password siswa untuk melanjutkan pembelian paket dan mengakses dashboard pembelajaran BRICS Education.
             </p>
 
             <form onSubmit={submit} className="space-y-5">
