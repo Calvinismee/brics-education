@@ -148,6 +148,7 @@ export default function StudentDashboard({
     ? activeEnrollments.map((enrollment, index) => {
       const course = enrollment.course ?? {};
       const color = courseColors[index % courseColors.length];
+      const materialCount = Number(course.approved_materials_count ?? 0);
 
       return {
         id: enrollment.course_id,
@@ -159,12 +160,18 @@ export default function StudentDashboard({
         iconColor: color,
         description: course.description || 'Course aktif yang sudah terdaftar di akun siswa.',
         href: `/course/${enrollment.course_id}/learn`,
+        enrolled: true,
+        hasMaterials: materialCount > 0,
+        materialCount,
       };
     })
     : fallbackSubtesItems.map((item) => ({
       ...item,
       category: currentCategoryName,
       href: '/#katalog',
+      enrolled: false,
+      hasMaterials: false,
+      materialCount: 0,
     }));
 
   const averageProgress = Math.round(
@@ -220,38 +227,53 @@ export default function StudentDashboard({
     setSidebarOpen(false);
   };
 
+  const toggleSubtesMenu = () => {
+    setSubtesOpen((value) => (activeTab === 'subtes' ? !value : true));
+    setActiveTab('subtes');
+  };
+
+  const materialStatusText = (item) => {
+    if (!item.enrolled) return 'Pilih course';
+    return item.hasMaterials
+      ? `${item.materialCount} materi tersedia`
+      : 'Materi belum tersedia';
+  };
+
   const SidebarMenuButton = ({ active, icon: Icon, label, onClick }) => (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors text-left ${
-        active ? 'text-[#691D1B]' : 'text-white/90 hover:bg-white/10'
+      className={`flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left transition-all hover:translate-x-0.5 hover:brightness-105 ${
+        active ? 'text-[#691D1B]' : 'text-white/90 hover:bg-white/10 hover:text-white'
       }`}
       style={{
-        background: active ? '#FFE882' : 'transparent',
         fontWeight: 800,
+        ...(active ? { background: '#FFE882' } : {}),
       }}
     >
-      <Icon className="w-4.5 h-4.5" />
-      <span className="flex-1 text-sm">{label}</span>
+      <Icon className="h-4 w-4 flex-shrink-0" />
+      <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
     </button>
   );
 
   const SidebarLinkButton = ({ icon: Icon, label, href }) => (
     <Link
       href={href}
-      className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors text-left text-white/90 hover:bg-white/10"
+      className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-white/90 transition-colors hover:bg-white/10"
       style={{ fontWeight: 800 }}
     >
-      <Icon className="w-4.5 h-4.5" />
-      <span className="flex-1 text-sm">{label}</span>
+      <Icon className="h-4 w-4 flex-shrink-0" />
+      <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
     </Link>
   );
 
-  const SidebarContent = () => (
+  const renderSidebarContent = () => (
     <div
-      className="h-full flex flex-col text-white overflow-y-auto"
-      style={{ background: '#741A18' }}
+      className="h-full flex flex-col text-white overflow-y-scroll overflow-x-hidden"
+      style={{
+        background: '#741A18',
+        scrollbarGutter: 'stable',
+      }}
     >
       <div className="px-4 py-4 border-b border-white/10">
         <p className="text-[10px] tracking-[0.32em] text-[#FFE882] mb-2">
@@ -271,9 +293,9 @@ export default function StudentDashboard({
       <div className="px-4 py-4 border-b border-white/10">
         <div className="rounded-2xl p-3.5 bg-white/10 border border-white/10">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <div
-                className="w-11 h-11 rounded-full flex items-center justify-center text-base"
+                className="w-11 h-11 flex-shrink-0 rounded-full flex items-center justify-center text-base"
                 style={{
                   background: '#FFE882',
                   color: '#691D1B',
@@ -283,11 +305,11 @@ export default function StudentDashboard({
                 {getInitials(user?.name)}
               </div>
 
-              <div>
-                <p className="text-sm font-bold leading-tight">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold leading-tight">
                   {user?.name || 'Siswa Brics'}
                 </p>
-                <p className="text-xs text-white/70 mt-0.5">
+                <p className="truncate text-xs text-white/70 mt-0.5">
                   {currentCategoryName}
                 </p>
               </div>
@@ -296,7 +318,7 @@ export default function StudentDashboard({
             <button
               type="button"
               onClick={() => changeTab('profil')}
-              className="text-[#FFE882] hover:scale-110 transition-transform"
+              className="flex-shrink-0 text-[#FFE882] hover:scale-110 transition-transform"
               title="Edit Profil"
             >
               <Pencil className="w-4 h-4" />
@@ -338,42 +360,44 @@ export default function StudentDashboard({
 
         <button
           type="button"
-          onClick={() => {
-            setSubtesOpen(!subtesOpen);
-            changeTab('subtes');
-          }}
-          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-colors text-left ${
+          onClick={toggleSubtesMenu}
+          aria-expanded={subtesOpen}
+          className={`flex min-h-[42px] w-full items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-left transition-colors ${
             activeTab === 'subtes'
               ? 'text-[#691D1B]'
               : 'text-white/90 hover:bg-white/10'
           }`}
           style={{
-            background: activeTab === 'subtes' ? '#FFE882' : 'transparent',
             fontWeight: 800,
+            ...(activeTab === 'subtes' ? { background: '#FFE882' } : {}),
           }}
         >
-          <span className="flex items-center gap-3 text-sm">
-            <BookOpen className="w-4.5 h-4.5" />
-            Subtes UTBK
+          <span className="flex min-w-0 items-center gap-3 text-sm">
+            <BookOpen className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">Subtes UTBK</span>
           </span>
-          <ChevronDown className="w-4 h-4" />
+          <ChevronDown
+            className={`h-4 w-4 flex-shrink-0 transition-transform ${
+              subtesOpen ? 'rotate-180' : ''
+            }`}
+          />
         </button>
 
         {subtesOpen && (
-          <div className="ml-5 pl-3.5 border-l border-white/20 space-y-3 py-2">
+          <div className="ml-5 space-y-2 border-l border-white/20 py-2 pl-3.5">
             {learningItems.map((item) => (
-              <button
+              <Link
                 key={item.title}
-                type="button"
-                onClick={() => changeTab('subtes')}
-                className="w-full text-left group"
+                href={item.href}
+                onClick={() => setSidebarOpen(false)}
+                className="group block w-full rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/10"
               >
-                <div className="flex items-center gap-2 mb-1">
+                <div className="mb-1 flex min-w-0 items-center gap-2">
                   <span
-                    className="w-2 h-2 rounded-full"
+                    className="h-2 w-2 flex-shrink-0 rounded-full"
                     style={{ background: item.color }}
                   />
-                  <span className="text-xs font-bold text-white/90 group-hover:text-white leading-snug">
+                  <span className="min-w-0 truncate text-xs font-bold leading-snug text-white/90 group-hover:text-white">
                     {item.title}
                   </span>
                 </div>
@@ -388,11 +412,15 @@ export default function StudentDashboard({
                       }}
                     />
                   </div>
-                  <p className="text-[11px] text-white/60 mt-1">
-                    {item.progress}% selesai
+                  <p
+                    className={`mt-1 text-[11px] ${
+                      item.hasMaterials ? 'text-white/60' : 'text-[#FFE882]'
+                    }`}
+                  >
+                    {item.hasMaterials ? `${item.progress}% selesai` : materialStatusText(item)}
                   </p>
                 </div>
-              </button>
+              </Link>
             ))}
           </div>
         )}
@@ -416,11 +444,11 @@ export default function StudentDashboard({
         <button
           type="button"
           onClick={logout}
-          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-white/90 hover:bg-white/10 transition-colors text-left"
+          className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-white/90 transition-colors hover:bg-white/10"
           style={{ fontWeight: 800 }}
         >
-          <LogOut className="w-4.5 h-4.5" />
-          <span className="text-sm">Keluar</span>
+          <LogOut className="h-4 w-4 flex-shrink-0" />
+          <span className="min-w-0 flex-1 truncate text-sm">Keluar</span>
         </button>
       </div>
     </div>
@@ -651,6 +679,17 @@ export default function StudentDashboard({
 
             <div className="flex-1">
               <p className="font-bold text-gray-900 text-sm mb-2">{item.title}</p>
+              {item.enrolled && (
+                <p
+                  className="mb-2 text-xs"
+                  style={{
+                    color: item.hasMaterials ? '#0F7A45' : '#8A5A00',
+                    fontWeight: 800,
+                  }}
+                >
+                  {materialStatusText(item)}
+                </p>
+              )}
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div
@@ -919,16 +958,31 @@ export default function StudentDashboard({
                   </div>
 
                   <div className="flex-1">
-                    <span
-                      className="inline-flex px-3 py-1 rounded-full text-xs mb-2.5"
-                      style={{
-                        background: '#FFE882',
-                        color: '#691D1B',
-                        fontWeight: 900,
-                      }}
-                    >
-                      {subtes.category || currentCategoryName}
-                    </span>
+                    <div className="mb-2.5 flex flex-wrap items-center gap-2">
+                      <span
+                        className="inline-flex rounded-full px-3 py-1 text-xs"
+                        style={{
+                          background: '#FFE882',
+                          color: '#691D1B',
+                          fontWeight: 900,
+                        }}
+                      >
+                        {subtes.category || currentCategoryName}
+                      </span>
+
+                      {subtes.enrolled && (
+                        <span
+                          className="inline-flex rounded-full px-3 py-1 text-xs"
+                          style={{
+                            background: subtes.hasMaterials ? '#EAF7F0' : '#FFF6CC',
+                            color: subtes.hasMaterials ? '#0F7A45' : '#8A5A00',
+                            fontWeight: 900,
+                          }}
+                        >
+                          {materialStatusText(subtes)}
+                        </span>
+                      )}
+                    </div>
 
                     <h3 className="text-base text-gray-900 mb-2" style={{ fontWeight: 900 }}>
                       {subtes.title}
@@ -963,10 +1017,15 @@ export default function StudentDashboard({
                     {activeEnrollments.length > 0 ? (
                       <Link
                         href={subtes.href}
-                        className="block text-center px-4 py-2.5 rounded-xl text-sm text-white"
-                        style={{ background: '#691D1B', fontWeight: 900 }}
+                        className="block rounded-xl px-4 py-2.5 text-center text-sm transition-colors"
+                        style={{
+                          background: subtes.hasMaterials ? '#691D1B' : '#F7F2E7',
+                          border: subtes.hasMaterials ? '1px solid #691D1B' : '1px solid #D8D7BE',
+                          color: subtes.hasMaterials ? 'white' : '#691D1B',
+                          fontWeight: 900,
+                        }}
                       >
-                        Mulai Belajar
+                        {subtes.hasMaterials ? 'Mulai Belajar' : 'Lihat Status Materi'}
                       </Link>
                     ) : (
                       <Link
@@ -1277,7 +1336,7 @@ export default function StudentDashboard({
       <div className="flex min-h-screen">
         <aside className="hidden lg:block w-64 flex-shrink-0">
           <div className="sticky top-0 h-screen">
-            <SidebarContent />
+            {renderSidebarContent()}
           </div>
         </aside>
 
@@ -1300,7 +1359,7 @@ export default function StudentDashboard({
                 <X className="w-5 h-5" />
               </button>
 
-              <SidebarContent />
+              {renderSidebarContent()}
             </div>
           </div>
         )}

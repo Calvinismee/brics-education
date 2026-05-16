@@ -154,7 +154,17 @@ Route::get('/dashboard', function () {
         return redirect()->route('login');
     }
 
-    $enrollments = Enrollment::with('course.category')
+    $enrollments = Enrollment::with([
+        'course' => function ($courseQuery) {
+            $courseQuery
+                ->with('category')
+                ->withCount([
+                    'materials as approved_materials_count' => function ($materialQuery) {
+                        $materialQuery->where('approval_status', 'approved');
+                    },
+                ]);
+        },
+    ])
         ->where('user_id', $user->id)
         ->orderBy('created_at', 'desc')
         ->get();
@@ -236,7 +246,17 @@ Route::get('/course/{course}/learn', function (Course $course) {
         ->orderBy('created_at')
         ->get();
 
-    $enrollments = Enrollment::with('course.category')
+    $enrollments = Enrollment::with([
+        'course' => function ($courseQuery) {
+            $courseQuery
+                ->with('category')
+                ->withCount([
+                    'materials as approved_materials_count' => function ($materialQuery) {
+                        $materialQuery->where('approval_status', 'approved');
+                    },
+                ]);
+        },
+    ])
         ->where('user_id', $user->id)
         ->where('status', 'active')
         ->orderBy('created_at', 'desc')

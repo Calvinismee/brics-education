@@ -32,9 +32,3 @@ export default defineConfig(({ mode }) => ({
         setupFiles: 'resources/js/test/setup.jsx',
     },
 }));
-    resolve: {
-        alias: {
-            '@': path.resolve(__dirname, 'resources/js'),
-        },
-    },
-});
