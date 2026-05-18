@@ -1,34 +1,57 @@
 import { Link, usePage, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import { Bell, Check, Menu, X } from 'lucide-react';
+import {
+    Bell,
+    BookOpen,
+    Calendar,
+    Check,
+    ClipboardCheck,
+    FileText,
+    History,
+    LayoutDashboard,
+    LogOut,
+    Menu,
+    Package,
+    ReceiptText,
+    TrendingUp,
+    Users,
+    X,
+} from 'lucide-react';
 import { countUnreadNotifications, normalizeNotifications, sortNotifications } from '@/utils/notifications';
 
 const navigationGroups = [
     {
         title: 'Overview',
         items: [
-            { label: 'Statistik Pengguna', href: route('admin.dashboard'), badge: 'DA' },
+            { label: 'Statistik Pengguna', href: route('admin.dashboard'), icon: LayoutDashboard },
             {
                 label: 'Statistik Transaksi',
                 href: route('admin.transaction-stats'),
-                badge: 'ST',
+                icon: TrendingUp,
             },
-            { label: 'Laporan', href: route('admin.reports.export'), badge: 'LP' },
+            { label: 'Laporan', href: route('admin.reports.export'), icon: FileText },
         ],
     },
     {
         title: 'Operasional',
         items: [
-            { label: 'Pengguna', href: route('admin.users'), badge: 'US' },
-            { label: 'Transaksi', href: route('admin.transactions'), badge: 'TR' },
-            { label: 'Paket', href: route('admin.packages'), badge: 'PK' },
-            { label: 'Course', href: route('admin.courses'), badge: 'CR' },
-            { label: 'Review Materi', href: route('admin.content'), badge: 'RM' },
-            { label: 'Jadwal', href: route('admin.schedule'), badge: 'SC' },
-            { label: 'Riwayat Tutor', href: route('admin.tutor-history'), badge: 'RT' },
+            { label: 'Pengguna', href: route('admin.users'), icon: Users },
+            { label: 'Transaksi', href: route('admin.transactions'), icon: ReceiptText },
+            { label: 'Paket', href: route('admin.packages'), icon: Package },
+            { label: 'Course', href: route('admin.courses'), icon: BookOpen },
+            { label: 'Review Materi', href: route('admin.content'), icon: ClipboardCheck },
+            { label: 'Jadwal', href: route('admin.schedule'), icon: Calendar },
+            { label: 'Riwayat Tutor', href: route('admin.tutor-history'), icon: History },
         ],
     },
 ];
+
+const initialsFor = (name) => String(name || 'Admin')
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
 export default function AdminLayout({ children, title, subtitle, notifications = [] }) {
     const page = usePage();
@@ -64,68 +87,78 @@ export default function AdminLayout({ children, title, subtitle, notifications =
     );
 
     const renderSidebarContent = (closeOnNavigate = false) => (
-        <>
-            <div className="border-b border-white/10 p-5">
-                <div className="flex items-center justify-between">
+        <div
+            className="flex h-full min-h-0 flex-col overflow-y-auto overflow-x-hidden text-white"
+            style={{ scrollbarGutter: 'stable' }}
+        >
+            <div className="border-b border-white/10 px-5 py-5 pr-14">
+                <div>
+                    <p className="text-[11px] uppercase tracking-[0.35em] text-[#FFE882]">
+                        BRICS Education
+                    </p>
                     <div>
-                        <div className="text-xs uppercase tracking-[0.25em] text-[#FFE882]/80">
-                            BRICS Education
-                        </div>
-                        <div className="mt-1 text-lg font-bold text-white">
+                        <div className="mt-3 text-2xl leading-tight text-white" style={{ fontWeight: 900 }}>
                             Admin Panel
                         </div>
+                        <p className="mt-1 text-sm text-white/65">
+                            Area operasional admin
+                        </p>
                     </div>
                 </div>
             </div>
 
-            <div className="border-b border-white/10 p-5">
-                <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FFE882] text-sm font-extrabold text-[#691D1B]">
-                        {(user?.name || 'Admin')
-                            .split(' ')
-                            .map((part) => part[0])
-                            .join('')
-                            .slice(0, 2)
-                            .toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-white">
-                            {user?.name || 'Admin User'}
+            <div className="border-b border-white/10 px-5 py-5">
+                <div className="rounded-2xl border border-white/15 bg-white/[0.12] p-4 shadow-sm">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-base" style={{ background: '#FFE882', color: '#691D1B', fontWeight: 900 }}>
+                            {initialsFor(user?.name)}
                         </div>
-                        <div className="text-xs text-white/60">Administrator</div>
+                        <div className="min-w-0">
+                            <div className="truncate text-base text-white" style={{ fontWeight: 900 }}>
+                                {user?.name || 'Admin User'}
+                            </div>
+                            <div className="text-sm leading-tight text-white/75">Administrator</div>
+                        </div>
+                    </div>
+                    <div className="mt-4 flex items-center justify-between text-xs">
+                        <span className="text-white/80">Akses Panel</span>
+                        <span className="rounded-full bg-[#FFE882]/20 px-2 py-0.5 text-[#FFE882]" style={{ fontWeight: 900 }}>
+                            Admin
+                        </span>
+                    </div>
+                    <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/20">
+                        <div
+                            className="h-full rounded-full"
+                            style={{ width: '100%', background: '#FFE882' }}
+                        />
                     </div>
                 </div>
             </div>
 
-            <nav className="flex-1 space-y-5 p-4">
+            <nav className="flex-1 space-y-5 px-3.5 py-4">
                 {navigationGroups.map((group) => (
                     <div key={group.title}>
-                        <div className="px-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/45">
+                        <div className="px-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/45">
                             {group.title}
                         </div>
-                        <div className="mt-2 space-y-1">
+                        <div className="mt-2 space-y-1.5">
                             {group.items.map((item) => {
                                 const active = isActive(item.href);
+                                const Icon = item.icon;
 
                                 return (
                                     <Link
                                         key={item.label}
                                         href={item.href}
                                         onClick={() => closeOnNavigate && setShowMobileSidebar(false)}
-                                        className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-all ${active
-                                                ? 'bg-[#FFE882] text-[#000000] shadow-sm'
-                                                : 'text-white/80 hover:bg-white/10 hover:text-white'
+                                        className={`flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-sm transition-all hover:translate-x-0.5 hover:brightness-105 ${active
+                                                ? 'bg-[#FFE882] text-[#691D1B]'
+                                                : 'text-white/90 hover:bg-white/10 hover:text-white'
                                             }`}
+                                        style={{ fontWeight: active ? 900 : 800 }}
                                     >
-                                        <span
-                                            className={`flex h-8 w-8 items-center justify-center rounded-xl text-[11px] font-bold ${active
-                                                    ? 'bg-[#691D1B] text-white'
-                                                    : 'bg-white/10 text-[#FFE882]'
-                                                }`}
-                                        >
-                                            {item.badge}
-                                        </span>
-                                        <span className="text-sm font-medium">
+                                        <Icon className="h-4 w-4 shrink-0" />
+                                        <span className="min-w-0 flex-1 truncate">
                                             {item.label}
                                         </span>
                                     </Link>
@@ -136,23 +169,25 @@ export default function AdminLayout({ children, title, subtitle, notifications =
                 ))}
             </nav>
 
-            <div className="border-t border-white/10 p-4">
+            <div className="mt-auto space-y-2 border-t border-white/10 px-3.5 py-4">
                 <Link
                     href={route('logout')}
                     method="post"
                     as="button"
-                    className="flex w-full items-center justify-center rounded-2xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
+                    className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-sm text-white/90 transition-colors hover:bg-white/10 hover:text-white"
+                    style={{ fontWeight: 800 }}
                 >
-                    Keluar
+                    <LogOut className="h-4 w-4 shrink-0" />
+                    <span className="min-w-0 flex-1 truncate">Keluar</span>
                 </Link>
             </div>
-        </>
+        </div>
     );
 
     return (
-        <div className="min-h-screen bg-[#F7F2E7] text-[#111827]">
+        <div className="min-h-screen bg-[#F7F2E7] text-[#111827]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             <div className="min-h-screen lg:pl-72">
-                <aside className="fixed inset-y-0 left-0 z-30 hidden h-screen w-72 shrink-0 flex-col overflow-y-auto border-r border-white/10 bg-[#691D1B] text-white lg:flex">
+                <aside className="fixed inset-y-0 left-0 z-30 hidden h-screen w-72 shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[#741A18] text-white lg:flex">
                     {renderSidebarContent()}
                 </aside>
 
@@ -167,7 +202,7 @@ export default function AdminLayout({ children, title, subtitle, notifications =
                         onClick={() => setShowMobileSidebar(false)}
                     />
                     <aside
-                        className={`relative flex h-full w-[calc(100vw-2rem)] max-w-72 flex-col bg-[#691D1B] text-white shadow-2xl transition-transform duration-300 ease-out ${showMobileSidebar ? 'translate-x-0' : '-translate-x-full'}`}
+                        className={`relative flex h-full w-72 max-w-[85vw] flex-col overflow-hidden bg-[#741A18] text-white shadow-2xl transition-transform duration-300 ease-out ${showMobileSidebar ? 'translate-x-0' : '-translate-x-full'}`}
                     >
                         <button
                             type="button"
