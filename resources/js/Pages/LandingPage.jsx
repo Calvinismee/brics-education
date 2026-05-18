@@ -147,8 +147,35 @@ export default function LandingPage({ packages = [] }) {
     router.post(route("logout"));
   };
 
+  const scrollToTarget = (href, behavior = "smooth") => {
+    const url = new URL(href, window.location.origin);
+    const targetId = url.hash ? decodeURIComponent(url.hash.slice(1)) : "landing-page-top";
+    const target = document.getElementById(targetId);
+
+    if (!target) {
+      window.scrollTo({ top: 0, behavior });
+      return;
+    }
+
+    const stickyOffset = targetId === "landing-page-top" ? 0 : 148;
+    const targetTop = target.getBoundingClientRect().top + window.scrollY - stickyOffset;
+
+    window.scrollTo({ top: Math.max(targetTop, 0), behavior });
+  };
+
+  const handleAnchorNavigation = (event, href) => {
+    const url = new URL(href, window.location.origin);
+    const isSamePage = url.pathname === window.location.pathname;
+
+    if (isSamePage) {
+      event.preventDefault();
+      scrollToTarget(href);
+    }
+  };
+
   return (
     <div
+      id="landing-page-top"
       className="min-h-screen"
       style={{
         background: "#F7F2E7",
@@ -171,6 +198,8 @@ export default function LandingPage({ packages = [] }) {
               <Link
                 key={item.label}
                 href={item.to}
+                onClick={(event) => handleAnchorNavigation(event, item.to)}
+                onSuccess={() => scrollToTarget(item.to)}
                 className="px-4 py-2 text-sm text-gray-700 hover:text-[#691D1B] hover:bg-[#F7F2E7] rounded-md transition-colors"
                 style={{ fontWeight: 500 }}
               >
@@ -263,6 +292,7 @@ export default function LandingPage({ packages = [] }) {
 
                 <a
                   href="#katalog"
+                  onClick={(event) => handleAnchorNavigation(event, "#katalog")}
                   className="flex items-center gap-2 px-8 py-4 bg-white/10 text-white border border-white/30 rounded-lg hover:bg-white/20 transition-colors"
                   style={{ fontWeight: 600 }}
                 >

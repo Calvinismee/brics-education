@@ -70,6 +70,33 @@ export default function AdminLayout({ children, title, subtitle, notifications =
         return currentPath === path || currentPath.startsWith(`${path}/`);
     };
 
+    const scrollToNavigationTarget = (href, behavior = 'smooth') => {
+        const url = new URL(href, window.location.origin);
+        const targetId = url.hash ? decodeURIComponent(url.hash.slice(1)) : 'admin-page-top';
+        const target = document.getElementById(targetId);
+
+        if (target) {
+            target.scrollIntoView({ behavior, block: 'start' });
+            return;
+        }
+
+        window.scrollTo({ top: 0, behavior });
+    };
+
+    const handleNavigationClick = (event, href, closeOnNavigate) => {
+        if (closeOnNavigate) {
+            setShowMobileSidebar(false);
+        }
+
+        const url = new URL(href, window.location.origin);
+        const isSamePageHash = url.hash && url.pathname === window.location.pathname;
+
+        if (isSamePageHash) {
+            event.preventDefault();
+            scrollToNavigationTarget(href);
+        }
+    };
+
     const markAsRead = (notificationId) => {
         router.post(route('admin.notifications.mark-as-read', notificationId), {}, {
             preserveScroll: true,
@@ -150,7 +177,9 @@ export default function AdminLayout({ children, title, subtitle, notifications =
                                     <Link
                                         key={item.label}
                                         href={item.href}
-                                        onClick={() => closeOnNavigate && setShowMobileSidebar(false)}
+                                        preserveScroll={false}
+                                        onClick={(event) => handleNavigationClick(event, item.href, closeOnNavigate)}
+                                        onSuccess={() => scrollToNavigationTarget(item.href)}
                                         className={`flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-sm transition-all hover:translate-x-0.5 hover:brightness-105 ${active
                                                 ? 'bg-[#FFE882] text-[#691D1B]'
                                                 : 'text-white/90 hover:bg-white/10 hover:text-white'
@@ -185,7 +214,7 @@ export default function AdminLayout({ children, title, subtitle, notifications =
     );
 
     return (
-        <div className="min-h-screen bg-[#F7F2E7] text-[#111827]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <div id="admin-page-top" className="min-h-screen bg-[#F7F2E7] text-[#111827]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             <div className="min-h-screen lg:pl-72">
                 <aside className="fixed inset-y-0 left-0 z-30 hidden h-screen w-72 shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[#741A18] text-white lg:flex">
                     {renderSidebarContent()}
