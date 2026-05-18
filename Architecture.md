@@ -17,6 +17,7 @@ The system is currently organized around three authenticated roles:
 - Backend: PHP 8.3, Laravel 13, Laravel Breeze, Inertia Laravel 2, Laravel Sanctum, Ziggy.
 - Database: PostgreSQL in development and test environments.
 - Frontend: React, Inertia React, Tailwind CSS, Vite, lucide-react, sonner.
+- External identity: Google Identity Services for student Google sign-in, with the legacy OAuth authorization-code redirect kept as a fallback path.
 - Testing: Pest for PHP feature tests, Vitest and Testing Library for React tests.
 - Styling: Tailwind with reusable React page/layout components.
 
@@ -51,6 +52,8 @@ Authentication uses Laravel session auth. Role-specific login routes exist so us
 
 `POST /login` remains a guest route for the generic login form. `POST /login/admin` and `POST /login/tutor` are intentionally outside the guest group so a user already logged in as another role can submit a role-specific login and get a fresh session for the requested role. Login handlers regenerate the session, clear stale intended URLs, validate the authenticated role, and redirect to the correct dashboard.
 
+Student Google sign-in is a session-auth flow, not a separate API token system. `LoginSiswa.jsx` loads Google Identity Services, renders the Google account chooser in-page, and posts the returned ID token to `POST /auth/google/credential`. `GoogleAuthController` verifies the token with Google, requires the token `aud` to match `services.google.client_id`, and then logs in or creates only a `student` account. The older `GET /auth/google` and `GET /auth/google/callback` OAuth code flow remains available for redirect-based fallback behavior.
+
 ## 5. Core Domain Model
 
 ### Users and Roles
@@ -59,6 +62,9 @@ Authentication uses Laravel session auth. Role-specific login routes exist so us
 - `users.role_id`: canonical role reference.
 - `users.role`: legacy compatibility field, not the runtime source of truth.
 - `users.mentor_course_id`: legacy single-course tutor assignment.
+- `users.google_id`: optional Google subject identifier, unique when present, used to link student Google sign-ins.
+- `users.google_avatar`: optional Google profile image URL.
+- `users.gender`, `users.phone`, and `users.school_origin`: student profile fields editable from student profile surfaces.
 - Tutor profile and settings columns support tutor-facing profile, notification, and preference pages.
 
 The `User` model exposes a computed role accessor derived from `role_id`. Code that creates or updates users should set `role_id`; it should not assign `role` directly.
@@ -146,9 +152,30 @@ Users register as students by default unless a role is explicitly provided by an
 
 Role-specific login endpoints prevent stale tutor/admin sessions from redirecting to the wrong dashboard after switching accounts.
 
+Student Google login has two supported paths:
+
+- Primary path: Google Identity Services renders an account chooser on `Auth/LoginSiswa`, then posts a `credential` ID token to `auth.google.credential`.
+- Fallback path: the legacy OAuth redirect routes `auth.google.redirect` and `auth.google.callback` exchange an authorization code for Google userinfo.
+
+Both paths end in `GoogleAuthController::authenticateGoogleUser`. Existing users are matched by `google_id` or email inside a database transaction with row locks. Existing non-student accounts are rejected from the student login. New Google users are created as students, marked email-verified, assigned a random password, and announced through `AdminNotifier::studentRegistered`.
+
 ### Package Purchase
 
 Students choose a package, create a transaction, and complete payment. When payment is accepted, package courses are converted into enrollments through `PackageEnrollmentService`. Admin transaction pages expose operational views and report exports.
+
+### Student Dashboard, Catalog, and Profile
+
+`/dashboard` renders `StudentDashboard` with the authenticated student, enrollments, transactions, available packages, schedules, materials, and notifications. The React page owns an in-page tab state with these dashboard tabs:
+
+- `beranda`: student overview and active package summary.
+- `katalog`: package catalog rendered inside the dashboard through `PackagePurchasePanel`.
+- `subtes`: enrolled course/subtest list or package purchase prompt.
+- `jadwal`: student schedule view.
+- `profil`: profile summary view.
+
+The `?tab=` query parameter can deep-link to a dashboard tab, especially `/dashboard?tab=katalog`. Student catalog navigation should use this in-dashboard catalog tab instead of sending authenticated students back to the public landing page catalog.
+
+Student profile editing is available inline from the dashboard and course learning side panels. The inline modal submits `PATCH /profile` with name, gender, phone/WhatsApp, and school origin through `ProfileController::update` and `ProfileUpdateRequest`. When the update request has a referer, the controller redirects back so the modal workflow stays on the current Inertia page.
 
 ### Tutor Content Upload and Admin Review
 
@@ -189,7 +216,9 @@ Tutor controllers:
 Auth controllers:
 
 - `AuthenticatedSessionController`: generic, admin, and tutor login handling.
+- `GoogleAuthController`: student Google sign-in through Google Identity Services credentials and legacy OAuth redirect callback.
 - `RegisteredUserController`: student registration and role-aware creation.
+- `ProfileController`: authenticated user profile display, inline student profile updates, and account deletion.
 - Standard Breeze password, verification, and reset controllers.
 
 ## 9. Frontend Architecture
@@ -207,10 +236,13 @@ Main page groups:
 
 - `resources/js/Pages/Admin`: dashboard, users, courses, packages, schedules, content, transactions, reports, notifications.
 - `resources/js/Pages/Tutor`: dashboard, material upload, classes, schedule, history, profile, settings, password, notifications, student profile.
-- `resources/js/Pages/Student`: student dashboard, course learning, schedules, profile-related pages.
+- Root-level student pages: `StudentDashboard.jsx`, `CourseLearn.jsx`, `StudentSchedules.jsx`, `Checkout.jsx`, and `PaymentStatus.jsx`.
+- `resources/js/Pages/Profile`: shared authenticated profile edit page and profile partials.
 - `resources/js/Pages/Auth`: login, register, password reset, verification.
 
 Admin and tutor pages are mostly form-driven Inertia views. They rely on Ziggy route names, Inertia form helpers, and server-side validation errors.
+
+Student pages are more self-contained. `StudentDashboard.jsx` includes the dashboard tab shell, package catalog panel, profile summary, notification dropdown, and inline profile editor. `CourseLearn.jsx` includes the course learning surface and the same inline profile editor pattern for purchased-package students. `Auth/LoginSiswa.jsx` is responsible for loading the Google Identity Services script and submitting Google credentials through Inertia.
 
 ## 10. Database Snapshot
 
@@ -249,6 +281,7 @@ Important compatibility notes:
 - `users.mentor_course_id` remains supported for older single-course tutor assignment.
 - `course_tutor` is the multi-course assignment path.
 - `users.role` can exist in older schemas but should not drive authorization.
+- `users.google_id`, `users.google_avatar`, `users.gender`, `users.phone`, and `users.school_origin` are additive user columns. Their migrations guard with `Schema::hasColumn` checks so older or partially migrated databases can be upgraded safely.
 - `transactions.course_id` can exist for legacy single-course purchase assumptions, but package-course enrollment is handled through package relationships.
 
 ## 11. Caching and Shared Props
@@ -262,6 +295,10 @@ Important compatibility notes:
 ## 12. Architectural Rules
 
 - Use `role_id` and role records for authorization. Do not write to `users.role`.
+- Keep Google sign-in server-verified. Do not trust a frontend-decoded Google token; the backend must verify the credential and require the Google token audience to match `services.google.client_id`.
+- Student Google login must create or link only `student` accounts. Reject admin, tutor, and mentor accounts from the student Google login route.
+- Keep student catalog navigation inside the dashboard with the `katalog` tab or `/dashboard?tab=katalog`; do not send authenticated dashboard users back to the public landing page just to browse packages.
+- Student profile updates should flow through `ProfileUpdateRequest` and `ProfileController::update`, including inline modal submissions from dashboard and course-learning pages.
 - Use `TutorCourseResolver` for tutor-course assignment checks and syncs.
 - Do not eager-load tutor `assignedCourses` in code paths that must work before the `course_tutor` migration has run.
 - Use `PackageEnrollmentService` for package purchase enrollment writes.
@@ -300,6 +337,14 @@ app/Http/Controllers/Tutor/
   NotificationController.php
   ScheduleController.php
 
+app/Http/Controllers/Auth/
+  AuthenticatedSessionController.php
+  GoogleAuthController.php
+  RegisteredUserController.php
+
+app/Http/Controllers/
+  ProfileController.php
+
 app/Services/
   PackageEnrollmentService.php
 
@@ -319,8 +364,14 @@ resources/js/Components/
 
 resources/js/Pages/Admin/
 resources/js/Pages/Tutor/
-resources/js/Pages/Student/
+resources/js/Pages/
+  StudentDashboard.jsx
+  CourseLearn.jsx
+  StudentSchedules.jsx
+  Checkout.jsx
+  PaymentStatus.jsx
 resources/js/Pages/Auth/
+resources/js/Pages/Profile/
 
 routes/
   web.php
