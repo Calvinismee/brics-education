@@ -14,8 +14,8 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
-#[Fillable(['name', 'email', 'password', 'role_id', 'mentor_course_id', 'tutor_settings', 'tutor_profile'])]
-#[Hidden(['password', 'remember_token'])]
+#[Fillable(['name', 'email', 'password', 'role_id', 'mentor_course_id', 'tutor_settings', 'tutor_profile', 'google_id', 'google_avatar', 'email_verified_at', 'gender', 'phone', 'school_origin'])]
+#[Hidden(['password', 'remember_token', 'google_id'])]
 class User extends Authenticatable
 {
     private const ROLE_MAP_CACHE_KEY = 'roles:map';

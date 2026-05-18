@@ -159,7 +159,7 @@ export default function LandingPage({ packages = [] }) {
       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-[#D8D7BE]">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
           <Link href="/">
-            <BricsLogo size="sm" />
+            <BricsLogo size="lg" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
@@ -257,7 +257,7 @@ export default function LandingPage({ packages = [] }) {
                   className="flex items-center gap-2 px-8 py-4 bg-[#FFE882] text-[#691D1B] rounded-lg hover:bg-yellow-300 transition-colors"
                   style={{ fontWeight: 700 }}
                 >
-                  {user ? "Masuk Dashboard" : "Mulai Belajar Gratis"}
+                  {user ? "Masuk Dashboard" : "Mulai Perjalananmu!"}
                   <ArrowRight className="w-5 h-5" />
                 </Link>
 
@@ -624,8 +624,8 @@ export default function LandingPage({ packages = [] }) {
         <div className="max-w-7xl mx-auto px-6 py-14">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
             <div className="md:col-span-1">
-              <div className="mb-4">
-                <BricsLogo variant="light" size="sm" />
+              <div className="mb-4 bg-[var(--accent)] rounded-lg w-max p-2">
+                <BricsLogo variant="light" size="lg" />
               </div>
               <p className="text-sm text-gray-400 leading-relaxed mb-4">
                 Platform edukasi online terpercaya untuk persiapan ujian dan
@@ -633,15 +633,40 @@ export default function LandingPage({ packages = [] }) {
               </p>
 
               <div className="flex gap-3">
-                {["IG", "FB", "TW", "YT"].map((s) => (
-                  <div
-                    key={s}
-                    className="w-9 h-9 rounded-full bg-[#691D1B] flex items-center justify-center text-xs cursor-pointer hover:bg-[#8B2523] transition-colors"
-                    style={{ fontWeight: 700 }}
+                <a
+                  onClick={(e) => window.open("https://www.instagram.com/bricseducation/")}
+                  aria-label="Instagram"
+                  className="w-9 h-9 rounded-full bg-[#691D1B] flex items-center justify-center text-white hover:bg-[#8B2523] transition-colors"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
                   >
-                    {s}
-                  </div>
-                ))}
+                    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37Z" />
+                    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+                  </svg>
+                </a>
+                <a
+                  onClick={(e) => window.open("https://www.youtube.com/@BricsEdu-t4m")}
+                  aria-label="YouTube"
+                  className="w-9 h-9 rounded-full bg-[#691D1B] flex items-center justify-center text-white hover:bg-[#8B2523] transition-colors"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path d="M23.5 6.2a3.02 3.02 0 0 0-2.12-2.14C19.5 3.56 12 3.56 12 3.56s-7.5 0-9.38.5A3.02 3.02 0 0 0 .5 6.2 31.6 31.6 0 0 0 0 12a31.6 31.6 0 0 0 .5 5.8 3.02 3.02 0 0 0 2.12 2.14c1.88.5 9.38.5 9.38.5s7.5 0 9.38-.5a3.02 3.02 0 0 0 2.12-2.14A31.6 31.6 0 0 0 24 12a31.6 31.6 0 0 0-.5-5.8ZM9.6 15.57V8.43L15.86 12 9.6 15.57Z" />
+                  </svg>
+                </a>
               </div>
             </div>
 
@@ -650,15 +675,13 @@ export default function LandingPage({ packages = [] }) {
                 title: "Paket",
                 links: [
                   "Persiapan UTBK",
-                  "TPS SNBT",
-                  "Tes Literasi",
-                  "Intensif Tryout",
+                  "Tryout",
                   "Live Class",
                 ],
               },
               {
                 title: "Perusahaan",
-                links: ["Tentang Kami", "Blog", "Karier", "Press Kit", "Kontak"],
+                links: ["Tentang Kami", "Kontak"],
               },
               {
                 title: "Bantuan",

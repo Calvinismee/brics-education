@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, router } from '@inertiajs/react';
+import { Link, router, useForm } from '@inertiajs/react';
 import {
   Bell,
   BookOpen,
@@ -13,7 +13,6 @@ import {
   Menu,
   Pencil,
   Star,
-  User,
   Video,
   ClipboardList,
   CheckCircle,
@@ -80,10 +79,27 @@ function getInitials(name) {
     .toUpperCase();
 }
 
+function formatGender(gender) {
+  if (gender === 'male') return 'Laki-laki';
+  if (gender === 'female') return 'Perempuan';
+
+  return '-';
+}
+
 function getCategoryName(course) {
   if (!course?.category) return 'Tryout SNBT';
   if (typeof course.category === 'string') return course.category;
   return course.category.name || 'Tryout SNBT';
+}
+
+const dashboardTabs = ['beranda', 'katalog', 'subtes', 'jadwal', 'profil'];
+
+function getInitialDashboardTab() {
+  if (typeof window === 'undefined') return 'beranda';
+
+  const tab = new URLSearchParams(window.location.search).get('tab');
+
+  return dashboardTabs.includes(tab) ? tab : 'beranda';
 }
 
 export default function StudentDashboard({
@@ -95,10 +111,17 @@ export default function StudentDashboard({
   materials = [],
   notifications: serverNotifications = [],
 }) {
-  const [activeTab, setActiveTab] = useState('beranda');
+  const [activeTab, setActiveTab] = useState(getInitialDashboardTab);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [subtesOpen, setSubtesOpen] = useState(true);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
+  const profileForm = useForm({
+    name: user?.name ?? '',
+    gender: user?.gender ?? '',
+    phone: user?.phone ?? '',
+    school_origin: user?.school_origin ?? '',
+  });
 
   const activeEnrollments = enrollments.filter((item) => item.status === 'active');
   const activePackageEnrollments = activeEnrollments.filter((item) => item.package_id || item.package?.id);
@@ -193,7 +216,7 @@ export default function StudentDashboard({
     : fallbackSubtesItems.map((item) => ({
       ...item,
       category: currentCategoryName,
-      href: '/#katalog',
+      href: '/dashboard?tab=katalog',
       enrolled: false,
       hasMaterials: false,
       materialCount: 0,
@@ -267,14 +290,54 @@ export default function StudentDashboard({
     router.post(route('logout'));
   };
 
+  const updateDashboardTabUrl = (tab) => {
+    if (typeof window === 'undefined' || !dashboardTabs.includes(tab)) return;
+
+    const nextUrl = tab === 'beranda'
+      ? window.location.pathname
+      : `${window.location.pathname}?tab=${encodeURIComponent(tab)}`;
+
+    window.history.replaceState(window.history.state, '', nextUrl);
+  };
+
   const changeTab = (tab) => {
     setActiveTab(tab);
     setSidebarOpen(false);
+    updateDashboardTabUrl(tab);
   };
 
   const toggleSubtesMenu = () => {
     setSubtesOpen((value) => (activeTab === 'subtes' ? !value : true));
     setActiveTab('subtes');
+    updateDashboardTabUrl('subtes');
+  };
+
+  const openProfileEditor = () => {
+    profileForm.setData({
+      name: user?.name ?? '',
+      gender: user?.gender ?? '',
+      phone: user?.phone ?? '',
+      school_origin: user?.school_origin ?? '',
+    });
+    profileForm.clearErrors();
+    setNotificationOpen(false);
+    setSidebarOpen(false);
+    setProfileEditorOpen(true);
+  };
+
+  const closeProfileEditor = () => {
+    if (profileForm.processing) return;
+
+    setProfileEditorOpen(false);
+  };
+
+  const submitProfileEditor = (event) => {
+    event.preventDefault();
+
+    profileForm.patch(route('profile.update'), {
+      preserveScroll: true,
+      onSuccess: () => setProfileEditorOpen(false),
+    });
   };
 
   const materialStatusText = (item) => {
@@ -301,17 +364,6 @@ export default function StudentDashboard({
     </button>
   );
 
-  const SidebarLinkButton = ({ icon: Icon, label, href }) => (
-    <Link
-      href={href}
-      className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-white/90 transition-colors hover:bg-white/10"
-      style={{ fontWeight: 800 }}
-    >
-      <Icon className="h-4 w-4 flex-shrink-0" />
-      <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
-    </Link>
-  );
-
   const renderSidebarContent = () => (
     <div
       className="h-full flex flex-col text-white overflow-y-scroll overflow-x-hidden"
@@ -336,55 +388,69 @@ export default function StudentDashboard({
       </div>
 
       <div className="px-4 py-4 border-b border-white/10">
-        <div className="rounded-2xl p-3.5 bg-white/10 border border-white/10">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <div
-                className="w-11 h-11 flex-shrink-0 rounded-full flex items-center justify-center text-base"
-                style={{
-                  background: '#FFE882',
-                  color: '#691D1B',
-                  fontWeight: 900,
-                }}
-              >
-                {getInitials(user?.name)}
-              </div>
+        <div className="rounded-2xl border border-white/15 bg-white/[0.12] p-4 shadow-sm">
+          <div className="flex min-w-0 items-start gap-3">
+            <div
+              className="h-12 w-12 flex-shrink-0 rounded-full flex items-center justify-center text-base"
+              style={{
+                background: '#FFE882',
+                color: '#691D1B',
+                fontWeight: 900,
+              }}
+            >
+              {getInitials(user?.name)}
+            </div>
 
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold leading-tight">
-                  {user?.name || 'Siswa Brics'}
-                </p>
-                <p className="truncate text-xs text-white/70 mt-0.5">
-                  {currentCategoryName}
-                </p>
-              </div>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <p
+                className="overflow-hidden text-sm leading-snug text-white"
+                style={{
+                  fontWeight: 900,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                }}
+                title={user?.name || 'Siswa Brics'}
+              >
+                {user?.name || 'Siswa Brics'}
+              </p>
+              <p className="mt-1.5 truncate text-xs leading-tight text-white/65" title={currentCategoryName}>
+                {currentCategoryName}
+              </p>
             </div>
 
             <button
               type="button"
-              onClick={() => changeTab('profil')}
-              className="flex-shrink-0 text-[#FFE882] hover:scale-110 transition-transform"
+              onClick={openProfileEditor}
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition-transform hover:scale-105"
+              style={{
+                background: '#FFE882',
+                color: '#691D1B',
+              }}
               title="Edit Profil"
+              aria-label="Edit Profil"
             >
-              <Pencil className="w-4 h-4" />
+              <Pencil className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="mb-1 flex items-center justify-between text-xs">
-            <span className="text-white/80">Progres Belajar</span>
-            <span className="text-[#FFE882] font-black">
-              {averageProgress}%
-            </span>
-          </div>
+          <div className="mt-4">
+            <div className="mb-2 flex items-center justify-between text-xs">
+              <span className="text-white/80">Progres Belajar</span>
+              <span className="rounded-full bg-[#FFE882]/20 px-2 py-0.5 text-[#FFE882] font-black">
+                {averageProgress}%
+              </span>
+            </div>
 
-          <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${averageProgress}%`,
-                background: '#FFE882',
-              }}
-            />
+            <div className="w-full h-2.5 bg-white/20 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${averageProgress}%`,
+                  background: '#FFE882',
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -397,10 +463,11 @@ export default function StudentDashboard({
           onClick={() => changeTab('beranda')}
         />
 
-        <SidebarLinkButton
+        <SidebarMenuButton
+          active={activeTab === 'katalog'}
           icon={Star}
           label="Lihat Katalog"
-          href="/#katalog"
+          onClick={() => changeTab('katalog')}
         />
 
         <button
@@ -479,12 +546,6 @@ export default function StudentDashboard({
       </nav>
 
       <div className="px-3.5 py-4 border-t border-white/10 space-y-2 mt-auto">
-        <SidebarMenuButton
-          active={activeTab === 'profil'}
-          icon={User}
-          label="Edit Profil"
-          onClick={() => changeTab('profil')}
-        />
 
         <button
           type="button"
@@ -602,32 +663,46 @@ export default function StudentDashboard({
             {notificationOpen && <NotificationDropdown />}
           </div>
 
-          <button
-            type="button"
-            onClick={() => changeTab('profil')}
-            className="hidden md:flex items-center gap-3 px-3.5 py-2 rounded-2xl border border-[#D8D7BE] bg-[#F7F2E7] hover:bg-[#EFE8D8] transition-colors"
-            title="Buka Profil"
-          >
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
-              style={{
-                background: '#741A18',
-                color: '#FFE882',
-                fontWeight: 900,
-              }}
+          {!hasActivePackage && (
+            <button
+              type="button"
+              onClick={openProfileEditor}
+              className="group relative hidden max-w-[18rem] items-center gap-3 rounded-2xl border border-[#D8D7BE] bg-[#F7F2E7] px-3.5 py-2 transition-colors hover:bg-[#EFE8D8] md:flex"
+              title="Edit Profil"
             >
-              {getInitials(user?.name)}
-            </div>
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
+                style={{
+                  background: '#741A18',
+                  color: '#FFE882',
+                  fontWeight: 900,
+                }}
+              >
+                {getInitials(user?.name)}
+              </div>
 
-            <div className="text-left">
-              <p className="text-[10px] tracking-[0.22em] text-gray-400">
-                SISWA
-              </p>
-              <p className="text-sm text-gray-900" style={{ fontWeight: 800 }}>
-                {user?.name || 'Siswa'}
-              </p>
-            </div>
-          </button>
+              <div className="min-w-0 text-left">
+                <p className="text-[10px] tracking-[0.22em] text-gray-400">
+                  SISWA
+                </p>
+                <p className="truncate text-sm text-gray-900" style={{ fontWeight: 800 }}>
+                  {user?.name || 'Siswa'}
+                </p>
+              </div>
+
+              <span
+                className="flex h-7 flex-shrink-0 items-center gap-1 rounded-full px-2 text-[11px] transition-colors group-hover:bg-[#691D1B] group-hover:text-white"
+                style={{
+                  background: '#FFE882',
+                  color: '#691D1B',
+                  fontWeight: 900,
+                }}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </span>
+            </button>
+          )}
         </div>
       </div>
     </header>
@@ -1124,14 +1199,15 @@ export default function StudentDashboard({
               </p>
             </div>
 
-            <Link
-              href="/#katalog"
+            <button
+              type="button"
+              onClick={() => changeTab('katalog')}
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm text-[#691D1B] border-2 border-[#691D1B] hover:bg-[#691D1B] hover:text-white transition-colors"
               style={{ fontWeight: 900 }}
             >
               Lihat Katalog
               <ChevronRight className="w-4 h-4" />
-            </Link>
+            </button>
           </div>
 
           <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1222,13 +1298,14 @@ export default function StudentDashboard({
                         {subtes.hasMaterials ? 'Mulai Belajar' : 'Lihat Status Materi'}
                       </Link>
                     ) : (
-                      <Link
-                        href="/#katalog"
+                      <button
+                        type="button"
+                        onClick={() => changeTab('katalog')}
                         className="block text-center px-4 py-2.5 rounded-xl text-sm text-white"
                         style={{ background: '#691D1B', fontWeight: 900 }}
                       >
                         Pilih Paket
-                      </Link>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -1237,6 +1314,17 @@ export default function StudentDashboard({
           </div>
         </section>
         )}
+      </main>
+    </>
+  );
+
+  const KatalogPage = () => (
+    <>
+      <Topbar title="Katalog Paket" subtitle="Pilih paket belajar yang tersedia" />
+      <StatusBar />
+
+      <main className="px-5 lg:px-6 py-6">
+        <PackagePurchasePanel />
       </main>
     </>
   );
@@ -1465,7 +1553,7 @@ export default function StudentDashboard({
                   {user?.name || 'Siswa Brics'}
                 </h3>
                 <p className="text-sm text-gray-500">
-                  Akun siswa BRICS Education
+                  {user?.email || 'Akun siswa BRICS Education'}
                 </p>
               </div>
             </div>
@@ -1479,36 +1567,37 @@ export default function StudentDashboard({
               </div>
 
               <div className="border border-[#D8D7BE] rounded-xl p-4">
-                <p className="text-sm text-gray-500 mb-2">Email</p>
+                <p className="text-sm text-gray-500 mb-2">Jenis Kelamin</p>
                 <p className="text-gray-900 text-sm" style={{ fontWeight: 800 }}>
-                  {user?.email || '-'}
+                  {formatGender(user?.gender)}
                 </p>
               </div>
 
               <div className="border border-[#D8D7BE] rounded-xl p-4">
-                <p className="text-sm text-gray-500 mb-2">Role</p>
+                <p className="text-sm text-gray-500 mb-2">No Telepon/WhatsApp</p>
                 <p className="text-gray-900 text-sm" style={{ fontWeight: 800 }}>
-                  {user?.role_id === 3 ? 'Siswa' : `Role ID ${user?.role_id || '-'}`}
+                  {user?.phone || '-'}
                 </p>
               </div>
 
               <div className="border border-[#D8D7BE] rounded-xl p-4">
-                <p className="text-sm text-gray-500 mb-2">User ID</p>
+                <p className="text-sm text-gray-500 mb-2">Sekolah Asal</p>
                 <p className="text-gray-900 text-sm" style={{ fontWeight: 800 }}>
-                  {user?.id || '-'}
+                  {user?.school_origin || '-'}
                 </p>
               </div>
             </div>
 
             <div className="mt-5 flex flex-wrap gap-3">
-              <Link
-                href="/profile"
+              <button
+                type="button"
+                onClick={openProfileEditor}
                 className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm text-white hover:bg-[#4A1412] transition-colors"
                 style={{ background: '#691D1B', fontWeight: 900 }}
               >
                 <Pencil className="w-4 h-4" />
-                Edit Profil Lengkap
-              </Link>
+                Edit Profil
+              </button>
 
               <button
                 type="button"
@@ -1524,6 +1613,137 @@ export default function StudentDashboard({
         </section>
       </main>
     </>
+  );
+
+  const renderProfileEditorModal = () => (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center px-4 py-6">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/45"
+        onClick={closeProfileEditor}
+        aria-label="Tutup editor profil"
+      />
+
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-[#F7F2E7] px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex h-11 w-11 items-center justify-center rounded-xl"
+              style={{ background: '#F8EDED', color: '#691D1B' }}
+            >
+              <Pencil className="h-5 w-5" />
+            </div>
+
+            <div>
+              <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
+                Edit Profil
+              </h2>
+              <p className="text-sm text-gray-500">
+                Data diri siswa
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={closeProfileEditor}
+            disabled={profileForm.processing}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-[#F7F2E7] hover:text-[#691D1B] disabled:opacity-60"
+            aria-label="Tutup editor profil"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={submitProfileEditor} className="grid gap-5 px-5 py-5 md:grid-cols-2">
+          <label className="space-y-2 md:col-span-2">
+            <span className="text-sm font-bold text-gray-700">Nama Lengkap</span>
+            <input
+              type="text"
+              value={profileForm.data.name}
+              onChange={(event) => profileForm.setData('name', event.target.value)}
+              disabled={profileForm.processing}
+              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+              placeholder="Masukkan nama lengkap"
+              autoComplete="name"
+              required
+            />
+            {profileForm.errors.name && (
+              <p className="text-xs font-semibold text-red-600">{profileForm.errors.name}</p>
+            )}
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-sm font-bold text-gray-700">Jenis Kelamin</span>
+            <select
+              value={profileForm.data.gender}
+              onChange={(event) => profileForm.setData('gender', event.target.value)}
+              disabled={profileForm.processing}
+              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+            >
+              <option value="">Pilih jenis kelamin</option>
+              <option value="male">Laki-laki</option>
+              <option value="female">Perempuan</option>
+            </select>
+            {profileForm.errors.gender && (
+              <p className="text-xs font-semibold text-red-600">{profileForm.errors.gender}</p>
+            )}
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-sm font-bold text-gray-700">No Telepon/WhatsApp</span>
+            <input
+              type="tel"
+              value={profileForm.data.phone}
+              onChange={(event) => profileForm.setData('phone', event.target.value)}
+              disabled={profileForm.processing}
+              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+              placeholder="Contoh: 081234567890"
+              autoComplete="tel"
+            />
+            {profileForm.errors.phone && (
+              <p className="text-xs font-semibold text-red-600">{profileForm.errors.phone}</p>
+            )}
+          </label>
+
+          <label className="space-y-2 md:col-span-2">
+            <span className="text-sm font-bold text-gray-700">Sekolah Asal</span>
+            <input
+              type="text"
+              value={profileForm.data.school_origin}
+              onChange={(event) => profileForm.setData('school_origin', event.target.value)}
+              disabled={profileForm.processing}
+              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+              placeholder="Masukkan nama sekolah asal"
+              autoComplete="organization"
+            />
+            {profileForm.errors.school_origin && (
+              <p className="text-xs font-semibold text-red-600">{profileForm.errors.school_origin}</p>
+            )}
+          </label>
+
+          <div className="flex flex-col-reverse gap-3 border-t border-[#F7F2E7] pt-4 sm:flex-row sm:justify-end md:col-span-2">
+            <button
+              type="button"
+              onClick={closeProfileEditor}
+              disabled={profileForm.processing}
+              className="rounded-xl border border-[#D8D7BE] px-4 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:bg-[#F7F2E7] disabled:opacity-60"
+            >
+              Batal
+            </button>
+
+            <button
+              type="submit"
+              disabled={profileForm.processing}
+              className="rounded-xl px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-[#4A1412] disabled:opacity-70"
+              style={{ background: '#691D1B' }}
+            >
+              {profileForm.processing ? 'Menyimpan...' : 'Simpan Profil'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 
   return (
@@ -1569,11 +1789,14 @@ export default function StudentDashboard({
 
         <div className="flex-1 min-w-0">
           {activeTab === 'beranda' && <BerandaPage />}
+          {activeTab === 'katalog' && <KatalogPage />}
           {activeTab === 'subtes' && <SubtesPage />}
           {activeTab === 'jadwal' && <JadwalPage />}
           {activeTab === 'profil' && <ProfilPage />}
         </div>
       </div>
+
+      {profileEditorOpen && renderProfileEditorModal()}
     </div>
   );
 }

@@ -20,6 +20,9 @@ test('profile information can be updated', function () {
         ->patch('/profile', [
             'name' => 'Test User',
             'email' => 'test@example.com',
+            'gender' => 'male',
+            'phone' => '081234567890',
+            'school_origin' => 'SMA Negeri 1 Jakarta',
         ]);
 
     $response
@@ -30,7 +33,55 @@ test('profile information can be updated', function () {
 
     $this->assertSame('Test User', $user->name);
     $this->assertSame('test@example.com', $user->email);
+    $this->assertSame('male', $user->gender);
+    $this->assertSame('081234567890', $user->phone);
+    $this->assertSame('SMA Negeri 1 Jakarta', $user->school_origin);
     $this->assertNull($user->email_verified_at);
+});
+
+test('student profile fields can be updated without changing email', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->patch('/profile', [
+            'name' => 'Siswa Lengkap',
+            'gender' => 'female',
+            'phone' => '+62 812-3456-7890',
+            'school_origin' => 'MAN 2 Bandung',
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect('/profile');
+
+    $user->refresh();
+
+    $this->assertSame('Siswa Lengkap', $user->name);
+    $this->assertSame('female', $user->gender);
+    $this->assertSame('+62 812-3456-7890', $user->phone);
+    $this->assertSame('MAN 2 Bandung', $user->school_origin);
+    $this->assertNotNull($user->email_verified_at);
+});
+
+test('student profile update returns to the current dashboard page', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->from('/dashboard')
+        ->patch('/profile', [
+            'name' => 'Siswa Dashboard',
+            'gender' => 'male',
+            'phone' => '081122334455',
+            'school_origin' => 'SMAN 5 Surabaya',
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect('/dashboard');
+
+    $this->assertSame('Siswa Dashboard', $user->refresh()->name);
 });
 
 test('email verification status is unchanged when the email address is unchanged', function () {

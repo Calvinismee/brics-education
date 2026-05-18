@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, router } from '@inertiajs/react';
+import { Link, router, useForm } from '@inertiajs/react';
 import {
   ArrowLeft,
   Bell,
@@ -190,6 +190,13 @@ export default function CourseLearn({
   const [videoPreview, setVideoPreview] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
   const [subtesOpen, setSubtesOpen] = useState(true);
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
+  const profileForm = useForm({
+    name: user?.name ?? '',
+    gender: user?.gender ?? '',
+    phone: user?.phone ?? '',
+    school_origin: user?.school_origin ?? '',
+  });
 
   const courseTitle = course?.title || 'Bundling Tryout UTBK-SNBT';
   const categoryName = getCategoryName(course);
@@ -269,6 +276,32 @@ export default function CourseLearn({
     router.post(route('logout'));
   };
 
+  const openProfileEditor = () => {
+    profileForm.setData({
+      name: user?.name ?? '',
+      gender: user?.gender ?? '',
+      phone: user?.phone ?? '',
+      school_origin: user?.school_origin ?? '',
+    });
+    profileForm.clearErrors();
+    setProfileEditorOpen(true);
+  };
+
+  const closeProfileEditor = () => {
+    if (profileForm.processing) return;
+
+    setProfileEditorOpen(false);
+  };
+
+  const submitProfileEditor = (event) => {
+    event.preventDefault();
+
+    profileForm.patch(route('profile.update'), {
+      preserveScroll: true,
+      onSuccess: () => setProfileEditorOpen(false),
+    });
+  };
+
   const materialStatusText = (item) => (
     item.hasMaterials
       ? `${item.materialCount} materi tersedia`
@@ -298,6 +331,137 @@ export default function CourseLearn({
       && !activeMaterial?.file_url
       && activeMaterial?.type !== 'video'
       && !isExternalUrl(activeMaterial.content)
+  );
+
+  const renderProfileEditorModal = () => (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center px-4 py-6">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/45"
+        onClick={closeProfileEditor}
+        aria-label="Tutup editor profil"
+      />
+
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-[#F7F2E7] px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex h-11 w-11 items-center justify-center rounded-xl"
+              style={{ background: '#F8EDED', color: '#691D1B' }}
+            >
+              <Pencil className="h-5 w-5" />
+            </div>
+
+            <div>
+              <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
+                Edit Profil
+              </h2>
+              <p className="text-sm text-gray-500">
+                Data diri siswa
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={closeProfileEditor}
+            disabled={profileForm.processing}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-[#F7F2E7] hover:text-[#691D1B] disabled:opacity-60"
+            aria-label="Tutup editor profil"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={submitProfileEditor} className="grid gap-5 px-5 py-5 md:grid-cols-2">
+          <label className="space-y-2 md:col-span-2">
+            <span className="text-sm font-bold text-gray-700">Nama Lengkap</span>
+            <input
+              type="text"
+              value={profileForm.data.name}
+              onChange={(event) => profileForm.setData('name', event.target.value)}
+              disabled={profileForm.processing}
+              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+              placeholder="Masukkan nama lengkap"
+              autoComplete="name"
+              required
+            />
+            {profileForm.errors.name && (
+              <p className="text-xs font-semibold text-red-600">{profileForm.errors.name}</p>
+            )}
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-sm font-bold text-gray-700">Jenis Kelamin</span>
+            <select
+              value={profileForm.data.gender}
+              onChange={(event) => profileForm.setData('gender', event.target.value)}
+              disabled={profileForm.processing}
+              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+            >
+              <option value="">Pilih jenis kelamin</option>
+              <option value="male">Laki-laki</option>
+              <option value="female">Perempuan</option>
+            </select>
+            {profileForm.errors.gender && (
+              <p className="text-xs font-semibold text-red-600">{profileForm.errors.gender}</p>
+            )}
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-sm font-bold text-gray-700">No Telepon/WhatsApp</span>
+            <input
+              type="tel"
+              value={profileForm.data.phone}
+              onChange={(event) => profileForm.setData('phone', event.target.value)}
+              disabled={profileForm.processing}
+              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+              placeholder="Contoh: 081234567890"
+              autoComplete="tel"
+            />
+            {profileForm.errors.phone && (
+              <p className="text-xs font-semibold text-red-600">{profileForm.errors.phone}</p>
+            )}
+          </label>
+
+          <label className="space-y-2 md:col-span-2">
+            <span className="text-sm font-bold text-gray-700">Sekolah Asal</span>
+            <input
+              type="text"
+              value={profileForm.data.school_origin}
+              onChange={(event) => profileForm.setData('school_origin', event.target.value)}
+              disabled={profileForm.processing}
+              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+              placeholder="Masukkan nama sekolah asal"
+              autoComplete="organization"
+            />
+            {profileForm.errors.school_origin && (
+              <p className="text-xs font-semibold text-red-600">{profileForm.errors.school_origin}</p>
+            )}
+          </label>
+
+          <div className="flex flex-col-reverse gap-3 border-t border-[#F7F2E7] pt-4 sm:flex-row sm:justify-end md:col-span-2">
+            <button
+              type="button"
+              onClick={closeProfileEditor}
+              disabled={profileForm.processing}
+              className="rounded-xl border border-[#D8D7BE] px-4 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:bg-[#F7F2E7] disabled:opacity-60"
+            >
+              Batal
+            </button>
+
+            <button
+              type="submit"
+              disabled={profileForm.processing}
+              className="rounded-xl px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-[#4A1412] disabled:opacity-70"
+              style={{ background: '#691D1B' }}
+            >
+              {profileForm.processing ? 'Menyimpan...' : 'Simpan Profil'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 
   return (
@@ -333,52 +497,69 @@ export default function CourseLearn({
             </div>
 
             <div className="px-4 py-4 border-b border-white/10">
-              <div className="rounded-2xl p-3.5 bg-white/10 border border-white/10">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div
-                      className="w-11 h-11 flex-shrink-0 rounded-full flex items-center justify-center text-base"
-                      style={{
-                        background: '#FFE882',
-                        color: '#691D1B',
-                        fontWeight: 900,
-                      }}
-                    >
-                      {getInitials(user?.name)}
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold leading-tight">
-                        {user?.name || 'Siswa Brics'}
-                      </p>
-                      <p className="truncate text-xs text-white/70 mt-0.5">{categoryName}</p>
-                    </div>
+              <div className="rounded-2xl border border-white/15 bg-white/[0.12] p-4 shadow-sm">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div
+                    className="h-12 w-12 flex-shrink-0 rounded-full flex items-center justify-center text-base"
+                    style={{
+                      background: '#FFE882',
+                      color: '#691D1B',
+                      fontWeight: 900,
+                    }}
+                  >
+                    {getInitials(user?.name)}
                   </div>
 
-                  <Link
-                    href="/profile"
-                    className="flex-shrink-0 text-[#FFE882] hover:scale-110 transition-transform"
-                    title="Edit Profil"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Link>
-                </div>
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <p
+                      className="overflow-hidden text-sm leading-snug text-white"
+                      style={{
+                        fontWeight: 900,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                      }}
+                      title={user?.name || 'Siswa Brics'}
+                    >
+                      {user?.name || 'Siswa Brics'}
+                    </p>
+                    <p className="mt-1.5 truncate text-xs leading-tight text-white/65" title={categoryName}>
+                      {categoryName}
+                    </p>
+                  </div>
 
-                <div className="mb-1 flex items-center justify-between text-xs">
-                  <span className="text-white/80">Progres Belajar</span>
-                  <span className="text-[#FFE882] font-black">
-                    {averageProgress}%
-                  </span>
-                </div>
-
-                <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
+                  <button
+                    type="button"
+                    onClick={openProfileEditor}
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition-transform hover:scale-105"
                     style={{
-                      width: `${averageProgress}%`,
                       background: '#FFE882',
+                      color: '#691D1B',
                     }}
-                  />
+                    title="Edit Profil"
+                    aria-label="Edit Profil"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="mt-4">
+                  <div className="mb-2 flex items-center justify-between text-xs">
+                    <span className="text-white/80">Progres Belajar</span>
+                    <span className="rounded-full bg-[#FFE882]/20 px-2 py-0.5 text-[#FFE882] font-black">
+                      {averageProgress}%
+                    </span>
+                  </div>
+
+                  <div className="w-full h-2.5 bg-white/20 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${averageProgress}%`,
+                        background: '#FFE882',
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -394,7 +575,7 @@ export default function CourseLearn({
               </Link>
 
               <Link
-                href="/#katalog"
+                href="/dashboard?tab=katalog"
                 className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-colors hover:bg-white/10"
                 style={{ fontWeight: 800 }}
               >
@@ -479,14 +660,15 @@ export default function CourseLearn({
             </nav>
 
             <div className="px-3.5 py-4 border-t border-white/10 space-y-2 mt-auto">
-              <Link
-                href="/profile"
+              <button
+                type="button"
+                onClick={openProfileEditor}
                 className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-colors hover:bg-white/10"
                 style={{ fontWeight: 800 }}
               >
                 <User className="h-4 w-4 flex-shrink-0" />
                 <span className="min-w-0 flex-1 truncate text-sm">Edit Profil</span>
-              </Link>
+              </button>
 
               <button
                 type="button"
@@ -535,17 +717,6 @@ export default function CourseLearn({
                 <div className="relative hidden sm:block">
                   <Bell className="w-6 h-6 text-gray-700" />
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full" />
-                </div>
-
-                <div
-                  className="w-11 h-11 rounded-full flex items-center justify-center"
-                  style={{
-                    background: '#741A18',
-                    color: '#FFE882',
-                    fontWeight: 900,
-                  }}
-                >
-                  {getInitials(user?.name)}
                 </div>
               </div>
             </div>
@@ -639,7 +810,7 @@ export default function CourseLearn({
                       </Link>
 
                       <Link
-                        href="/#katalog"
+                        href="/dashboard?tab=katalog"
                         className="flex-1 rounded-xl border-2 border-[#691D1B] py-3 text-center text-sm text-[#691D1B] transition-colors hover:bg-[#691D1B] hover:text-white"
                         style={{ fontWeight: 900 }}
                       >
@@ -1231,6 +1402,8 @@ export default function CourseLearn({
           </div>
         );
       })()}
+
+      {profileEditorOpen && renderProfileEditorModal()}
     </div>
   );
 }

@@ -361,7 +361,9 @@ Route::get('/student/schedules', function () {
     ]);
 })->name('student.schedules');
 
-Route::get('/login', fn () => Inertia::render('Auth/LoginSiswa'))->name('login');
+Route::get('/login', fn () => Inertia::render('Auth/LoginSiswa', [
+    'googleClientId' => config('services.google.client_id'),
+]))->name('login');
 Route::get('/login/tutor', fn () => Inertia::render('Auth/LoginTutor'))->name('login.tutor');
 Route::get('/login/admin', fn () => Inertia::render('Auth/LoginAdmin'))->name('login.admin');
 
