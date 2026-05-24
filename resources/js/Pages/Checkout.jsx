@@ -1,4 +1,4 @@
-import { Link, router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import BricsLogo from '@/Components/BricsLogo';
 import {
   ArrowLeft,
@@ -32,6 +32,7 @@ function formatPrice(price) {
 }
 
 export default function Checkout({ course }) {
+  const { errors } = usePage().props;
   const [paymentMethod, setPaymentMethod] = useState("transfer_bank");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -41,19 +42,19 @@ export default function Checkout({ course }) {
     {
       id: "transfer_bank",
       title: "Transfer Bank",
-      desc: "Simulasi pembayaran melalui transfer bank.",
+      desc: "Pembayaran real melalui bank transfer Midtrans.",
       icon: Building2,
     },
     {
       id: "ewallet",
       title: "E-Wallet",
-      desc: "Simulasi pembayaran melalui dompet digital.",
+      desc: "Pembayaran real melalui dompet digital yang tersedia di Midtrans.",
       icon: Wallet,
     },
     {
       id: "qris",
       title: "QRIS",
-      desc: "Simulasi pembayaran menggunakan QRIS.",
+      desc: "Pembayaran real menggunakan QRIS Midtrans.",
       icon: QrCode,
     },
   ];
@@ -158,7 +159,7 @@ export default function Checkout({ course }) {
             </h1>
 
             <p className="text-[#D8D7BE] text-sm lg:text-base leading-relaxed">
-              Periksa kembali detail course dan pilih metode pembayaran sebelum sistem membuat data transaksi.
+              Periksa kembali detail course dan pilih metode pembayaran Midtrans sebelum menyelesaikan transaksi.
             </p>
           </div>
         </div>
@@ -299,17 +300,17 @@ export default function Checkout({ course }) {
               <div className="p-6 space-y-4 text-sm text-gray-700">
                 <div className="flex gap-3">
                   <CheckCircle className="w-5 h-5 text-[#691D1B] flex-shrink-0" />
-                  <span>Transaksi akan dibuat dengan status awal menunggu pembayaran.</span>
+                  <span>Transaksi akan dibuat dengan status awal menunggu pembayaran Midtrans.</span>
                 </div>
 
                 <div className="flex gap-3">
                   <Clock className="w-5 h-5 text-[#691D1B] flex-shrink-0" />
-                  <span>Setelah pembayaran dikonfirmasi, akses course akan diaktifkan.</span>
+                  <span>Setelah Midtrans mengirim status berhasil, akses course akan aktif otomatis.</span>
                 </div>
 
                 <div className="flex gap-3">
                   <Shield className="w-5 h-5 text-[#691D1B] flex-shrink-0" />
-                  <span>Pembayaran akan diverifikasi setelah transaksi dikirim.</span>
+                  <span>Pembayaran diverifikasi lewat notifikasi resmi Midtrans.</span>
                 </div>
               </div>
             </section>
@@ -397,11 +398,17 @@ export default function Checkout({ course }) {
                   {isSubmitting ? "Memproses..." : "Bayar Sekarang"}
                 </button>
 
+                {errors?.payment && (
+                  <p className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                    {errors.payment}
+                  </p>
+                )}
+
                 <div className="mt-5 rounded-xl bg-[#F7F2E7] p-4">
                   <div className="flex gap-3">
                     <LockKeyhole className="w-5 h-5 text-[#691D1B] flex-shrink-0" />
                     <p className="text-xs text-gray-600 leading-relaxed">
-                      Dengan menekan tombol bayar, sistem akan membuat data transaksi dan mengarahkan kamu ke halaman status pembayaran.
+                      Dengan menekan tombol bayar, sistem akan membuat transaksi Midtrans dan membuka pembayaran aman melalui Snap.
                     </p>
                   </div>
                 </div>

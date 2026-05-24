@@ -8,19 +8,17 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ScheduleController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Models\Course;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use App\Models\Transaction;
 use App\Models\Enrollment;
 use App\Models\Material;
 use App\Models\Notification;
 use App\Models\Schedule;
 use App\Models\User;
-use App\Support\AdminNotifier;
 use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\Admin\TutorHistoryController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Tutor\ClassMonitoringController as TutorClassMonitoringController;
 use App\Http\Controllers\Tutor\DashboardController as TutorDashboardController;
@@ -29,7 +27,82 @@ use App\Http\Controllers\Tutor\NotificationController as TutorNotificationContro
 use App\Http\Controllers\Tutor\ScheduleController as TutorScheduleController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
+
+if (! function_exists('studentScheduleWeekPayload')) {
+    function studentScheduleWeekPayload($courseIds): array
+    {
+        $weekStart = Carbon::now()->startOfWeek(Carbon::MONDAY)->startOfDay();
+        $weekEnd = Carbon::now()->endOfWeek(Carbon::SUNDAY)->endOfDay();
+
+        $scheduleEvents = Schedule::with(['course.category', 'mentor'])
+            ->whereIn('course_id', $courseIds)
+            ->whereBetween('start_time', [$weekStart, $weekEnd])
+            ->orderBy('start_time')
+            ->get()
+            ->map(function (Schedule $schedule) {
+                $title = strtolower($schedule->title);
+                $type = match (true) {
+                    str_contains($title, 'deadline') => 'deadline',
+                    str_contains($title, 'review') => 'review',
+                    str_contains($title, 'konsultasi') || str_contains($title, 'consult') => 'consultation',
+                    default => 'live',
+                };
+
+                return [
+                    'id' => $schedule->id,
+                    'date' => $schedule->start_time?->locale('id')->translatedFormat('l, j F Y'),
+                    'dateShort' => $schedule->start_time?->locale('id')->translatedFormat('D, j M'),
+                    'dayKey' => $schedule->start_time?->toDateString(),
+                    'time' => $schedule->start_time?->format('H:i').' - '.$schedule->end_time?->format('H:i'),
+                    'title' => $schedule->title,
+                    'course' => $schedule->course,
+                    'course_id' => $schedule->course_id,
+                    'mentor' => $schedule->mentor,
+                    'mentor_name' => $schedule->mentor?->name,
+                    'type' => $type,
+                    'meeting_link' => $schedule->meeting_link,
+                    'start_time' => $schedule->start_time,
+                    'end_time' => $schedule->end_time,
+                    'status' => $schedule->end_time < now()
+                        ? 'completed'
+                        : ($schedule->start_time <= now() && $schedule->end_time >= now() ? 'in-progress' : 'upcoming'),
+                ];
+            });
+
+        $eventsByDate = $scheduleEvents->groupBy('dayKey');
+        $weekDays = collect(range(0, 6))->map(function (int $offset) use ($weekStart, $eventsByDate) {
+            $date = $weekStart->copy()->addDays($offset)->locale('id');
+            $dayKey = $date->toDateString();
+
+            return [
+                'date' => $date->translatedFormat('l, j F Y'),
+                'dateShort' => $date->translatedFormat('D, j M'),
+                'dayKey' => $dayKey,
+                'isToday' => $date->isToday(),
+                'events' => $eventsByDate->get($dayKey, collect())->values(),
+            ];
+        });
+
+        return [
+            'events' => $scheduleEvents->values(),
+            'days' => $weekDays,
+            'week' => [
+                'start' => $weekStart->toDateString(),
+                'end' => $weekEnd->toDateString(),
+                'label' => $weekStart->copy()->locale('id')->translatedFormat('j M').' - '.$weekEnd->copy()->locale('id')->translatedFormat('j M Y'),
+            ],
+            'stats' => [
+                'totalThisWeek' => $scheduleEvents->count(),
+                'totalLive' => $scheduleEvents->where('type', 'live')->count(),
+                'totalDeadlines' => $scheduleEvents->where('type', 'deadline')->count(),
+                'totalReviews' => $scheduleEvents->where('type', 'review')->count(),
+                'totalConsultations' => $scheduleEvents->where('type', 'consultation')->count(),
+            ],
+        ];
+    }
+}
 
 Route::get('/', function () {
     $courses = Course::with('category')
@@ -62,76 +135,11 @@ Route::get('/checkout/{course}', function (Course $course) {
     ]);
 })->name('checkout');
 
-Route::post('/checkout', function (Request $request) {
-    $request->validate([
-        'course_id' => ['required', 'exists:courses,id'],
-        'payment_method' => ['required', 'string'],
-    ]);
+Route::post('/checkout', [PaymentController::class, 'checkout'])->middleware('auth');
 
-    $user = Auth::user();
-
-    if (!$user) {
-        return redirect()->route('login');
-    }
-
-    $course = Course::findOrFail($request->course_id);
-
-    $transaction = Transaction::create([
-        'user_id' => $user->id,
-        'course_id' => $course->id,
-        'invoice_number' => sprintf('INV-%s-%04d', now()->format('YmdHis'), random_int(0, 9999)),
-        'amount' => $course->price,
-        'payment_method' => $request->payment_method,
-        'payment_status' => 'pending',
-    ]);
-
-    AdminNotifier::transactionPending($user, $course->title, $transaction->invoice_number);
-
-    return redirect("/payment-status/{$transaction->id}");
-})->middleware('auth');
-
-Route::get('/payment-status/{transaction}', function (Transaction $transaction) {
-    $transaction->load('course.category');
-
-    return Inertia::render('PaymentStatus', [
-        'transaction' => $transaction,
-    ]);
-})->name('payment.status');
-
-Route::post('/payment-status/{transaction}/confirm', function (Transaction $transaction) {
-    $transaction->load('course');
-    $previousStatus = $transaction->payment_status;
-
-    $transaction->update([
-        'payment_status' => 'success',
-        'paid_at' => now(),
-    ]);
-
-    Enrollment::updateOrCreate(
-        [
-            'user_id' => $transaction->user_id,
-            'course_id' => $transaction->course_id,
-        ],
-        [
-            'status' => 'active',
-            'enrolled_at' => now(),
-        ]
-    );
-
-    $student = User::find($transaction->user_id);
-
-    if ($student && ! in_array($previousStatus, ['paid', 'success'], true)) {
-        AdminNotifier::transactionSucceeded(
-            $student,
-            $transaction->course?->title ?? 'course terkait',
-            $transaction->invoice_number
-        );
-    }
-
-    return redirect()
-        ->to('/payment-status/' . $transaction->id)
-        ->with('success', 'Pembayaran berhasil dikonfirmasi dan course telah aktif.');
-})->name('payment.confirm');
+Route::get('/payment-status/{transaction}', [PaymentController::class, 'status'])->middleware('auth')->name('payment.status');
+Route::post('/payment-status/{transaction}/refresh', [PaymentController::class, 'refresh'])->middleware('auth')->name('payment.refresh');
+Route::post('/midtrans/notification', [PaymentController::class, 'notification'])->name('midtrans.notification');
 
 Route::get('/dashboard', function () {
     if (!auth()->check()) {
@@ -168,11 +176,7 @@ Route::get('/dashboard', function () {
         ->where('status', 'active')
         ->pluck('course_id');
 
-    $schedules = Schedule::with(['course.category', 'mentor'])
-        ->whereIn('course_id', $activeCourseIds)
-        ->orderBy('start_time')
-        ->take(3)
-        ->get();
+    $schedulePayload = studentScheduleWeekPayload($activeCourseIds);
 
     $materials = Material::with('course:id,title')
         ->whereIn('course_id', $activeCourseIds)
@@ -185,7 +189,10 @@ Route::get('/dashboard', function () {
         'user' => $user,
         'enrollments' => $enrollments,
         'transactions' => $transactions,
-        'schedules' => $schedules,
+        'schedules' => $schedulePayload['events'],
+        'scheduleDays' => $schedulePayload['days'],
+        'scheduleWeek' => $schedulePayload['week'],
+        'scheduleStats' => $schedulePayload['stats'],
         'materials' => $materials,
         'notifications' => Notification::query()
             ->where('user_id', $user->id)
@@ -276,14 +283,14 @@ Route::get('/student/schedules', function () {
         ->where('status', 'active')
         ->pluck('course_id');
 
-    $schedules = Schedule::with(['course.category', 'mentor'])
-        ->whereIn('course_id', $activeCourseIds)
-        ->orderBy('start_time')
-        ->get();
+    $schedulePayload = studentScheduleWeekPayload($activeCourseIds);
 
     return Inertia::render('StudentSchedules', [
         'user' => $user,
-        'schedules' => $schedules,
+        'schedules' => $schedulePayload['events'],
+        'scheduleDays' => $schedulePayload['days'],
+        'scheduleWeek' => $schedulePayload['week'],
+        'scheduleStats' => $schedulePayload['stats'],
     ]);
 })->name('student.schedules');
 
@@ -377,6 +384,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+// Student progress API
+Route::middleware('auth')->group(function () {
+    Route::get('/student/progress', [\App\Http\Controllers\Student\ProgressController::class, 'index']);
+    Route::post('/student/progress', [\App\Http\Controllers\Student\ProgressController::class, 'store']);
 });
 
 require __DIR__.'/auth.php';

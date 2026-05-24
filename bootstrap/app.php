@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
+        $middleware->validateCsrfTokens(except: [
+            'midtrans/notification',
+        ]);
+
         $middleware->redirectGuestsTo(function ($request) {
             return $request->is('admin') || $request->is('admin/*')
                 ? route('login.admin')
