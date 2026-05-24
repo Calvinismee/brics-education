@@ -12,6 +12,8 @@ import {
   ChevronRight,
   AlertCircle,
   Receipt,
+  Layers,
+  Package as PackageIcon,
 } from 'lucide-react';
 
 function formatPrice(price) {
@@ -24,10 +26,30 @@ function formatPrice(price) {
   return String(price || '-');
 }
 
-function getCategoryName(course) {
-  if (!course?.category) return 'Course';
+function asArray(value) {
+  if (Array.isArray(value)) return value;
+  return Object.values(value ?? {});
+}
+
+function getCourseCategoryName(course) {
+  if (!course?.category) return 'Paket';
   if (typeof course.category === 'string') return course.category;
-  return course.category.name || 'Course';
+  return course.category.name || 'Paket';
+}
+
+function getPackageCourses(learningPackage) {
+  return asArray(learningPackage?.courses);
+}
+
+function getPackageCategoryLabel(learningPackage) {
+  const categories = Array.from(
+    new Set(getPackageCourses(learningPackage).map((course) => getCourseCategoryName(course)).filter(Boolean))
+  );
+
+  if (categories.length === 0) return 'Paket Belajar';
+  if (categories.length === 1) return categories[0];
+
+  return 'Paket Lengkap';
 }
 
 function formatPaymentMethod(method) {
@@ -43,9 +65,17 @@ function formatPaymentMethod(method) {
 }
 
 export default function PaymentStatus({ transaction, midtrans = {} }) {
+  const shouldAutoOpenSnap =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('pay') === '1';
   const [snapReady, setSnapReady] = useState(false);
   const [isOpeningSnap, setIsOpeningSnap] = useState(false);
   const course = transaction.course;
+  const learningPackage = transaction.package;
+  const packageCourses = getPackageCourses(learningPackage);
+  const isPackageTransaction = !!learningPackage;
+  const productName = isPackageTransaction ? learningPackage.name : (course?.title || 'Course');
+  const productCategory = isPackageTransaction ? getPackageCategoryLabel(learningPackage) : getCourseCategoryName(course);
   const isSuccess = transaction.payment_status === 'success';
   const isPending = transaction.payment_status === 'pending';
   const isFailed = transaction.payment_status === 'failed';
@@ -89,10 +119,10 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
   };
 
   useEffect(() => {
-    if (canPayWithMidtrans && snapReady) {
+    if (shouldAutoOpenSnap && canPayWithMidtrans && snapReady) {
       openMidtransPayment();
     }
-  }, [canPayWithMidtrans, snapReady]);
+  }, [shouldAutoOpenSnap, canPayWithMidtrans, snapReady]);
 
   return (
     <div
@@ -184,15 +214,15 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
                 className="text-3xl lg:text-4xl text-white mb-3"
                 style={{ fontWeight: 900, lineHeight: 1.2 }}
               >
-                {isSuccess ? 'Pembayaran Berhasil' : isFailed ? 'Pembayaran Gagal' : 'Transaksi Berhasil Dibuat'}
+                {isSuccess ? 'Pembayaran Berhasil' : isFailed ? 'Pembayaran Gagal' : 'Menunggu Pembayaran'}
               </h1>
 
               <p className="text-[#D8D7BE] text-sm lg:text-base leading-relaxed">
                 {isPending
-                  ? 'Transaksi kamu sudah tercatat. Selesaikan pembayaran melalui Midtrans agar course aktif otomatis.'
+                  ? 'Transaksi kamu sudah tercatat. Selesaikan pembayaran melalui Midtrans agar paket aktif otomatis.'
                   : isFailed
                     ? 'Pembayaran tidak berhasil. Silakan buat transaksi baru dari halaman checkout.'
-                    : 'Status pembayaran sudah berhasil. Course dapat diakses melalui dashboard siswa.'}
+                    : 'Status pembayaran sudah berhasil. Paket dapat diakses melalui dashboard siswa.'}
               </p>
             </div>
           </div>
@@ -222,7 +252,7 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
                 <div className="border border-[#D8D7BE] rounded-2xl p-5 bg-[#FDFCF8]">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-11 h-11 rounded-xl bg-[#F8EDED] flex items-center justify-center text-[#691D1B]">
-                      <BookOpen className="w-5 h-5" />
+                      {isPackageTransaction ? <PackageIcon className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
                     </div>
 
                     <div>
@@ -230,10 +260,10 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
                         className="text-gray-900"
                         style={{ fontWeight: 900 }}
                       >
-                        Detail Course
+                        {isPackageTransaction ? 'Detail Paket' : 'Detail Course'}
                       </h3>
                       <p className="text-xs text-gray-500">
-                        Course yang dibeli siswa.
+                        {isPackageTransaction ? 'Paket yang dibeli siswa.' : 'Course yang dibeli siswa.'}
                       </p>
                     </div>
                   </div>
@@ -242,7 +272,7 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
                     className="text-lg text-[#691D1B] mb-2"
                     style={{ fontWeight: 900 }}
                   >
-                    {course?.title || 'Course'}
+                    {productName}
                   </p>
 
                   <span
@@ -253,8 +283,28 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
                       fontWeight: 800,
                     }}
                   >
-                    {getCategoryName(course)}
+                    {productCategory}
                   </span>
+
+                  {isPackageTransaction && (
+                    <div className="mt-4 rounded-xl border border-[#D8D7BE] bg-white p-3">
+                      <div className="mb-2 flex items-center gap-2 text-xs uppercase text-gray-500" style={{ fontWeight: 900 }}>
+                        <Layers className="w-3.5 h-3.5 text-[#691D1B]" />
+                        Course aktif
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {packageCourses.length > 0 ? (
+                          packageCourses.map((item) => (
+                            <span key={item.id} className="rounded-full bg-[#F7F2E7] px-2.5 py-1 text-xs text-gray-600" style={{ fontWeight: 800 }}>
+                              {item.title}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-gray-500">Belum ada course terhubung.</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="border border-[#D8D7BE] rounded-2xl p-5 bg-[#FDFCF8]">
@@ -329,7 +379,7 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
                       className={isSuccess ? 'text-green-800' : 'text-yellow-800'}
                       style={{ fontWeight: 900 }}
                     >
-                      {isSuccess ? 'Course sudah aktif' : isFailed ? 'Pembayaran gagal' : 'Menunggu pembayaran Midtrans'}
+                      {isSuccess ? 'Paket sudah aktif' : isFailed ? 'Pembayaran gagal' : 'Menunggu pembayaran'}
                     </p>
 
                     <p
@@ -338,10 +388,10 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
                       }`}
                     >
                       {isSuccess
-                        ? 'Pembayaran sudah berhasil. Kamu dapat membuka dashboard siswa untuk mengakses course, materi, dan jadwal pembelajaran.'
+                        ? 'Pembayaran sudah berhasil. Kamu dapat membuka dashboard siswa untuk mengakses semua course dalam paket, materi, dan jadwal pembelajaran.'
                         : isFailed
-                          ? 'Midtrans mengirim status gagal/cancel/expired untuk transaksi ini.'
-                          : 'Setelah pembayaran berhasil di Midtrans, course akan aktif otomatis.'}
+                          ? 'Transaksi ini gagal.'
+                          : 'Setelah pembayaran berhasil, paket akan aktif otomatis.'}
                     </p>
                   </div>
                 </div>
@@ -438,7 +488,7 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
                   <div className="flex gap-3">
                     <Shield className="w-5 h-5 text-[#691D1B] flex-shrink-0" />
                     <p className="text-xs text-gray-600 leading-relaxed">
-                      Data transaksi ini tersimpan pada sistem dan digunakan untuk mengaktifkan akses course siswa.
+                      Data transaksi ini tersimpan pada sistem dan digunakan untuk mengaktifkan akses paket siswa.
                     </p>
                   </div>
                 </div>

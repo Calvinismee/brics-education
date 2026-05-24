@@ -1,23 +1,22 @@
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
-import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
+import TextInput from '@/Components/TextInput';
 import { Transition } from '@headlessui/react';
-import { Link, useForm, usePage } from '@inertiajs/react';
-import { LoadingButton } from '@/Components/ui/LoadingStates';
+import { useForm, usePage } from '@inertiajs/react';
 import { toast } from 'sonner';
 
 export default function UpdateProfileInformation({
-    mustVerifyEmail,
-    status,
     className = '',
 }) {
     const user = usePage().props.auth.user;
 
     const { data, setData, patch, errors, processing, recentlySuccessful } =
         useForm({
-            name: user.name,
-            email: user.email,
+            name: user.name ?? '',
+            gender: user.gender ?? '',
+            phone: user.phone ?? '',
+            school_origin: user.school_origin ?? '',
         });
 
     const submit = (e) => {
@@ -25,9 +24,9 @@ export default function UpdateProfileInformation({
 
         patch(route('profile.update'), {
             preserveScroll: true,
-            onSuccess: () => toast.success('Profile berhasil diperbarui.'),
+            onSuccess: () => toast.success('Profil berhasil diperbarui.'),
             onError: (formErrors) => {
-                toast.error(Object.values(formErrors)[0] || 'Gagal memperbarui profile.');
+                toast.error(Object.values(formErrors)[0] || 'Gagal memperbarui profil.');
             },
         });
     };
@@ -35,73 +34,85 @@ export default function UpdateProfileInformation({
     return (
         <section className={className}>
             <header>
-                <h2 className="text-lg font-medium text-gray-900">
-                    Profile Information
+                <h2 className="text-lg font-bold text-gray-900">
+                    Data Diri Siswa
                 </h2>
 
                 <p className="mt-1 text-sm text-gray-600">
-                    Update your account's profile information and email address.
+                    Perbarui data identitas yang digunakan pada akun belajar.
                 </p>
             </header>
 
-            <form onSubmit={submit} className="mt-6 space-y-6">
-                <div>
-                    <InputLabel htmlFor="name" value="Name" />
+            <form onSubmit={submit} className="mt-6 grid gap-5 md:grid-cols-2">
+                <div className="md:col-span-2">
+                    <InputLabel htmlFor="name" value="Nama Lengkap" />
 
                     <TextInput
                         id="name"
-                        className="mt-1 block w-full"
+                        className="mt-1 block w-full rounded-xl border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm focus:border-[#691D1B] focus:ring-[#691D1B]"
                         value={data.name}
                         onChange={(e) => setData('name', e.target.value)}
                         required
                         isFocused
                         autoComplete="name"
+                        placeholder="Masukkan nama lengkap"
                     />
 
                     <InputError className="mt-2" message={errors.name} />
                 </div>
 
                 <div>
-                    <InputLabel htmlFor="email" value="Email" />
+                    <InputLabel htmlFor="gender" value="Jenis Kelamin" />
 
-                    <TextInput
-                        id="email"
-                        type="email"
-                        className="mt-1 block w-full"
-                        value={data.email}
-                        onChange={(e) => setData('email', e.target.value)}
-                        required
-                        autoComplete="username"
-                    />
+                    <select
+                        id="gender"
+                        className="mt-1 block w-full rounded-xl border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm shadow-sm focus:border-[#691D1B] focus:ring-[#691D1B]"
+                        value={data.gender}
+                        onChange={(e) => setData('gender', e.target.value)}
+                    >
+                        <option value="">Pilih jenis kelamin</option>
+                        <option value="male">Laki-laki</option>
+                        <option value="female">Perempuan</option>
+                    </select>
 
-                    <InputError className="mt-2" message={errors.email} />
+                    <InputError className="mt-2" message={errors.gender} />
                 </div>
 
-                {mustVerifyEmail && user.email_verified_at === null && (
-                    <div>
-                        <p className="mt-2 text-sm text-gray-800">
-                            Your email address is unverified.
-                            <Link
-                                href={route('verification.send')}
-                                method="post"
-                                as="button"
-                                className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                            >
-                                Click here to re-send the verification email.
-                            </Link>
-                        </p>
+                <div>
+                    <InputLabel htmlFor="phone" value="No Telepon/WhatsApp" />
 
-                        {status === 'verification-link-sent' && (
-                            <div className="mt-2 text-sm font-medium text-green-600">
-                                A new verification link has been sent to your
-                                email address.
-                            </div>
-                        )}
-                    </div>
-                )}
+                    <TextInput
+                        id="phone"
+                        type="tel"
+                        className="mt-1 block w-full rounded-xl border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm focus:border-[#691D1B] focus:ring-[#691D1B]"
+                        value={data.phone}
+                        onChange={(e) => setData('phone', e.target.value)}
+                        autoComplete="tel"
+                        placeholder="Contoh: 081234567890"
+                    />
 
-                <div className="flex items-center gap-4">
-                    <PrimaryButton disabled={processing}>Save</PrimaryButton>
+                    <InputError className="mt-2" message={errors.phone} />
+                </div>
+
+                <div className="md:col-span-2">
+                    <InputLabel htmlFor="school_origin" value="Sekolah Asal" />
+
+                    <TextInput
+                        id="school_origin"
+                        className="mt-1 block w-full rounded-xl border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm focus:border-[#691D1B] focus:ring-[#691D1B]"
+                        value={data.school_origin}
+                        onChange={(e) => setData('school_origin', e.target.value)}
+                        autoComplete="organization"
+                        placeholder="Masukkan nama sekolah asal"
+                    />
+
+                    <InputError className="mt-2" message={errors.school_origin} />
+                </div>
+
+                <div className="flex items-center gap-4 md:col-span-2">
+                    <PrimaryButton disabled={processing}>
+                        {processing ? 'Menyimpan...' : 'Simpan Profil'}
+                    </PrimaryButton>
 
                     <Transition
                         show={recentlySuccessful}
@@ -111,7 +122,7 @@ export default function UpdateProfileInformation({
                         leaveTo="opacity-0"
                     >
                         <p className="text-sm text-gray-600">
-                            Saved.
+                            Tersimpan.
                         </p>
                     </Transition>
                 </div>

@@ -12,6 +12,9 @@ import {
   TrendingUp,
   CheckCircle,
   ArrowRight,
+  CreditCard,
+  Layers,
+  Package as PackageIcon,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -27,7 +30,7 @@ const COURSE_IMAGE =
 const stats = [
   { value: "15.000+", label: "Siswa Aktif" },
   { value: "200+", label: "Tutor Berpengalaman" },
-  { value: "500+", label: "Kursus Tersedia" },
+  { value: "7+", label: "Subtes Terarah" },
   { value: "94%", label: "Tingkat Kelulusan" },
 ];
 
@@ -35,7 +38,7 @@ const benefits = [
   {
     icon: <BookOpen className="w-7 h-7" />,
     title: "Materi Terstruktur",
-    desc: "Kurikulum dirancang oleh pakar pendidikan berpengalaman dengan pendekatan sistematis dan mudah dipahami.",
+    desc: "Setiap paket berisi rangkaian subtes yang dirancang oleh pakar pendidikan berpengalaman.",
   },
   {
     icon: <Users className="w-7 h-7" />,
@@ -64,10 +67,34 @@ const benefits = [
   },
 ];
 
-function getCategoryName(course) {
-  if (!course.category) return "Course";
+function asArray(value) {
+  if (Array.isArray(value)) return value;
+  return Object.values(value ?? {});
+}
+
+function getCourseCategoryName(course) {
+  if (!course?.category) return "Paket";
   if (typeof course.category === "string") return course.category;
-  return course.category.name || "Course";
+  return course.category.name || "Paket";
+}
+
+function getPackageCourses(pkg) {
+  return asArray(pkg?.courses);
+}
+
+function getPackageCategories(pkg) {
+  return Array.from(
+    new Set(getPackageCourses(pkg).map((course) => getCourseCategoryName(course)).filter(Boolean))
+  );
+}
+
+function getPackageCategoryLabel(pkg) {
+  const categories = getPackageCategories(pkg);
+
+  if (categories.length === 0) return "Paket Belajar";
+  if (categories.length === 1) return categories[0];
+
+  return "Paket Lengkap";
 }
 
 function formatPrice(price) {
@@ -80,27 +107,33 @@ function formatPrice(price) {
   return String(price);
 }
 
-export default function LandingPage({ courses = [] }) {
+export default function LandingPage({ packages = [] }) {
   const { auth } = usePage().props;
   const user = auth?.user;
 
+  const packageList = asArray(packages);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("Semua");
 
   const categories = [
     "Semua",
     ...Array.from(
-      new Set(courses.map((course) => getCategoryName(course)).filter(Boolean))
+      new Set(packageList.flatMap((pkg) => getPackageCategories(pkg)).filter(Boolean))
     ),
   ];
 
-  const filtered = courses.filter((course) => {
-    const categoryName = getCategoryName(course);
-    const courseTitle = course.title || "";
-    const matchSearch = courseTitle
+  const filtered = packageList.filter((pkg) => {
+    const packageCategories = getPackageCategories(pkg);
+    const searchText = [
+      pkg.name,
+      pkg.description,
+      ...getPackageCourses(pkg).map((course) => course.title),
+      ...(Array.isArray(pkg.features) ? pkg.features : []),
+    ].join(" ");
+    const matchSearch = searchText
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
-    const matchCat = activeCategory === "Semua" || categoryName === activeCategory;
+    const matchCat = activeCategory === "Semua" || packageCategories.includes(activeCategory);
 
     return matchSearch && matchCat;
   });
@@ -114,8 +147,35 @@ export default function LandingPage({ courses = [] }) {
     router.post(route("logout"));
   };
 
+  const scrollToTarget = (href, behavior = "smooth") => {
+    const url = new URL(href, window.location.origin);
+    const targetId = url.hash ? decodeURIComponent(url.hash.slice(1)) : "landing-page-top";
+    const target = document.getElementById(targetId);
+
+    if (!target) {
+      window.scrollTo({ top: 0, behavior });
+      return;
+    }
+
+    const stickyOffset = targetId === "landing-page-top" ? 0 : 148;
+    const targetTop = target.getBoundingClientRect().top + window.scrollY - stickyOffset;
+
+    window.scrollTo({ top: Math.max(targetTop, 0), behavior });
+  };
+
+  const handleAnchorNavigation = (event, href) => {
+    const url = new URL(href, window.location.origin);
+    const isSamePage = url.pathname === window.location.pathname;
+
+    if (isSamePage) {
+      event.preventDefault();
+      scrollToTarget(href);
+    }
+  };
+
   return (
     <div
+      id="landing-page-top"
       className="min-h-screen"
       style={{
         background: "#F7F2E7",
@@ -126,7 +186,7 @@ export default function LandingPage({ courses = [] }) {
       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-[#D8D7BE]">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
           <Link href="/">
-            <BricsLogo size="sm" />
+            <BricsLogo size="lg" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
@@ -134,11 +194,12 @@ export default function LandingPage({ courses = [] }) {
               { label: "Beranda", to: "/" },
               { label: "Katalog", to: "/#katalog" },
               { label: "Tentang Kami", to: "#tentang" },
-              { label: "Blog", to: "#" },
             ].map((item) => (
               <Link
                 key={item.label}
                 href={item.to}
+                onClick={(event) => handleAnchorNavigation(event, item.to)}
+                onSuccess={() => scrollToTarget(item.to)}
                 className="px-4 py-2 text-sm text-gray-700 hover:text-[#691D1B] hover:bg-[#F7F2E7] rounded-md transition-colors"
                 style={{ fontWeight: 500 }}
               >
@@ -214,8 +275,8 @@ export default function LandingPage({ courses = [] }) {
               </h1>
 
               <p className="text-[#D8D7BE] text-base mb-8 leading-relaxed">
-                Platform edukasi online terpercaya dengan ratusan kursus
-                berkualitas, tutor profesional, dan sistem pembelajaran adaptif
+                Platform edukasi online terpercaya dengan paket belajar
+                terarah, tutor profesional, dan sistem pembelajaran adaptif
                 yang membantu kamu mencapai tujuan pendidikan.
               </p>
 
@@ -225,12 +286,13 @@ export default function LandingPage({ courses = [] }) {
                   className="flex items-center gap-2 px-8 py-4 bg-[#FFE882] text-[#691D1B] rounded-lg hover:bg-yellow-300 transition-colors"
                   style={{ fontWeight: 700 }}
                 >
-                  {user ? "Masuk Dashboard" : "Mulai Belajar Gratis"}
+                  {user ? "Masuk Dashboard" : "Mulai Perjalananmu!"}
                   <ArrowRight className="w-5 h-5" />
                 </Link>
 
                 <a
                   href="#katalog"
+                  onClick={(event) => handleAnchorNavigation(event, "#katalog")}
                   className="flex items-center gap-2 px-8 py-4 bg-white/10 text-white border border-white/30 rounded-lg hover:bg-white/20 transition-colors"
                   style={{ fontWeight: 600 }}
                 >
@@ -306,7 +368,7 @@ export default function LandingPage({ courses = [] }) {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#691D1B]" />
               <input
                 type="text"
-                placeholder="Cari kursus, topik, atau tutor..."
+                placeholder="Cari paket, subtes, atau fitur..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 border-2 border-[#D8D7BE] rounded-lg bg-[#F7F2E7] focus:outline-none focus:border-[#691D1B] text-sm transition-colors"
@@ -334,7 +396,7 @@ export default function LandingPage({ courses = [] }) {
         </div>
       </section>
 
-      {/* Course Catalog */}
+      {/* Package Catalog */}
       <section id="katalog" className="max-w-7xl mx-auto px-6 py-16">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -342,10 +404,10 @@ export default function LandingPage({ courses = [] }) {
               className="text-3xl text-[#691D1B] mb-1"
               style={{ fontWeight: 800 }}
             >
-              Kursus Populer
+              Paket Belajar
             </h2>
             <p className="text-gray-600 text-sm">
-              Dipilih oleh ribuan pelajar di seluruh Indonesia
+              Pilih satu paket, lalu akses semua course yang termasuk di dalamnya.
             </p>
           </div>
 
@@ -361,81 +423,132 @@ export default function LandingPage({ courses = [] }) {
 
         {filtered.length === 0 ? (
           <div className="bg-white border border-[#D8D7BE] rounded-2xl p-8 text-center text-gray-600">
-            Belum ada course aktif yang tersedia.
+            Belum ada paket aktif yang tersedia.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((course) => (
-              <div
-                key={course.id}
-                className="bg-white rounded-2xl overflow-hidden shadow-sm border border-[#D8D7BE] hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col"
-              >
-                <div className="relative">
-                  <img
-                    src={COURSE_IMAGE}
-                    alt={course.title}
-                    className="w-full h-44 object-cover"
-                  />
-                  <span
-                    className="absolute top-3 left-3 bg-[#FFE882] text-[#691D1B] text-xs px-3 py-1 rounded-full"
-                    style={{ fontWeight: 700 }}
-                  >
-                    {getCategoryName(course)}
-                  </span>
-                </div>
+            {filtered.map((pkg) => {
+              const packageCourses = getPackageCourses(pkg);
+              const packageFeatures = Array.isArray(pkg.features) ? pkg.features : [];
 
-                <div className="p-5 flex flex-col flex-1">
-                  <h3
-                    className="text-gray-900 mb-2"
-                    style={{ fontWeight: 700 }}
-                  >
-                    {course.title}
-                  </h3>
-
-                  <p className="text-sm text-gray-500 mb-3 line-clamp-2">
-                    {course.description || "Deskripsi course belum tersedia."}
-                  </p>
-
-                  <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
-                    <span className="flex items-center gap-1">
-                      <Star className="w-3.5 h-3.5 fill-[#FFE882] text-[#FFE882]" />
-                      <span style={{ fontWeight: 700, color: "#691D1B" }}>
-                        4.9
-                      </span>
+              return (
+                <div
+                  key={pkg.id}
+                  className="bg-white rounded-2xl overflow-hidden shadow-sm border border-[#D8D7BE] hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col"
+                >
+                  <div className="relative">
+                    <img
+                      src={COURSE_IMAGE}
+                      alt={pkg.name}
+                      className="w-full h-44 object-cover"
+                    />
+                    <span
+                      className="absolute top-3 left-3 bg-[#FFE882] text-[#691D1B] text-xs px-3 py-1 rounded-full"
+                      style={{ fontWeight: 700 }}
+                    >
+                      {getPackageCategoryLabel(pkg)}
                     </span>
 
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5" />
-                      100+ siswa
-                    </span>
-
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      Fleksibel
-                    </span>
-                  </div>
-
-                  <div className="mt-auto flex items-center justify-between pt-4 border-t border-[#F7F2E7]">
-                    <div>
-                      <div
-                        className="text-[#691D1B]"
+                    {pkg.popular && (
+                      <span
+                        className="absolute top-3 right-3 bg-white text-[#691D1B] text-xs px-3 py-1 rounded-full shadow-sm"
                         style={{ fontWeight: 800 }}
                       >
-                        {formatPrice(course.price)}
+                        Paling Populer
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="p-5 flex flex-col flex-1">
+                    <div className="mb-3 flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-[#691D1B] text-[#FFE882] flex items-center justify-center flex-shrink-0">
+                        <PackageIcon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3
+                          className="text-gray-900"
+                          style={{ fontWeight: 800 }}
+                        >
+                          {pkg.name}
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {packageCourses.length} course dalam satu paket
+                        </p>
                       </div>
                     </div>
 
-                    <Link
-                      href={`/course/${course.id}`}
-                      className="flex items-center gap-1 px-4 py-2 bg-[#691D1B] text-white text-xs rounded-lg hover:bg-[#4A1412] transition-colors"
-                      style={{ fontWeight: 600 }}
-                    >
-                      Detail <ChevronRight className="w-3.5 h-3.5" />
-                    </Link>
+                    <p className="text-sm text-gray-500 mb-4 line-clamp-2">
+                      {pkg.description || "Deskripsi paket belum tersedia."}
+                    </p>
+
+                    <div className="grid grid-cols-3 gap-2 text-xs text-gray-500 mb-4">
+                      <span className="flex items-center gap-1 rounded-lg bg-[#F7F2E7] px-2 py-2">
+                        <Layers className="w-3.5 h-3.5 text-[#691D1B]" />
+                        {packageCourses.length} subtes
+                      </span>
+                      <span className="flex items-center gap-1 rounded-lg bg-[#F7F2E7] px-2 py-2">
+                        <Star className="w-3.5 h-3.5 fill-[#FFE882] text-[#D5A018]" />
+                        4.9
+                      </span>
+                      <span className="flex items-center gap-1 rounded-lg bg-[#F7F2E7] px-2 py-2">
+                        <Clock className="w-3.5 h-3.5 text-[#0F7A45]" />
+                        Fleksibel
+                      </span>
+                    </div>
+
+                    {packageFeatures.length > 0 && (
+                      <ul className="mb-4 space-y-2">
+                        {packageFeatures.slice(0, 3).map((feature) => (
+                          <li key={feature} className="flex items-start gap-2 text-sm text-gray-600">
+                            <CheckCircle className="w-4 h-4 text-[#0F7A45] flex-shrink-0 mt-0.5" />
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    <div className="mb-5 rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] p-3">
+                      <div className="mb-2 text-xs uppercase text-gray-500" style={{ fontWeight: 800 }}>
+                        Course dalam paket
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {packageCourses.slice(0, 5).map((course) => (
+                          <span key={course.id} className="rounded-full bg-white px-2.5 py-1 text-xs text-gray-600" style={{ fontWeight: 700 }}>
+                            {course.title}
+                          </span>
+                        ))}
+                        {packageCourses.length > 5 && (
+                          <span className="rounded-full bg-white px-2.5 py-1 text-xs text-gray-600" style={{ fontWeight: 700 }}>
+                            +{packageCourses.length - 5} course
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-auto flex items-center justify-between gap-4 pt-4 border-t border-[#F7F2E7]">
+                      <div>
+                        <div className="text-xs text-gray-500">Harga paket</div>
+                        <div
+                          className="text-[#691D1B]"
+                          style={{ fontWeight: 900 }}
+                        >
+                          {formatPrice(pkg.price)}
+                        </div>
+                      </div>
+
+                      <Link
+                        href={`/checkout/package/${pkg.id}`}
+                        className="flex items-center gap-1.5 px-4 py-2.5 bg-[#691D1B] text-white text-xs rounded-lg hover:bg-[#4A1412] transition-colors"
+                        style={{ fontWeight: 800 }}
+                      >
+                        <CreditCard className="w-3.5 h-3.5" />
+                        Beli Paket
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
@@ -500,8 +613,8 @@ export default function LandingPage({ courses = [] }) {
               </h2>
               <p className="text-[#D8D7BE] mb-8 text-sm leading-relaxed">
                 Bergabunglah dengan lebih dari 15.000 siswa yang telah merasakan
-                manfaat belajar bersama BRICS Education. Daftar sekarang dan
-                dapatkan akses gratis ke kelas perdana kami.
+                manfaat belajar bersama BRICS Education. Pilih paket yang sesuai
+                lalu mulai belajar dari dashboard siswa.
               </p>
 
               <div className="flex flex-wrap gap-4">
@@ -541,8 +654,8 @@ export default function LandingPage({ courses = [] }) {
         <div className="max-w-7xl mx-auto px-6 py-14">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
             <div className="md:col-span-1">
-              <div className="mb-4">
-                <BricsLogo variant="light" size="sm" />
+              <div className="mb-4 bg-[var(--accent)] rounded-lg w-max p-2">
+                <BricsLogo variant="light" size="lg" />
               </div>
               <p className="text-sm text-gray-400 leading-relaxed mb-4">
                 Platform edukasi online terpercaya untuk persiapan ujian dan
@@ -550,32 +663,55 @@ export default function LandingPage({ courses = [] }) {
               </p>
 
               <div className="flex gap-3">
-                {["IG", "FB", "TW", "YT"].map((s) => (
-                  <div
-                    key={s}
-                    className="w-9 h-9 rounded-full bg-[#691D1B] flex items-center justify-center text-xs cursor-pointer hover:bg-[#8B2523] transition-colors"
-                    style={{ fontWeight: 700 }}
+                <a
+                  onClick={(e) => window.open("https://www.instagram.com/bricseducation/")}
+                  aria-label="Instagram"
+                  className="w-9 h-9 rounded-full bg-[#691D1B] flex items-center justify-center text-white hover:bg-[#8B2523] transition-colors"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
                   >
-                    {s}
-                  </div>
-                ))}
+                    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37Z" />
+                    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+                  </svg>
+                </a>
+                <a
+                  onClick={(e) => window.open("https://www.youtube.com/@BricsEdu-t4m")}
+                  aria-label="YouTube"
+                  className="w-9 h-9 rounded-full bg-[#691D1B] flex items-center justify-center text-white hover:bg-[#8B2523] transition-colors"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path d="M23.5 6.2a3.02 3.02 0 0 0-2.12-2.14C19.5 3.56 12 3.56 12 3.56s-7.5 0-9.38.5A3.02 3.02 0 0 0 .5 6.2 31.6 31.6 0 0 0 0 12a31.6 31.6 0 0 0 .5 5.8 3.02 3.02 0 0 0 2.12 2.14c1.88.5 9.38.5 9.38.5s7.5 0 9.38-.5a3.02 3.02 0 0 0 2.12-2.14A31.6 31.6 0 0 0 24 12a31.6 31.6 0 0 0-.5-5.8ZM9.6 15.57V8.43L15.86 12 9.6 15.57Z" />
+                  </svg>
+                </a>
               </div>
             </div>
 
             {[
               {
-                title: "Kursus",
+                title: "Paket",
                 links: [
                   "Persiapan UTBK",
-                  "Teknologi",
-                  "Bahasa Inggris",
-                  "Sains",
-                  "Bisnis",
+                  "Tryout",
+                  "Live Class",
                 ],
               },
               {
                 title: "Perusahaan",
-                links: ["Tentang Kami", "Blog", "Karier", "Press Kit", "Kontak"],
+                links: ["Tentang Kami", "Kontak"],
               },
               {
                 title: "Bantuan",

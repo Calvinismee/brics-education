@@ -11,7 +11,15 @@ class MidtransService
 {
     public function createSnapTransaction(Transaction $transaction): array
     {
-        $transaction->loadMissing(['course', 'user']);
+        $transaction->loadMissing(['course', 'package', 'user']);
+
+        $itemId = $transaction->package_id
+            ? 'package-'.$transaction->package_id
+            : (string) $transaction->course_id;
+
+        $itemName = $transaction->package?->name
+            ?? $transaction->course?->title
+            ?? 'Brics Education';
 
         $response = Http::withBasicAuth($this->serverKey(), '')
             ->acceptJson()
@@ -22,10 +30,10 @@ class MidtransService
                 ],
                 'item_details' => [
                     [
-                        'id' => (string) $transaction->course_id,
+                        'id' => $itemId,
                         'price' => (int) round((float) $transaction->amount),
                         'quantity' => 1,
-                        'name' => mb_substr($transaction->course?->title ?? 'Course Brics Education', 0, 50),
+                        'name' => mb_substr($itemName, 0, 50),
                     ],
                 ],
                 'customer_details' => [

@@ -15,15 +15,11 @@ import {
   HelpCircle,
   Home,
   LogOut,
-  Maximize,
   Pencil,
   Play,
-  SkipBack,
-  SkipForward,
   Star,
   User,
   Video,
-  Volume2,
   X,
 } from 'lucide-react';
 
@@ -193,6 +189,14 @@ export default function CourseLearn({
   const [activeResourceTab, setActiveResourceTab] = useState('video');
   const [videoPreview, setVideoPreview] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
+  const [subtesOpen, setSubtesOpen] = useState(true);
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
+  const profileForm = useForm({
+    name: user?.name ?? '',
+    gender: user?.gender ?? '',
+    phone: user?.phone ?? '',
+    school_origin: user?.school_origin ?? '',
+  });
 
   const courseTitle = course?.title || 'Bundling Tryout UTBK-SNBT';
   const categoryName = getCategoryName(course);
@@ -259,6 +263,7 @@ export default function CourseLearn({
     ? activeEnrollments.map((item, index) => {
       const enrolledCourse = item.course ?? {};
       const color = courseColors[index % courseColors.length];
+      const materialCount = Number(enrolledCourse.approved_materials_count ?? 0);
 
       return {
         id: item.course_id,
@@ -268,6 +273,8 @@ export default function CourseLearn({
         color,
         active: Number(item.course_id) === Number(course?.id),
         href: `/course/${item.course_id}/learn`,
+        hasMaterials: materialCount > 0,
+        materialCount,
       };
     })
     : [
@@ -279,6 +286,8 @@ export default function CourseLearn({
         color: '#691D1B',
         active: true,
         href: course?.id ? `/course/${course.id}/learn` : '/dashboard',
+        hasMaterials,
+        materialCount: normalizedMaterials.length,
       },
     ];
 
@@ -290,6 +299,38 @@ export default function CourseLearn({
   const logout = () => {
     router.post(route('logout'));
   };
+
+  const openProfileEditor = () => {
+    profileForm.setData({
+      name: user?.name ?? '',
+      gender: user?.gender ?? '',
+      phone: user?.phone ?? '',
+      school_origin: user?.school_origin ?? '',
+    });
+    profileForm.clearErrors();
+    setProfileEditorOpen(true);
+  };
+
+  const closeProfileEditor = () => {
+    if (profileForm.processing) return;
+
+    setProfileEditorOpen(false);
+  };
+
+  const submitProfileEditor = (event) => {
+    event.preventDefault();
+
+    profileForm.patch(route('profile.update'), {
+      preserveScroll: true,
+      onSuccess: () => setProfileEditorOpen(false),
+    });
+  };
+
+  const materialStatusText = (item) => (
+    item.hasMaterials
+      ? `${item.materialCount} materi tersedia`
+      : 'Materi belum tersedia'
+  );
 
   const openMaterial = (material) => {
     const url = getMaterialUrl(material);
@@ -309,6 +350,144 @@ export default function CourseLearn({
     setFilePreview(material);
   };
 
+  const activeMaterialHasInlineContent = Boolean(
+    activeMaterial?.content
+      && !activeMaterial?.file_url
+      && activeMaterial?.type !== 'video'
+      && !isExternalUrl(activeMaterial.content)
+  );
+
+  const renderProfileEditorModal = () => (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center px-4 py-6">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/45"
+        onClick={closeProfileEditor}
+        aria-label="Tutup editor profil"
+      />
+
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-[#F7F2E7] px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex h-11 w-11 items-center justify-center rounded-xl"
+              style={{ background: '#F8EDED', color: '#691D1B' }}
+            >
+              <Pencil className="h-5 w-5" />
+            </div>
+
+            <div>
+              <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
+                Edit Profil
+              </h2>
+              <p className="text-sm text-gray-500">
+                Data diri siswa
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={closeProfileEditor}
+            disabled={profileForm.processing}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-[#F7F2E7] hover:text-[#691D1B] disabled:opacity-60"
+            aria-label="Tutup editor profil"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={submitProfileEditor} className="grid gap-5 px-5 py-5 md:grid-cols-2">
+          <label className="space-y-2 md:col-span-2">
+            <span className="text-sm font-bold text-gray-700">Nama Lengkap</span>
+            <input
+              type="text"
+              value={profileForm.data.name}
+              onChange={(event) => profileForm.setData('name', event.target.value)}
+              disabled={profileForm.processing}
+              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+              placeholder="Masukkan nama lengkap"
+              autoComplete="name"
+              required
+            />
+            {profileForm.errors.name && (
+              <p className="text-xs font-semibold text-red-600">{profileForm.errors.name}</p>
+            )}
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-sm font-bold text-gray-700">Jenis Kelamin</span>
+            <select
+              value={profileForm.data.gender}
+              onChange={(event) => profileForm.setData('gender', event.target.value)}
+              disabled={profileForm.processing}
+              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+            >
+              <option value="">Pilih jenis kelamin</option>
+              <option value="male">Laki-laki</option>
+              <option value="female">Perempuan</option>
+            </select>
+            {profileForm.errors.gender && (
+              <p className="text-xs font-semibold text-red-600">{profileForm.errors.gender}</p>
+            )}
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-sm font-bold text-gray-700">No Telepon/WhatsApp</span>
+            <input
+              type="tel"
+              value={profileForm.data.phone}
+              onChange={(event) => profileForm.setData('phone', event.target.value)}
+              disabled={profileForm.processing}
+              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+              placeholder="Contoh: 081234567890"
+              autoComplete="tel"
+            />
+            {profileForm.errors.phone && (
+              <p className="text-xs font-semibold text-red-600">{profileForm.errors.phone}</p>
+            )}
+          </label>
+
+          <label className="space-y-2 md:col-span-2">
+            <span className="text-sm font-bold text-gray-700">Sekolah Asal</span>
+            <input
+              type="text"
+              value={profileForm.data.school_origin}
+              onChange={(event) => profileForm.setData('school_origin', event.target.value)}
+              disabled={profileForm.processing}
+              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+              placeholder="Masukkan nama sekolah asal"
+              autoComplete="organization"
+            />
+            {profileForm.errors.school_origin && (
+              <p className="text-xs font-semibold text-red-600">{profileForm.errors.school_origin}</p>
+            )}
+          </label>
+
+          <div className="flex flex-col-reverse gap-3 border-t border-[#F7F2E7] pt-4 sm:flex-row sm:justify-end md:col-span-2">
+            <button
+              type="button"
+              onClick={closeProfileEditor}
+              disabled={profileForm.processing}
+              className="rounded-xl border border-[#D8D7BE] px-4 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:bg-[#F7F2E7] disabled:opacity-60"
+            >
+              Batal
+            </button>
+
+            <button
+              type="submit"
+              disabled={profileForm.processing}
+              className="rounded-xl px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-[#4A1412] disabled:opacity-70"
+              style={{ background: '#691D1B' }}
+            >
+              {profileForm.processing ? 'Menyimpan...' : 'Simpan Profil'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
   return (
     <div
       className="min-h-screen"
@@ -318,198 +497,211 @@ export default function CourseLearn({
       }}
     >
       <div className="flex min-h-screen">
-        <aside className="hidden lg:block w-72 flex-shrink-0">
+        <aside className="hidden w-64 flex-shrink-0 lg:block">
           <div
-            className="sticky top-0 h-screen flex flex-col text-white overflow-y-auto"
-            style={{ background: '#741A18' }}
+            className="sticky top-0 h-screen flex flex-col text-white overflow-y-scroll overflow-x-hidden"
+            style={{
+              background: '#741A18',
+              scrollbarGutter: 'stable',
+            }}
           >
-            <div className="px-5 py-5 border-b border-white/10">
-              <p className="text-xs tracking-[0.35em] text-[#FFE882] mb-3">
+            <div className="px-4 py-4 border-b border-white/10">
+              <p className="text-[10px] tracking-[0.32em] text-[#FFE882] mb-2">
                 BRICS EDUCATION
               </p>
 
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl" style={{ fontWeight: 900 }}>
-                    Siswa Panel
-                  </h2>
-                  <p className="text-xs text-white/60 mt-1">
-                    Area pembelajaran siswa
-                  </p>
-                </div>
-
-                <span
-                  className="px-3 py-1 rounded-full border text-xs"
-                  style={{
-                    borderColor: '#C8943A',
-                    color: '#FFE882',
-                    fontWeight: 800,
-                  }}
-                >
-                  LIVE
-                </span>
+              <div>
+                <h2 className="text-lg" style={{ fontWeight: 900 }}>
+                  Siswa Panel
+                </h2>
+                <p className="text-xs text-white/60 mt-1">
+                  Area pembelajaran siswa
+                </p>
               </div>
             </div>
 
-            <div className="px-5 py-5 border-b border-white/10">
-              <div className="rounded-2xl p-4 bg-white/10 border border-white/10">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center text-lg"
-                      style={{
-                        background: '#FFE882',
-                        color: '#691D1B',
-                        fontWeight: 900,
-                      }}
-                    >
-                      {getInitials(user?.name)}
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-bold">
-                        {user?.name || 'Siswa Brics'}
-                      </p>
-                      <p className="text-xs text-white/70">{categoryName}</p>
-                    </div>
+            <div className="px-4 py-4 border-b border-white/10">
+              <div className="rounded-2xl border border-white/15 bg-white/[0.12] p-4 shadow-sm">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div
+                    className="h-12 w-12 flex-shrink-0 rounded-full flex items-center justify-center text-base"
+                    style={{
+                      background: '#FFE882',
+                      color: '#691D1B',
+                      fontWeight: 900,
+                    }}
+                  >
+                    {getInitials(user?.name)}
                   </div>
 
-                  <Link
-                    href="/profile"
-                    className="text-[#FFE882] hover:scale-110 transition-transform"
-                    title="Edit Profil"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Link>
-                </div>
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <p
+                      className="overflow-hidden text-sm leading-snug text-white"
+                      style={{
+                        fontWeight: 900,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                      }}
+                      title={user?.name || 'Siswa Brics'}
+                    >
+                      {user?.name || 'Siswa Brics'}
+                    </p>
+                    <p className="mt-1.5 truncate text-xs leading-tight text-white/65" title={categoryName}>
+                      {categoryName}
+                    </p>
+                  </div>
 
-                <div className="mb-1 flex items-center justify-between text-xs">
-                  <span className="text-white/80">Progres Belajar</span>
-                  <span className="text-[#FFE882] font-black">
-                    {averageProgress}%
-                  </span>
-                </div>
-
-                <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
+                  <button
+                    type="button"
+                    onClick={openProfileEditor}
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition-transform hover:scale-105"
                     style={{
-                      width: `${averageProgress}%`,
                       background: '#FFE882',
+                      color: '#691D1B',
                     }}
-                  />
+                    title="Edit Profil"
+                    aria-label="Edit Profil"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="mt-4">
+                  <div className="mb-2 flex items-center justify-between text-xs">
+                    <span className="text-white/80">Progres Belajar</span>
+                    <span className="rounded-full bg-[#FFE882]/20 px-2 py-0.5 text-[#FFE882] font-black">
+                      {averageProgress}%
+                    </span>
+                  </div>
+
+                  <div className="w-full h-2.5 bg-white/20 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${averageProgress}%`,
+                        background: '#FFE882',
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <nav className="flex-1 px-4 py-5 space-y-2">
+            <nav className="flex-1 px-3.5 py-4 space-y-2">
               <Link
                 href="/dashboard"
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-white/90 hover:bg-white/10 transition-colors"
+                className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-colors hover:bg-white/10"
                 style={{ fontWeight: 800 }}
               >
-                <Home className="w-5 h-5" />
-                Beranda
+                <Home className="h-4 w-4 flex-shrink-0" />
+                <span className="min-w-0 flex-1 truncate text-sm">Beranda</span>
               </Link>
 
               <Link
-                href="/#katalog"
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-white/90 hover:bg-white/10 transition-colors"
+                href="/dashboard?tab=katalog"
+                className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-colors hover:bg-white/10"
                 style={{ fontWeight: 800 }}
               >
-                <Star className="w-5 h-5" />
-                Lihat Katalog
-              </Link>
-
-              <div
-                className="w-full flex items-center justify-between px-4 py-3 rounded-2xl text-[#691D1B]"
-                style={{ background: '#FFE882', fontWeight: 800 }}
-              >
-                <span className="flex items-center gap-3">
-                  <BookOpen className="w-5 h-5" />
-                  Subtes UTBK
-                </span>
-                <ChevronDown className="w-4 h-4" />
-              </div>
-
-              <div className="ml-6 pl-4 border-l border-white/20 space-y-4 py-2">
-                {sidebarCourseItems.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={item.href}
-                    className={`block rounded-xl px-3 py-2 ${
-                      item.active ? 'bg-[#FFE882] text-[#691D1B]' : ''
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className="w-2 h-2 rounded-full"
-                        style={{ background: item.color }}
-                      />
-                      <span
-                        className={`text-sm font-bold ${
-                          item.active ? 'text-[#691D1B]' : 'text-white/90'
-                        }`}
-                      >
-                        {item.title}
-                      </span>
-                    </div>
-
-                    <div className="ml-4">
-                      <div
-                        className={`w-full h-1.5 rounded-full overflow-hidden ${
-                          item.active ? 'bg-[#E8C95A]' : 'bg-white/20'
-                        }`}
-                      >
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${item.progress}%`,
-                            background: item.active ? '#691D1B' : '#FFE882',
-                          }}
-                        />
-                      </div>
-
-                      <p
-                        className={`text-xs mt-1 ${
-                          item.active ? 'text-[#691D1B]' : 'text-white/60'
-                        }`}
-                      >
-                        {item.progress}% selesai
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-
-              <Link
-                href="/dashboard"
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-white/90 hover:bg-white/10 transition-colors"
-                style={{ fontWeight: 800 }}
-              >
-                <CalendarDays className="w-5 h-5" />
-                Jadwal
-              </Link>
-            </nav>
-
-            <div className="px-4 py-5 border-t border-white/10 space-y-2 mt-auto">
-              <Link
-                href="/profile"
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-white/90 hover:bg-white/10 transition-colors"
-                style={{ fontWeight: 800 }}
-              >
-                <User className="w-5 h-5" />
-                Edit Profil
+                <Star className="h-4 w-4 flex-shrink-0" />
+                <span className="min-w-0 flex-1 truncate text-sm">Lihat Katalog</span>
               </Link>
 
               <button
                 type="button"
-                onClick={logout}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-white/90 hover:bg-white/10 transition-colors"
+                onClick={() => setSubtesOpen((value) => !value)}
+                aria-expanded={subtesOpen}
+                className="flex min-h-[42px] w-full items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-[#691D1B]"
+                style={{ background: '#FFE882', fontWeight: 800 }}
+              >
+                <span className="flex min-w-0 items-center gap-3 text-sm">
+                  <BookOpen className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">Subtes UTBK</span>
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 flex-shrink-0 transition-transform ${
+                    subtesOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {subtesOpen && (
+                <div className="ml-5 space-y-2 border-l border-white/20 py-2 pl-3.5">
+                  {sidebarCourseItems.map((item) => (
+                    <Link
+                      key={item.id}
+                      href={item.href}
+                      className={`group block w-full rounded-lg px-2 py-2 text-left transition-colors ${
+                        item.active ? 'bg-white/10' : 'hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="mb-1 flex min-w-0 items-center gap-2">
+                        <span
+                          className="h-2 w-2 flex-shrink-0 rounded-full"
+                          style={{ background: item.color }}
+                        />
+                        <span
+                          className={`min-w-0 truncate text-xs font-bold leading-snug ${
+                            item.active ? 'text-[#FFE882]' : 'text-white/90 group-hover:text-white'
+                          }`}
+                        >
+                          {item.title}
+                        </span>
+                      </div>
+
+                      <div className="ml-4">
+                        <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/20">
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${item.progress}%`,
+                              background: '#FFE882',
+                            }}
+                          />
+                        </div>
+
+                        <p
+                          className={`text-[11px] mt-1 ${
+                            item.active || !item.hasMaterials ? 'text-[#FFE882]' : 'text-white/60'
+                          }`}
+                        >
+                          {item.hasMaterials ? `${item.progress}% selesai` : materialStatusText(item)}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+
+              <Link
+                href="/dashboard"
+                className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-all hover:translate-x-0.5 hover:bg-white/10 hover:text-white"
                 style={{ fontWeight: 800 }}
               >
-                <LogOut className="w-5 h-5" />
-                Keluar
+                <CalendarDays className="h-4 w-4 flex-shrink-0" />
+                <span className="min-w-0 flex-1 truncate text-sm">Jadwal</span>
+              </Link>
+            </nav>
+
+            <div className="px-3.5 py-4 border-t border-white/10 space-y-2 mt-auto">
+              <button
+                type="button"
+                onClick={openProfileEditor}
+                className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-colors hover:bg-white/10"
+                style={{ fontWeight: 800 }}
+              >
+                <User className="h-4 w-4 flex-shrink-0" />
+                <span className="min-w-0 flex-1 truncate text-sm">Edit Profil</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={logout}
+                className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-white/90 transition-colors hover:bg-white/10"
+                style={{ fontWeight: 800 }}
+              >
+                <LogOut className="h-4 w-4 flex-shrink-0" />
+                <span className="min-w-0 flex-1 truncate text-sm">Keluar</span>
               </button>
             </div>
           </div>
@@ -517,57 +709,47 @@ export default function CourseLearn({
 
         <div className="flex-1 min-w-0">
           <header className="bg-white border-b border-[#D8D7BE] sticky top-0 z-40 shadow-sm">
-            <div className="px-5 lg:px-8 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-4">
+            <div className="px-5 lg:px-6 py-3.5 flex items-center justify-between">
+              <div className="flex min-w-0 items-center gap-3">
                 <Link
                   href="/dashboard"
-                  className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F7F2E7] text-gray-500"
+                  className="w-9 h-9 flex-shrink-0 rounded-xl border border-[#D8D7BE] flex items-center justify-center text-[#691D1B] hover:bg-[#F7F2E7]"
+                  aria-label="Kembali ke dashboard"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </Link>
 
-                <div>
-                  <p className="text-xs tracking-[0.35em] text-[#A56D6B] mb-1">
+                <div className="min-w-0">
+                  <p className="text-[10px] tracking-[0.32em] text-[#A56D6B] mb-1">
                     MATERI SISWA
                   </p>
 
                   <h1
-                    className="text-2xl text-gray-900"
+                    className="truncate text-xl text-gray-900"
                     style={{ fontWeight: 900 }}
                   >
                     {courseTitle}
                   </h1>
 
-                  <p className="text-sm text-gray-400">
+                  <p className="truncate text-sm text-gray-400">
                     Paket bundling subtes UTBK-SNBT
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
+              <div className="flex flex-shrink-0 items-center gap-3">
                 <div className="relative hidden sm:block">
                   <Bell className="w-6 h-6 text-gray-700" />
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full" />
-                </div>
-
-                <div
-                  className="w-11 h-11 rounded-full flex items-center justify-center"
-                  style={{
-                    background: '#741A18',
-                    color: '#FFE882',
-                    fontWeight: 900,
-                  }}
-                >
-                  {getInitials(user?.name)}
                 </div>
               </div>
             </div>
           </header>
 
-          <div className="bg-white border-b border-[#D8D7BE] px-5 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="bg-white border-b border-[#D8D7BE] px-5 lg:px-6 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="w-3 h-3 rounded-full bg-green-400" />
-              <span className="text-gray-900 font-bold">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
+              <span className="text-gray-900 text-sm font-bold">
                 {courseTitle} — {enrollment?.status || 'active'}
               </span>
               <span className="text-gray-400 hidden sm:inline">|</span>
@@ -577,142 +759,88 @@ export default function CourseLearn({
             </div>
 
             <span
-              className="inline-flex self-start sm:self-auto px-4 py-1 rounded-full text-sm"
+              className="inline-flex self-start sm:self-auto px-3.5 py-1 rounded-full text-xs"
               style={{
-                background: '#FFE882',
+                background: hasMaterials ? '#FFE882' : '#FFF6CC',
                 color: '#691D1B',
                 fontWeight: 900,
               }}
             >
-              Akses Materi
+              {hasMaterials ? 'Akses Materi' : 'Materi Belum Tersedia'}
             </span>
           </div>
 
-          <main className="px-5 lg:px-8 py-8">
+          <main className="px-5 lg:px-6 py-6">
             {!hasMaterials ? (
-              <section className="bg-white rounded-2xl border border-[#D8D7BE] shadow-sm overflow-hidden">
-                <div className="px-6 py-5 border-b border-[#F7F2E7]">
-                  <h2
-                    className="text-2xl text-[#691D1B]"
-                    style={{ fontWeight: 900 }}
-                  >
-                    Daftar Subtes UTBK
-                  </h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Paket bundling ini berisi beberapa subtes UTBK. Materi, video, modul PDF, dan bank soal akan tampil setelah tersedia.
-                  </p>
-                </div>
-
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {sidebarCourseItems.map((subtes) => (
-                      <div
-                        key={subtes.id}
-                        className="border border-[#D8D7BE] rounded-2xl p-5 bg-[#FDFCF8] hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-start gap-4">
-                          <div
-                            className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                            style={{
-                              background: '#F8EDED',
-                              color: subtes.color,
-                            }}
-                          >
-                            <BookOpen className="w-6 h-6" />
-                          </div>
-
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span
-                                className="w-2.5 h-2.5 rounded-full"
-                                style={{ background: subtes.color }}
-                              />
-                              <h3
-                                className="text-[#691D1B]"
-                                style={{ fontWeight: 900 }}
-                              >
-                                {subtes.title}
-                              </h3>
-                            </div>
-
-                            <p className="text-sm text-gray-500 leading-relaxed mb-4">
-                              {subtes.description}
-                            </p>
-
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs text-gray-500">
-                                Progress belajar
-                              </span>
-                              <span
-                                className="text-xs"
-                                style={{
-                                  color: subtes.color,
-                                  fontWeight: 900,
-                                }}
-                              >
-                                {subtes.progress}%
-                              </span>
-                            </div>
-
-                            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden mb-4">
-                              <div
-                                className="h-full rounded-full"
-                                style={{
-                                  width: `${subtes.progress}%`,
-                                  background: subtes.color,
-                                }}
-                              />
-                            </div>
-
-                            {subtes.active ? (
-                              <button
-                                type="button"
-                                disabled
-                                className="w-full py-3 rounded-xl text-sm bg-[#F7F2E7] text-gray-400 cursor-not-allowed"
-                                style={{ fontWeight: 900 }}
-                              >
-                                Materi belum tersedia
-                              </button>
-                            ) : (
-                              <Link
-                                href={subtes.href}
-                                className="block w-full py-3 rounded-xl text-center text-sm text-white"
-                                style={{ background: '#691D1B', fontWeight: 900 }}
-                              >
-                                Buka Course
-                              </Link>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-8 rounded-2xl bg-[#F7F2E7] border border-[#D8D7BE] p-5">
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      Catatan: saat ini paket sudah aktif di akun siswa, tetapi materi untuk subtes belum tersedia. Setelah materi disetujui, halaman belajar akan otomatis menampilkan video player, daftar materi, modul PDF, dan bank soal.
-                    </p>
-                  </div>
-
-                  <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                    <Link
-                      href="/dashboard"
-                      className="flex-1 text-center py-3 rounded-xl text-white"
+              <section className="min-h-[calc(100vh-190px)] rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
+                <div className="flex h-full min-h-[520px] items-center justify-center px-5 py-10">
+                  <div className="w-full max-w-2xl text-center">
+                    <div
+                      className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl"
                       style={{
-                        background: '#691D1B',
+                        background: '#FFF6CC',
+                        color: '#691D1B',
+                      }}
+                    >
+                      <BookOpen className="h-8 w-8" />
+                    </div>
+
+                    <span
+                      className="mb-4 inline-flex rounded-full px-3.5 py-1.5 text-xs"
+                      style={{
+                        background: '#F7F2E7',
+                        color: '#691D1B',
                         fontWeight: 900,
                       }}
                     >
-                      Kembali ke Dashboard
-                    </Link>
+                      {courseTitle}
+                    </span>
 
-                    <Link
-                      href="/#katalog"
-                      className="flex-1 text-center py-3 rounded-xl border-2 border-[#691D1B] text-[#691D1B] hover:bg-[#691D1B] hover:text-white transition-colors"
+                    <h2
+                      className="text-2xl text-[#691D1B] md:text-3xl"
                       style={{ fontWeight: 900 }}
                     >
-                      Lihat Katalog
-                    </Link>
+                      Maaf, materi belum tersedia
+                    </h2>
+
+                    <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-gray-500 md:text-base">
+                      Materi untuk subtes ini belum memiliki konten yang disetujui. Setelah tutor atau admin menerbitkan materi, halaman ini akan otomatis menampilkan video, modul, dan bank soal.
+                    </p>
+
+                    <div className="mx-auto mt-7 max-w-md rounded-2xl border border-[#D8D7BE] bg-[#FDFCF8] p-4 text-left">
+                      <div className="flex items-start gap-3">
+                        <span className="mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-[#D5A018]" />
+                        <div>
+                          <p className="text-sm text-gray-900" style={{ fontWeight: 900 }}>
+                            Status materi
+                          </p>
+                          <p className="mt-1 text-sm text-gray-500">
+                            Belum ada materi dengan status disetujui untuk course ini.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                      <Link
+                        href="/dashboard"
+                        className="flex-1 rounded-xl py-3 text-center text-sm text-white"
+                        style={{
+                          background: '#691D1B',
+                          fontWeight: 900,
+                        }}
+                      >
+                        Kembali ke Dashboard
+                      </Link>
+
+                      <Link
+                        href="/dashboard?tab=katalog"
+                        className="flex-1 rounded-xl border-2 border-[#691D1B] py-3 text-center text-sm text-[#691D1B] transition-colors hover:bg-[#691D1B] hover:text-white"
+                        style={{ fontWeight: 900 }}
+                      >
+                        Lihat Katalog
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -749,24 +877,21 @@ export default function CourseLearn({
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                           allowFullScreen
                         />
+                      ) : activeMaterialHasInlineContent ? (
+                        <div className="max-w-2xl px-6 text-left">
+                          <FileText className="mb-4 h-14 w-14 text-[#FFE882]" />
+                          <p className="text-lg font-bold text-white">
+                            Materi teks tersedia
+                          </p>
+                          <p className="mt-3 text-sm leading-relaxed text-gray-300">
+                            {activeMaterial.content}
+                          </p>
+                        </div>
                       ) : (
                         <div className="text-center">
-                          <button
-                            type="button"
-                            onClick={() => openMaterial(activeMaterial)}
-                            className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5 hover:scale-105 transition-transform"
-                            style={{
-                              background: '#FFE882',
-                              color: '#691D1B',
-                            }}
-                          >
-                            <Play className="w-10 h-10 ml-1" />
-                          </button>
-
-                          <p className="text-white text-lg">
-                            {activeMaterial?.type === 'video'
-                              ? 'Klik untuk memulai video'
-                              : 'Klik untuk membuka materi'}
+                          <FileText className="mx-auto mb-4 h-14 w-14 text-[#FFE882]" />
+                          <p className="text-white text-lg font-bold">
+                            File materi belum tersedia
                           </p>
 
                           <p className="text-gray-400 text-sm mt-2">
@@ -798,65 +923,24 @@ export default function CourseLearn({
                         Jenis: {getMaterialLabel(activeMaterial?.type)} • Durasi: {activeMaterial?.duration}
                       </p>
 
-                      <div className="flex flex-wrap items-center justify-between gap-4 mt-4">
-                        <div className="flex items-center gap-3">
-                          <button
-                            type="button"
-                            className="w-11 h-11 rounded-xl flex items-center justify-center"
-                            style={{
-                              background: '#F7F2E7',
-                              color: '#691D1B',
-                            }}
+                      {activeMaterial?.type !== 'video' && activeMaterial?.file_url ? (
+                        <div className="mt-4 flex flex-wrap gap-3">
+                          <a
+                            href={activeMaterial.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#741A18] px-5 py-3 text-sm text-[#741A18]"
+                            style={{ fontWeight: 900 }}
                           >
-                            <SkipBack className="w-5 h-5" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => openMaterial(activeMaterial)}
-                            className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
-                            style={{ background: '#741A18' }}
-                          >
-                            <Play className="w-5 h-5 ml-0.5" />
-                          </button>
-
-                          <button
-                            type="button"
-                            className="w-11 h-11 rounded-xl flex items-center justify-center"
-                            style={{
-                              background: '#F7F2E7',
-                              color: '#691D1B',
-                            }}
-                          >
-                            <SkipForward className="w-5 h-5" />
-                          </button>
-
-                          <button
-                            type="button"
-                            className="w-11 h-11 rounded-xl flex items-center justify-center"
-                            style={{
-                              background: '#F7F2E7',
-                              color: '#691D1B',
-                            }}
-                          >
-                            <Volume2 className="w-5 h-5" />
-                          </button>
+                            <Download className="h-4 w-4" />
+                            Download File
+                          </a>
                         </div>
-
-                        <div className="flex items-center gap-3 text-sm text-gray-400">
-                          <span>0:00 / {activeMaterial?.duration}</span>
-                          <button
-                            type="button"
-                            className="w-11 h-11 rounded-xl flex items-center justify-center"
-                            style={{
-                              background: '#F7F2E7',
-                              color: '#691D1B',
-                            }}
-                          >
-                            <Maximize className="w-5 h-5" />
-                          </button>
+                      ) : activeMaterial?.type !== 'video' ? (
+                        <div className="mt-4 rounded-xl bg-[#F7F2E7] px-4 py-3 text-sm text-gray-500">
+                          Materi ini berupa konten teks dan tidak memiliki file lampiran.
                         </div>
-                      </div>
+                      ) : null}
                     </div>
                   </section>
 
@@ -1064,7 +1148,7 @@ export default function CourseLearn({
                                   <p className="text-sm text-gray-400">
                                     {material.file_url
                                       ? 'File tersedia'
-                                      : 'Konten tersedia di halaman ini'}
+                                      : 'Konten teks tersedia'}
                                   </p>
                                 </div>
                               </div>
@@ -1111,7 +1195,7 @@ export default function CourseLearn({
                                     fontWeight: 900,
                                   }}
                                 >
-                                  Buka
+                                  Baca
                                 </button>
                               )}
                             </div>
@@ -1342,6 +1426,8 @@ export default function CourseLearn({
           </div>
         );
       })()}
+
+      {profileEditorOpen && renderProfileEditorModal()}
     </div>
   );
 }

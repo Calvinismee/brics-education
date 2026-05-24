@@ -41,7 +41,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                 Edit Profil
               </h1>
               <p className="text-sm text-gray-500">
-                Kelola informasi akun dan password siswa.
+                Kelola data diri dan keamanan akun siswa.
               </p>
             </div>
           </div>
@@ -81,7 +81,7 @@ export default function Edit({ mustVerifyEmail, status }) {
               </h2>
 
               <p className="text-sm text-white/70 leading-relaxed">
-                Halaman ini digunakan siswa untuk memperbarui nama, email, dan password akun.
+                Halaman ini digunakan siswa untuk memperbarui nama, jenis kelamin, kontak WhatsApp, dan sekolah asal.
               </p>
             </div>
 
@@ -133,7 +133,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                     Informasi Profil
                   </h2>
                   <p className="text-sm text-gray-500">
-                    Perbarui nama dan email akun siswa.
+                    Perbarui nama, jenis kelamin, no telepon/WhatsApp, dan sekolah asal.
                   </p>
                 </div>
               </div>

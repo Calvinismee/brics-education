@@ -8,9 +8,18 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 
 class TutorDemoDataSeeder extends Seeder
 {
+    private const MATERI_PDF_SOURCE = '/home/juliussy/Downloads/Interpretasi Data 31125.pdf';
+    private const MATERI_PDF_STORAGE_PATH = 'materials/demo/interpretasi-data-31125.pdf';
+    private const MATERI_PDF_URL = '/storage/'.self::MATERI_PDF_STORAGE_PATH;
+    private const LATIHAN_SOAL_PDF_SOURCE = '/home/juliussy/Downloads/_Soal Latihan PU 004 (1).pdf';
+    private const LATIHAN_SOAL_PDF_STORAGE_PATH = 'materials/demo/soal-latihan-pu-004.pdf';
+    private const LATIHAN_SOAL_PDF_URL = '/storage/'.self::LATIHAN_SOAL_PDF_STORAGE_PATH;
+    private const DEMO_YOUTUBE_URL = 'https://youtu.be/QgjpEI8FqIQ?si=20LXx336dzY8oWw5';
+
     public function run(): void
     {
         $now = now();
@@ -139,6 +148,16 @@ class TutorDemoDataSeeder extends Seeder
             return;
         }
 
+        $materiPdfUrl = $this->ensurePdf(
+            self::MATERI_PDF_SOURCE,
+            self::MATERI_PDF_STORAGE_PATH,
+            self::MATERI_PDF_URL
+        );
+        $latihanSoalPdfUrl = $this->ensurePdf(
+            self::LATIHAN_SOAL_PDF_SOURCE,
+            self::LATIHAN_SOAL_PDF_STORAGE_PATH,
+            self::LATIHAN_SOAL_PDF_URL
+        );
         $adminId = DB::table('users')->where('role_id', User::roleIdFor('admin'))->value('id');
         $rows = [
             [
@@ -146,14 +165,14 @@ class TutorDemoDataSeeder extends Seeder
                 'title' => 'Video Strategi Penalaran Umum',
                 'type' => 'video',
                 'file_url' => null,
-                'content' => 'https://youtu.be/utbk-penalaran',
+                'content' => self::DEMO_YOUTUBE_URL,
                 'approval_status' => 'approved',
             ],
             [
                 'course' => 'Penalaran Umum',
                 'title' => 'Bank Soal Penalaran Umum',
                 'type' => 'quiz',
-                'file_url' => '/storage/materials/demo/bank-soal-penalaran-umum.pdf',
+                'file_url' => $latihanSoalPdfUrl,
                 'content' => 'Latihan pola argumen, simpulan logis, dan analisis data.',
                 'approval_status' => 'approved',
             ],
@@ -161,7 +180,7 @@ class TutorDemoDataSeeder extends Seeder
                 'course' => 'Pengetahuan dan Pemahaman Umum',
                 'title' => 'Modul Pengetahuan dan Pemahaman Umum',
                 'type' => 'module',
-                'file_url' => '/storage/materials/demo/modul-ppu.pdf',
+                'file_url' => $materiPdfUrl,
                 'content' => 'Ide pokok, kosakata, dan pemahaman informasi umum.',
                 'approval_status' => 'pending',
             ],
@@ -169,7 +188,7 @@ class TutorDemoDataSeeder extends Seeder
                 'course' => 'Pemahaman Bacaan dan Menulis',
                 'title' => 'Latihan Pemahaman Bacaan dan Menulis',
                 'type' => 'quiz',
-                'file_url' => '/storage/materials/demo/latihan-pbm.pdf',
+                'file_url' => $latihanSoalPdfUrl,
                 'content' => 'Latihan menyunting kalimat, memahami struktur paragraf, dan kohesi teks.',
                 'approval_status' => 'rejected',
                 'rejection_comment' => 'Tambahkan pembahasan jawaban sebelum diupload ulang.',
@@ -200,6 +219,18 @@ class TutorDemoDataSeeder extends Seeder
                 ]
             );
         }
+    }
+
+    private function ensurePdf(string $source, string $storagePath, string $url): string
+    {
+        $target = storage_path('app/public/'.$storagePath);
+
+        if (File::exists($source)) {
+            File::ensureDirectoryExists(dirname($target));
+            File::copy($source, $target);
+        }
+
+        return $url;
     }
 
     private function ensureCurrentWeekSchedules($courseIds): void

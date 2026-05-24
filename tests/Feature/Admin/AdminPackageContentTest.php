@@ -1,6 +1,8 @@
 <?php
 
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 test('TC_ADMIN_COURSE_001 admin berhasil menambah course atau paket', function () {
     // Dokumentasi: admin POST paket baru; expected paket tersimpan dan tampil sebagai data admin packages.
@@ -132,6 +134,28 @@ test('TC_ADMIN_MATERI_002 admin berhasil menyetujui materi unggahan tutor', func
         'approval_status' => 'approved',
         'approved_by' => $admin->id,
         'rejection_comment' => null,
+    ]);
+});
+
+test('TC_ADMIN_MATERI_003 validasi format file materi menolak file tidak didukung', function () {
+    // Dokumentasi: tutor mengunggah file materi dengan format selain pdf/doc/docx/ppt/pptx; expected validasi menolak dan materi tidak tersimpan untuk review admin.
+    Storage::fake('public');
+
+    $course = courseRecord(['title' => 'Penalaran Umum']);
+    $tutor = tutorUser(['mentor_course_id' => $course['id']]);
+
+    $response = $this->actingAs($tutor)->from(route('tutor.upload'))->post(route('tutor.materials.store'), [
+        'course_id' => $course['id'],
+        'title' => 'Materi Format Invalid',
+        'module_file' => UploadedFile::fake()->create('materi-invalid.exe', 10, 'application/octet-stream'),
+    ]);
+
+    $response
+        ->assertRedirect(route('tutor.upload', absolute: false))
+        ->assertSessionHasErrors('module_file');
+
+    $this->assertDatabaseMissing('materials', [
+        'title' => 'Materi Format Invalid - Modul',
     ]);
 });
 

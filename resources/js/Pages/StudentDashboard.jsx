@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link, router } from '@inertiajs/react';
+import { Link, router, useForm } from '@inertiajs/react';
 import {
   Bell,
   BookOpen,
@@ -13,12 +13,29 @@ import {
   Menu,
   Pencil,
   Star,
-  User,
   Video,
   ClipboardList,
+  CheckCircle,
+  CreditCard,
   ExternalLink,
+  Package as PackageIcon,
   X,
 } from 'lucide-react';
+
+function asArray(value) {
+  if (Array.isArray(value)) return value;
+  return Object.values(value ?? {});
+}
+
+function formatPrice(price) {
+  const numericPrice = Number(price);
+
+  if (!Number.isNaN(numericPrice)) {
+    return `Rp ${numericPrice.toLocaleString('id-ID')}`;
+  }
+
+  return String(price || '-');
+}
 
 function formatDate(dateString) {
   if (!dateString) return '-';
@@ -120,14 +137,17 @@ function getInitials(name) {
     .toUpperCase();
 }
 
+function formatGender(gender) {
+  if (gender === 'male') return 'Laki-laki';
+  if (gender === 'female') return 'Perempuan';
+
+  return '-';
+}
+
 function getCategoryName(course) {
   if (!course?.category) return 'Tryout SNBT';
   if (typeof course.category === 'string') return course.category;
   return course.category.name || 'Tryout SNBT';
-}
-
-function asArray(value) {
-  return Array.isArray(value) ? value : Object.values(value ?? {});
 }
 
 function scheduleType(schedule) {
@@ -140,10 +160,21 @@ function scheduleType(schedule) {
   return 'live';
 }
 
+const dashboardTabs = ['beranda', 'katalog', 'subtes', 'jadwal', 'profil'];
+
+function getInitialDashboardTab() {
+  if (typeof window === 'undefined') return 'beranda';
+
+  const tab = new URLSearchParams(window.location.search).get('tab');
+
+  return dashboardTabs.includes(tab) ? tab : 'beranda';
+}
+
 export default function StudentDashboard({
   user,
   enrollments = [],
   transactions = [],
+  availablePackages = [],
   schedules = [],
   scheduleDays = [],
   scheduleWeek = null,
@@ -151,10 +182,17 @@ export default function StudentDashboard({
   materials = [],
   notifications: serverNotifications = [],
 }) {
-  const [activeTab, setActiveTab] = useState('beranda');
+  const [activeTab, setActiveTab] = useState(getInitialDashboardTab);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [subtesOpen, setSubtesOpen] = useState(true);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
+  const profileForm = useForm({
+    name: user?.name ?? '',
+    gender: user?.gender ?? '',
+    phone: user?.phone ?? '',
+    school_origin: user?.school_origin ?? '',
+  });
   const [progressMap, setProgressMap] = useState({});
   const [calendarNow, setCalendarNow] = useState(() => new Date());
   const [selectedScheduleDateKey, setSelectedScheduleDateKey] = useState(null);
@@ -188,15 +226,21 @@ export default function StudentDashboard({
   }, [calendarNow]);
 
   const activeEnrollments = enrollments.filter((item) => item.status === 'active');
-  const latestEnrollment = activeEnrollments[0];
+  const activePackageEnrollments = activeEnrollments.filter((item) => item.package_id || item.package?.id);
+  const hasActivePackage = activePackageEnrollments.length > 0;
+  const latestEnrollment = activePackageEnrollments[0];
   const activeCourse = latestEnrollment?.course;
 
-  const currentPackageName = activeCourse?.title || 'Bundling Tryout UTBK-SNBT';
+  const currentPackageName = hasActivePackage
+    ? (latestEnrollment?.package?.name || activeCourse?.title || 'Bundling Tryout UTBK-SNBT')
+    : 'Belum ada paket aktif';
   const currentCategoryName = getCategoryName(activeCourse);
+  const packageOptions = asArray(availablePackages);
 
   const pendingTransactions = transactions.filter(
     (item) => item.payment_status === 'pending'
   );
+  const pendingPackageTransactions = pendingTransactions.filter((item) => item.package_id || item.package?.id);
   const notificationItems = Array.isArray(serverNotifications)
     ? serverNotifications
     : Object.values(serverNotifications ?? {});
@@ -300,10 +344,11 @@ export default function StudentDashboard({
     },
   ];
   const courseColors = ['#691D1B', '#0F7A45', '#2447C6', '#D5A018', '#7C3AED', '#C2410C', '#0F766E'];
-  const learningItems = activeEnrollments.length > 0
-    ? activeEnrollments.map((enrollment, index) => {
+  const learningItems = hasActivePackage
+    ? activePackageEnrollments.map((enrollment, index) => {
       const course = enrollment.course ?? {};
       const color = courseColors[index % courseColors.length];
+      const materialCount = Number(course.approved_materials_count ?? 0);
 
       return {
         id: enrollment.course_id,
@@ -315,12 +360,18 @@ export default function StudentDashboard({
         iconColor: color,
         description: course.description || 'Course aktif yang sudah terdaftar di akun siswa.',
         href: `/course/${enrollment.course_id}/learn`,
+        enrolled: true,
+        hasMaterials: materialCount > 0,
+        materialCount,
       };
     })
     : fallbackSubtesItems.map((item) => ({
       ...item,
       category: currentCategoryName,
-      href: '/#katalog',
+      href: '/dashboard?tab=katalog',
+      enrolled: false,
+      hasMaterials: false,
+      materialCount: 0,
     }));
 
   const averageProgress = Math.round(
@@ -328,35 +379,55 @@ export default function StudentDashboard({
       Math.max(learningItems.length, 1)
   );
 
-  const fallbackNotifications = [
-    {
-      id: 1,
-      title: 'Course aktif',
-      message: `${currentPackageName} sedang aktif dan bisa kamu akses dari menu Subtes UTBK.`,
-      type: 'course',
-      time: 'Terbaru',
-    },
-    {
-      id: 2,
-      title: 'Jadwal pembelajaran',
-      message:
-        schedules.length > 0
-          ? `${schedules.length} jadwal tersedia untuk course aktifmu.`
-          : 'Belum ada jadwal terbaru.',
-      type: 'schedule',
-      time: 'Hari ini',
-    },
-    {
-      id: 3,
-      title: 'Status pembayaran',
-      message:
-        pendingTransactions.length > 0
-          ? `${pendingTransactions.length} transaksi masih pending.`
-          : 'Tidak ada transaksi pending.',
-      type: 'payment',
-      time: 'Info',
-    },
-  ];
+  const fallbackNotifications = hasActivePackage
+    ? [
+      {
+        id: 1,
+        title: 'Paket aktif',
+        message: `${currentPackageName} sedang aktif dan bisa kamu akses dari menu Subtes UTBK.`,
+        type: 'course',
+        time: 'Terbaru',
+      },
+      {
+        id: 2,
+        title: 'Jadwal pembelajaran',
+        message:
+          schedules.length > 0
+            ? `${schedules.length} jadwal tersedia untuk course aktifmu.`
+            : 'Belum ada jadwal terbaru.',
+        type: 'schedule',
+        time: 'Hari ini',
+      },
+      {
+        id: 3,
+        title: 'Status pembayaran',
+        message:
+          pendingTransactions.length > 0
+            ? `${pendingTransactions.length} transaksi masih pending.`
+            : 'Tidak ada transaksi pending.',
+        type: 'payment',
+        time: 'Info',
+      },
+    ]
+    : [
+      {
+        id: 1,
+        title: 'Pilih paket',
+        message: 'Beli paket belajar untuk membuka akses subtes, materi, dan jadwal.',
+        type: 'payment',
+        time: 'Info',
+      },
+      {
+        id: 2,
+        title: 'Status pembayaran',
+        message:
+          pendingPackageTransactions.length > 0
+            ? `${pendingPackageTransactions.length} transaksi paket masih pending.`
+            : 'Belum ada paket aktif.',
+        type: 'payment',
+        time: 'Info',
+      },
+    ];
   const notifications = notificationItems.length > 0
     ? notificationItems.map((notification) => ({
       id: notification.id,
@@ -371,43 +442,87 @@ export default function StudentDashboard({
     router.post(route('logout'));
   };
 
+  const updateDashboardTabUrl = (tab) => {
+    if (typeof window === 'undefined' || !dashboardTabs.includes(tab)) return;
+
+    const nextUrl = tab === 'beranda'
+      ? window.location.pathname
+      : `${window.location.pathname}?tab=${encodeURIComponent(tab)}`;
+
+    window.history.replaceState(window.history.state, '', nextUrl);
+  };
+
   const changeTab = (tab) => {
     setActiveTab(tab);
     setSidebarOpen(false);
+    updateDashboardTabUrl(tab);
+  };
+
+  const toggleSubtesMenu = () => {
+    setSubtesOpen((value) => (activeTab === 'subtes' ? !value : true));
+    setActiveTab('subtes');
+    updateDashboardTabUrl('subtes');
+  };
+
+  const openProfileEditor = () => {
+    profileForm.setData({
+      name: user?.name ?? '',
+      gender: user?.gender ?? '',
+      phone: user?.phone ?? '',
+      school_origin: user?.school_origin ?? '',
+    });
+    profileForm.clearErrors();
+    setNotificationOpen(false);
+    setSidebarOpen(false);
+    setProfileEditorOpen(true);
+  };
+
+  const closeProfileEditor = () => {
+    if (profileForm.processing) return;
+
+    setProfileEditorOpen(false);
+  };
+
+  const submitProfileEditor = (event) => {
+    event.preventDefault();
+
+    profileForm.patch(route('profile.update'), {
+      preserveScroll: true,
+      onSuccess: () => setProfileEditorOpen(false),
+    });
+  };
+
+  const materialStatusText = (item) => {
+    if (!item.enrolled) return 'Pilih course';
+    return item.hasMaterials
+      ? `${item.materialCount} materi tersedia`
+      : 'Materi belum tersedia';
   };
 
   const SidebarMenuButton = ({ active, icon: Icon, label, onClick }) => (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors text-left ${
-        active ? 'text-[#691D1B]' : 'text-white/90 hover:bg-white/10'
+      className={`flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left transition-all hover:translate-x-0.5 hover:brightness-105 ${
+        active ? 'text-[#691D1B]' : 'text-white/90 hover:bg-white/10 hover:text-white'
       }`}
       style={{
-        background: active ? '#FFE882' : 'transparent',
         fontWeight: 800,
+        ...(active ? { background: '#FFE882' } : {}),
       }}
     >
-      <Icon className="w-4.5 h-4.5" />
-      <span className="flex-1 text-sm">{label}</span>
+      <Icon className="h-4 w-4 flex-shrink-0" />
+      <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
     </button>
   );
 
-  const SidebarLinkButton = ({ icon: Icon, label, href }) => (
-    <Link
-      href={href}
-      className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors text-left text-white/90 hover:bg-white/10"
-      style={{ fontWeight: 800 }}
-    >
-      <Icon className="w-4.5 h-4.5" />
-      <span className="flex-1 text-sm">{label}</span>
-    </Link>
-  );
-
-  const SidebarContent = () => (
+  const renderSidebarContent = () => (
     <div
-      className="h-full flex flex-col text-white overflow-y-auto"
-      style={{ background: '#741A18' }}
+      className="h-full flex flex-col text-white overflow-y-scroll overflow-x-hidden"
+      style={{
+        background: '#741A18',
+        scrollbarGutter: 'stable',
+      }}
     >
       <div className="px-4 py-4 border-b border-white/10">
         <p className="text-[10px] tracking-[0.32em] text-[#FFE882] mb-2">
@@ -425,55 +540,69 @@ export default function StudentDashboard({
       </div>
 
       <div className="px-4 py-4 border-b border-white/10">
-        <div className="rounded-2xl p-3.5 bg-white/10 border border-white/10">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-11 h-11 rounded-full flex items-center justify-center text-base"
-                style={{
-                  background: '#FFE882',
-                  color: '#691D1B',
-                  fontWeight: 900,
-                }}
-              >
-                {getInitials(user?.name)}
-              </div>
+        <div className="rounded-2xl border border-white/15 bg-white/[0.12] p-4 shadow-sm">
+          <div className="flex min-w-0 items-start gap-3">
+            <div
+              className="h-12 w-12 flex-shrink-0 rounded-full flex items-center justify-center text-base"
+              style={{
+                background: '#FFE882',
+                color: '#691D1B',
+                fontWeight: 900,
+              }}
+            >
+              {getInitials(user?.name)}
+            </div>
 
-              <div>
-                <p className="text-sm font-bold leading-tight">
-                  {user?.name || 'Siswa Brics'}
-                </p>
-                <p className="text-xs text-white/70 mt-0.5">
-                  {currentCategoryName}
-                </p>
-              </div>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <p
+                className="overflow-hidden text-sm leading-snug text-white"
+                style={{
+                  fontWeight: 900,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                }}
+                title={user?.name || 'Siswa Brics'}
+              >
+                {user?.name || 'Siswa Brics'}
+              </p>
+              <p className="mt-1.5 truncate text-xs leading-tight text-white/65" title={currentCategoryName}>
+                {currentCategoryName}
+              </p>
             </div>
 
             <button
               type="button"
-              onClick={() => changeTab('profil')}
-              className="text-[#FFE882] hover:scale-110 transition-transform"
+              onClick={openProfileEditor}
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition-transform hover:scale-105"
+              style={{
+                background: '#FFE882',
+                color: '#691D1B',
+              }}
               title="Edit Profil"
+              aria-label="Edit Profil"
             >
-              <Pencil className="w-4 h-4" />
+              <Pencil className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="mb-1 flex items-center justify-between text-xs">
-            <span className="text-white/80">Progres Belajar</span>
-            <span className="text-[#FFE882] font-black">
-              {averageProgress}%
-            </span>
-          </div>
+          <div className="mt-4">
+            <div className="mb-2 flex items-center justify-between text-xs">
+              <span className="text-white/80">Progres Belajar</span>
+              <span className="rounded-full bg-[#FFE882]/20 px-2 py-0.5 text-[#FFE882] font-black">
+                {averageProgress}%
+              </span>
+            </div>
 
-          <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${averageProgress}%`,
-                background: '#FFE882',
-              }}
-            />
+            <div className="w-full h-2.5 bg-white/20 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${averageProgress}%`,
+                  background: '#FFE882',
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -486,50 +615,53 @@ export default function StudentDashboard({
           onClick={() => changeTab('beranda')}
         />
 
-        <SidebarLinkButton
+        <SidebarMenuButton
+          active={activeTab === 'katalog'}
           icon={Star}
           label="Lihat Katalog"
-          href="/#katalog"
+          onClick={() => changeTab('katalog')}
         />
 
         <button
           type="button"
-          onClick={() => {
-            setSubtesOpen(!subtesOpen);
-            changeTab('subtes');
-          }}
-          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-colors text-left ${
+          onClick={toggleSubtesMenu}
+          aria-expanded={subtesOpen}
+          className={`flex min-h-[42px] w-full items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-left transition-colors ${
             activeTab === 'subtes'
               ? 'text-[#691D1B]'
               : 'text-white/90 hover:bg-white/10'
           }`}
           style={{
-            background: activeTab === 'subtes' ? '#FFE882' : 'transparent',
             fontWeight: 800,
+            ...(activeTab === 'subtes' ? { background: '#FFE882' } : {}),
           }}
         >
-          <span className="flex items-center gap-3 text-sm">
-            <BookOpen className="w-4.5 h-4.5" />
-            Subtes UTBK
+          <span className="flex min-w-0 items-center gap-3 text-sm">
+            <BookOpen className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">Subtes UTBK</span>
           </span>
-          <ChevronDown className="w-4 h-4" />
+          <ChevronDown
+            className={`h-4 w-4 flex-shrink-0 transition-transform ${
+              subtesOpen ? 'rotate-180' : ''
+            }`}
+          />
         </button>
 
         {subtesOpen && (
-          <div className="ml-5 pl-3.5 border-l border-white/20 space-y-3 py-2">
+          <div className="ml-5 space-y-2 border-l border-white/20 py-2 pl-3.5">
             {learningItems.map((item) => (
-              <button
+              <Link
                 key={item.title}
-                type="button"
-                onClick={() => changeTab('subtes')}
-                className="w-full text-left group"
+                href={item.href}
+                onClick={() => setSidebarOpen(false)}
+                className="group block w-full rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/10"
               >
-                <div className="flex items-center gap-2 mb-1">
+                <div className="mb-1 flex min-w-0 items-center gap-2">
                   <span
-                    className="w-2 h-2 rounded-full"
+                    className="h-2 w-2 flex-shrink-0 rounded-full"
                     style={{ background: item.color }}
                   />
-                  <span className="text-xs font-bold text-white/90 group-hover:text-white leading-snug">
+                  <span className="min-w-0 truncate text-xs font-bold leading-snug text-white/90 group-hover:text-white">
                     {item.title}
                   </span>
                 </div>
@@ -544,11 +676,15 @@ export default function StudentDashboard({
                       }}
                     />
                   </div>
-                  <p className="text-[11px] text-white/60 mt-1">
-                    {item.progress}% selesai
+                  <p
+                    className={`mt-1 text-[11px] ${
+                      item.hasMaterials ? 'text-white/60' : 'text-[#FFE882]'
+                    }`}
+                  >
+                    {item.hasMaterials ? `${item.progress}% selesai` : materialStatusText(item)}
                   </p>
                 </div>
-              </button>
+              </Link>
             ))}
           </div>
         )}
@@ -562,21 +698,15 @@ export default function StudentDashboard({
       </nav>
 
       <div className="px-3.5 py-4 border-t border-white/10 space-y-2 mt-auto">
-        <SidebarMenuButton
-          active={activeTab === 'profil'}
-          icon={User}
-          label="Edit Profil"
-          onClick={() => changeTab('profil')}
-        />
 
         <button
           type="button"
           onClick={logout}
-          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-white/90 hover:bg-white/10 transition-colors text-left"
+          className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-white/90 transition-colors hover:bg-white/10"
           style={{ fontWeight: 800 }}
         >
-          <LogOut className="w-4.5 h-4.5" />
-          <span className="text-sm">Keluar</span>
+          <LogOut className="h-4 w-4 flex-shrink-0" />
+          <span className="min-w-0 flex-1 truncate text-sm">Keluar</span>
         </button>
       </div>
     </div>
@@ -644,14 +774,16 @@ export default function StudentDashboard({
     <header className="bg-white border-b border-[#D8D7BE] sticky top-0 z-40 shadow-sm">
       <div className="px-5 lg:px-6 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden w-9 h-9 rounded-xl border border-[#D8D7BE] flex items-center justify-center text-[#691D1B]"
-            aria-label="Buka menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+          {hasActivePackage && (
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden w-9 h-9 rounded-xl border border-[#D8D7BE] flex items-center justify-center text-[#691D1B]"
+              aria-label="Buka menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
 
           <div>
             <p className="text-[10px] tracking-[0.32em] text-[#A56D6B] mb-1">
@@ -683,32 +815,46 @@ export default function StudentDashboard({
             {notificationOpen && <NotificationDropdown />}
           </div>
 
-          <button
-            type="button"
-            onClick={() => changeTab('profil')}
-            className="hidden md:flex items-center gap-3 px-3.5 py-2 rounded-2xl border border-[#D8D7BE] bg-[#F7F2E7] hover:bg-[#EFE8D8] transition-colors"
-            title="Buka Profil"
-          >
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
-              style={{
-                background: '#741A18',
-                color: '#FFE882',
-                fontWeight: 900,
-              }}
+          {!hasActivePackage && (
+            <button
+              type="button"
+              onClick={openProfileEditor}
+              className="group relative hidden max-w-[18rem] items-center gap-3 rounded-2xl border border-[#D8D7BE] bg-[#F7F2E7] px-3.5 py-2 transition-colors hover:bg-[#EFE8D8] md:flex"
+              title="Edit Profil"
             >
-              {getInitials(user?.name)}
-            </div>
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
+                style={{
+                  background: '#741A18',
+                  color: '#FFE882',
+                  fontWeight: 900,
+                }}
+              >
+                {getInitials(user?.name)}
+              </div>
 
-            <div className="text-left">
-              <p className="text-[10px] tracking-[0.22em] text-gray-400">
-                SISWA
-              </p>
-              <p className="text-sm text-gray-900" style={{ fontWeight: 800 }}>
-                {user?.name || 'Siswa'}
-              </p>
-            </div>
-          </button>
+              <div className="min-w-0 text-left">
+                <p className="text-[10px] tracking-[0.22em] text-gray-400">
+                  SISWA
+                </p>
+                <p className="truncate text-sm text-gray-900" style={{ fontWeight: 800 }}>
+                  {user?.name || 'Siswa'}
+                </p>
+              </div>
+
+              <span
+                className="flex h-7 flex-shrink-0 items-center gap-1 rounded-full px-2 text-[11px] transition-colors group-hover:bg-[#691D1B] group-hover:text-white"
+                style={{
+                  background: '#FFE882',
+                  color: '#691D1B',
+                  fontWeight: 900,
+                }}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </span>
+            </button>
+          )}
         </div>
       </div>
     </header>
@@ -717,13 +863,13 @@ export default function StudentDashboard({
   const StatusBar = () => (
     <div className="bg-white border-b border-[#D8D7BE] px-5 lg:px-6 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
+        <span className={`w-2.5 h-2.5 rounded-full ${hasActivePackage ? 'bg-green-500' : 'bg-yellow-500'}`} />
         <span className="text-gray-900 text-sm font-bold">
-          {currentPackageName} — Aktif
+          {hasActivePackage ? `${currentPackageName} — Aktif` : 'Belum ada paket aktif'}
         </span>
         <span className="text-gray-400 hidden sm:inline">|</span>
         <span className="text-sm text-gray-500">
-          Valid hingga 30 Juni 2025
+          {hasActivePackage ? 'Valid hingga 30 Juni 2025' : 'Pilih paket untuk membuka akses belajar'}
         </span>
       </div>
 
@@ -735,9 +881,144 @@ export default function StudentDashboard({
           fontWeight: 900,
         }}
       >
-        63 hari
+        {hasActivePackage ? '63 hari' : 'Pilih Paket'}
       </span>
     </div>
+  );
+
+  const PackagePurchasePanel = () => (
+    <section className="space-y-5">
+      {pendingPackageTransactions.length > 0 && (
+        <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex gap-3">
+              <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-yellow-100 text-yellow-700">
+                <Clock className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-base text-yellow-900" style={{ fontWeight: 900 }}>
+                  Transaksi paket menunggu pembayaran
+                </h2>
+                <p className="mt-1 text-sm text-yellow-800">
+                  Selesaikan konfirmasi pembayaran agar paket aktif di dashboard.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href={`/payment-status/${pendingPackageTransactions[0].id}`}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#691D1B] px-4 py-2.5 text-sm text-white"
+              style={{ fontWeight: 900 }}
+            >
+              Lihat Status
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      )}
+
+      <section className="rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
+        <div className="border-b border-[#F7F2E7] px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F8EDED] text-[#691D1B]">
+              <PackageIcon className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
+                Pilih Paket Belajar
+              </h2>
+              <p className="text-sm text-gray-500">
+                Beli paket untuk membuka akses subtes, materi, jadwal, dan dashboard belajar.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {packageOptions.length === 0 ? (
+          <div className="p-6 text-sm text-gray-600">
+            Belum ada paket aktif yang tersedia.
+          </div>
+        ) : (
+          <div className="grid gap-4 p-5 lg:grid-cols-2">
+            {packageOptions.map((pkg) => {
+              const packageCourses = asArray(pkg.courses);
+              const packageFeatures = Array.isArray(pkg.features) ? pkg.features : [];
+
+              return (
+                <article key={pkg.id} className="flex flex-col rounded-2xl border border-[#D8D7BE] bg-[#FDFCF8] p-5">
+                  <div className="mb-4 flex items-start justify-between gap-4">
+                    <div>
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        {pkg.popular && (
+                          <span className="rounded-full bg-[#FFE882] px-3 py-1 text-xs text-[#691D1B]" style={{ fontWeight: 900 }}>
+                            Paling Populer
+                          </span>
+                        )}
+                        <span className="rounded-full bg-white px-3 py-1 text-xs text-gray-600" style={{ fontWeight: 800 }}>
+                          {packageCourses.length} course
+                        </span>
+                      </div>
+
+                      <h3 className="text-lg text-gray-900" style={{ fontWeight: 900 }}>
+                        {pkg.name}
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {pkg.description || 'Paket belajar BRICS Education.'}
+                      </p>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">Harga</p>
+                      <p className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
+                        {formatPrice(pkg.price)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {packageFeatures.length > 0 && (
+                    <ul className="mb-4 space-y-2">
+                      {packageFeatures.slice(0, 3).map((feature) => (
+                        <li key={feature} className="flex items-start gap-2 text-sm text-gray-600">
+                          <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#0F7A45]" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <div className="mb-5 rounded-xl border border-[#D8D7BE] bg-white p-3">
+                    <p className="mb-2 text-xs uppercase text-gray-500" style={{ fontWeight: 900 }}>
+                      Course dalam paket
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {packageCourses.slice(0, 5).map((course) => (
+                        <span key={course.id} className="rounded-full bg-[#F7F2E7] px-2.5 py-1 text-xs text-gray-600" style={{ fontWeight: 800 }}>
+                          {course.title}
+                        </span>
+                      ))}
+                      {packageCourses.length > 5 && (
+                        <span className="rounded-full bg-[#F7F2E7] px-2.5 py-1 text-xs text-gray-600" style={{ fontWeight: 800 }}>
+                          +{packageCourses.length - 5} course
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <Link
+                    href={`/checkout/package/${pkg.id}`}
+                    className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[#691D1B] px-4 py-3 text-sm text-white hover:bg-[#4A1412]"
+                    style={{ fontWeight: 900 }}
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    Beli Paket
+                  </Link>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </section>
   );
 
   const StatsCards = () => (
@@ -807,6 +1088,17 @@ export default function StudentDashboard({
 
             <div className="flex-1">
               <p className="font-bold text-gray-900 text-sm mb-2">{item.title}</p>
+              {item.enrolled && (
+                <p
+                  className="mb-2 text-xs"
+                  style={{
+                    color: item.hasMaterials ? '#0F7A45' : '#8A5A00',
+                    fontWeight: 800,
+                  }}
+                >
+                  {materialStatusText(item)}
+                </p>
+              )}
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div
@@ -1013,29 +1305,41 @@ export default function StudentDashboard({
 
   const BerandaPage = () => (
     <>
-      <Topbar title="Beranda" subtitle={currentPackageName} />
+      <Topbar
+        title="Beranda"
+        subtitle={hasActivePackage ? currentPackageName : 'Pilih paket belajar untuk mulai akses dashboard'}
+      />
       <StatusBar />
 
       <main className="px-5 lg:px-6 py-6">
-        <StatsCards />
+        {hasActivePackage ? (
+          <>
+            <StatsCards />
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-          <SubtesCard />
-          <SchedulePreviewCard />
-        </div>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+              <SubtesCard />
+              <SchedulePreviewCard />
+            </div>
 
-        <MaterialPreviewCard />
-        <ContinueCard />
+            <MaterialPreviewCard />
+            <ContinueCard />
+          </>
+        ) : (
+          <PackagePurchasePanel />
+        )}
       </main>
     </>
   );
 
   const SubtesPage = () => (
     <>
-      <Topbar title="Subtes UTBK" subtitle={currentPackageName} />
+      <Topbar title={hasActivePackage ? 'Subtes UTBK' : 'Pilih Paket'} subtitle={currentPackageName} />
       <StatusBar />
 
       <main className="px-5 lg:px-6 py-6">
+        {!hasActivePackage ? (
+          <PackagePurchasePanel />
+        ) : (
         <section className="bg-white rounded-2xl border border-[#D8D7BE] shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-[#F7F2E7] flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -1047,14 +1351,15 @@ export default function StudentDashboard({
               </p>
             </div>
 
-            <Link
-              href="/#katalog"
+            <button
+              type="button"
+              onClick={() => changeTab('katalog')}
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm text-[#691D1B] border-2 border-[#691D1B] hover:bg-[#691D1B] hover:text-white transition-colors"
               style={{ fontWeight: 900 }}
             >
               Lihat Katalog
               <ChevronRight className="w-4 h-4" />
-            </Link>
+            </button>
           </div>
 
           <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1075,16 +1380,31 @@ export default function StudentDashboard({
                   </div>
 
                   <div className="flex-1">
-                    <span
-                      className="inline-flex px-3 py-1 rounded-full text-xs mb-2.5"
-                      style={{
-                        background: '#FFE882',
-                        color: '#691D1B',
-                        fontWeight: 900,
-                      }}
-                    >
-                      {subtes.category || currentCategoryName}
-                    </span>
+                    <div className="mb-2.5 flex flex-wrap items-center gap-2">
+                      <span
+                        className="inline-flex rounded-full px-3 py-1 text-xs"
+                        style={{
+                          background: '#FFE882',
+                          color: '#691D1B',
+                          fontWeight: 900,
+                        }}
+                      >
+                        {subtes.category || currentCategoryName}
+                      </span>
+
+                      {subtes.enrolled && (
+                        <span
+                          className="inline-flex rounded-full px-3 py-1 text-xs"
+                          style={{
+                            background: subtes.hasMaterials ? '#EAF7F0' : '#FFF6CC',
+                            color: subtes.hasMaterials ? '#0F7A45' : '#8A5A00',
+                            fontWeight: 900,
+                          }}
+                        >
+                          {materialStatusText(subtes)}
+                        </span>
+                      )}
+                    </div>
 
                     <h3 className="text-base text-gray-900 mb-2" style={{ fontWeight: 900 }}>
                       {subtes.title}
@@ -1116,22 +1436,28 @@ export default function StudentDashboard({
                       </span>
                     </div>
 
-                    {activeEnrollments.length > 0 ? (
+                    {hasActivePackage ? (
                       <Link
                         href={subtes.href}
-                        className="block text-center px-4 py-2.5 rounded-xl text-sm text-white"
-                        style={{ background: '#691D1B', fontWeight: 900 }}
+                        className="block rounded-xl px-4 py-2.5 text-center text-sm transition-colors"
+                        style={{
+                          background: subtes.hasMaterials ? '#691D1B' : '#F7F2E7',
+                          border: subtes.hasMaterials ? '1px solid #691D1B' : '1px solid #D8D7BE',
+                          color: subtes.hasMaterials ? 'white' : '#691D1B',
+                          fontWeight: 900,
+                        }}
                       >
-                        Mulai Belajar
+                        {subtes.hasMaterials ? 'Mulai Belajar' : 'Lihat Status Materi'}
                       </Link>
                     ) : (
-                      <Link
-                        href="/#katalog"
+                      <button
+                        type="button"
+                        onClick={() => changeTab('katalog')}
                         className="block text-center px-4 py-2.5 rounded-xl text-sm text-white"
                         style={{ background: '#691D1B', fontWeight: 900 }}
                       >
-                        Pilih Course
-                      </Link>
+                        Pilih Paket
+                      </button>
                     )}
                   </div>
                 </div>
@@ -1139,16 +1465,32 @@ export default function StudentDashboard({
             ))}
           </div>
         </section>
+        )}
+      </main>
+    </>
+  );
+
+  const KatalogPage = () => (
+    <>
+      <Topbar title="Katalog Paket" subtitle="Pilih paket belajar yang tersedia" />
+      <StatusBar />
+
+      <main className="px-5 lg:px-6 py-6">
+        <PackagePurchasePanel />
       </main>
     </>
   );
 
   const JadwalPage = () => (
     <>
-      <Topbar title="Jadwal" subtitle={currentPackageName} />
+      <Topbar title={hasActivePackage ? 'Jadwal' : 'Pilih Paket'} subtitle={currentPackageName} />
       <StatusBar />
 
       <main className="px-5 lg:px-6 py-6">
+        {!hasActivePackage ? (
+          <PackagePurchasePanel />
+        ) : (
+        <>
         <div className="flex flex-wrap items-center gap-4 mb-5">
           <span className="inline-flex items-center gap-2 text-sm font-bold text-[#691D1B]">
             <Video className="w-4 h-4" />
@@ -1326,6 +1668,8 @@ export default function StudentDashboard({
             </div>
           </div>
         </section>
+        </>
+        )}
       </main>
     </>
   );
@@ -1364,7 +1708,7 @@ export default function StudentDashboard({
                   {user?.name || 'Siswa Brics'}
                 </h3>
                 <p className="text-sm text-gray-500">
-                  Akun siswa BRICS Education
+                  {user?.email || 'Akun siswa BRICS Education'}
                 </p>
               </div>
             </div>
@@ -1378,36 +1722,37 @@ export default function StudentDashboard({
               </div>
 
               <div className="border border-[#D8D7BE] rounded-xl p-4">
-                <p className="text-sm text-gray-500 mb-2">Email</p>
+                <p className="text-sm text-gray-500 mb-2">Jenis Kelamin</p>
                 <p className="text-gray-900 text-sm" style={{ fontWeight: 800 }}>
-                  {user?.email || '-'}
+                  {formatGender(user?.gender)}
                 </p>
               </div>
 
               <div className="border border-[#D8D7BE] rounded-xl p-4">
-                <p className="text-sm text-gray-500 mb-2">Role</p>
+                <p className="text-sm text-gray-500 mb-2">No Telepon/WhatsApp</p>
                 <p className="text-gray-900 text-sm" style={{ fontWeight: 800 }}>
-                  {user?.role_id === 3 ? 'Siswa' : `Role ID ${user?.role_id || '-'}`}
+                  {user?.phone || '-'}
                 </p>
               </div>
 
               <div className="border border-[#D8D7BE] rounded-xl p-4">
-                <p className="text-sm text-gray-500 mb-2">User ID</p>
+                <p className="text-sm text-gray-500 mb-2">Sekolah Asal</p>
                 <p className="text-gray-900 text-sm" style={{ fontWeight: 800 }}>
-                  {user?.id || '-'}
+                  {user?.school_origin || '-'}
                 </p>
               </div>
             </div>
 
             <div className="mt-5 flex flex-wrap gap-3">
-              <Link
-                href="/profile"
+              <button
+                type="button"
+                onClick={openProfileEditor}
                 className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm text-white hover:bg-[#4A1412] transition-colors"
                 style={{ background: '#691D1B', fontWeight: 900 }}
               >
                 <Pencil className="w-4 h-4" />
-                Edit Profil Lengkap
-              </Link>
+                Edit Profil
+              </button>
 
               <button
                 type="button"
@@ -1425,6 +1770,137 @@ export default function StudentDashboard({
     </>
   );
 
+  const renderProfileEditorModal = () => (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center px-4 py-6">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/45"
+        onClick={closeProfileEditor}
+        aria-label="Tutup editor profil"
+      />
+
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-[#F7F2E7] px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex h-11 w-11 items-center justify-center rounded-xl"
+              style={{ background: '#F8EDED', color: '#691D1B' }}
+            >
+              <Pencil className="h-5 w-5" />
+            </div>
+
+            <div>
+              <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
+                Edit Profil
+              </h2>
+              <p className="text-sm text-gray-500">
+                Data diri siswa
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={closeProfileEditor}
+            disabled={profileForm.processing}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-[#F7F2E7] hover:text-[#691D1B] disabled:opacity-60"
+            aria-label="Tutup editor profil"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={submitProfileEditor} className="grid gap-5 px-5 py-5 md:grid-cols-2">
+          <label className="space-y-2 md:col-span-2">
+            <span className="text-sm font-bold text-gray-700">Nama Lengkap</span>
+            <input
+              type="text"
+              value={profileForm.data.name}
+              onChange={(event) => profileForm.setData('name', event.target.value)}
+              disabled={profileForm.processing}
+              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+              placeholder="Masukkan nama lengkap"
+              autoComplete="name"
+              required
+            />
+            {profileForm.errors.name && (
+              <p className="text-xs font-semibold text-red-600">{profileForm.errors.name}</p>
+            )}
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-sm font-bold text-gray-700">Jenis Kelamin</span>
+            <select
+              value={profileForm.data.gender}
+              onChange={(event) => profileForm.setData('gender', event.target.value)}
+              disabled={profileForm.processing}
+              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+            >
+              <option value="">Pilih jenis kelamin</option>
+              <option value="male">Laki-laki</option>
+              <option value="female">Perempuan</option>
+            </select>
+            {profileForm.errors.gender && (
+              <p className="text-xs font-semibold text-red-600">{profileForm.errors.gender}</p>
+            )}
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-sm font-bold text-gray-700">No Telepon/WhatsApp</span>
+            <input
+              type="tel"
+              value={profileForm.data.phone}
+              onChange={(event) => profileForm.setData('phone', event.target.value)}
+              disabled={profileForm.processing}
+              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+              placeholder="Contoh: 081234567890"
+              autoComplete="tel"
+            />
+            {profileForm.errors.phone && (
+              <p className="text-xs font-semibold text-red-600">{profileForm.errors.phone}</p>
+            )}
+          </label>
+
+          <label className="space-y-2 md:col-span-2">
+            <span className="text-sm font-bold text-gray-700">Sekolah Asal</span>
+            <input
+              type="text"
+              value={profileForm.data.school_origin}
+              onChange={(event) => profileForm.setData('school_origin', event.target.value)}
+              disabled={profileForm.processing}
+              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+              placeholder="Masukkan nama sekolah asal"
+              autoComplete="organization"
+            />
+            {profileForm.errors.school_origin && (
+              <p className="text-xs font-semibold text-red-600">{profileForm.errors.school_origin}</p>
+            )}
+          </label>
+
+          <div className="flex flex-col-reverse gap-3 border-t border-[#F7F2E7] pt-4 sm:flex-row sm:justify-end md:col-span-2">
+            <button
+              type="button"
+              onClick={closeProfileEditor}
+              disabled={profileForm.processing}
+              className="rounded-xl border border-[#D8D7BE] px-4 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:bg-[#F7F2E7] disabled:opacity-60"
+            >
+              Batal
+            </button>
+
+            <button
+              type="submit"
+              disabled={profileForm.processing}
+              className="rounded-xl px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-[#4A1412] disabled:opacity-70"
+              style={{ background: '#691D1B' }}
+            >
+              {profileForm.processing ? 'Menyimpan...' : 'Simpan Profil'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
   return (
     <div
       className="min-h-screen"
@@ -1434,13 +1910,15 @@ export default function StudentDashboard({
       }}
     >
       <div className="flex min-h-screen">
-        <aside className="hidden lg:block w-64 flex-shrink-0">
-          <div className="sticky top-0 h-screen">
-            <SidebarContent />
-          </div>
-        </aside>
+        {hasActivePackage && (
+          <aside className="hidden lg:block w-64 flex-shrink-0">
+            <div className="sticky top-0 h-screen">
+              {renderSidebarContent()}
+            </div>
+          </aside>
+        )}
 
-        {sidebarOpen && (
+        {hasActivePackage && sidebarOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <button
               type="button"
@@ -1459,18 +1937,21 @@ export default function StudentDashboard({
                 <X className="w-5 h-5" />
               </button>
 
-              <SidebarContent />
+              {renderSidebarContent()}
             </div>
           </div>
         )}
 
         <div className="flex-1 min-w-0">
           {activeTab === 'beranda' && <BerandaPage />}
+          {activeTab === 'katalog' && <KatalogPage />}
           {activeTab === 'subtes' && <SubtesPage />}
           {activeTab === 'jadwal' && <JadwalPage />}
           {activeTab === 'profil' && <ProfilPage />}
         </div>
       </div>
+
+      {profileEditorOpen && renderProfileEditorModal()}
     </div>
   );
 }

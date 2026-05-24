@@ -12,13 +12,35 @@ import {
   Building2,
   ChevronRight,
   LockKeyhole,
+  Layers,
+  Package as PackageIcon,
 } from "lucide-react";
 import { useState } from "react";
 
-function getCategoryName(course) {
-  if (!course?.category) return "Course";
+function asArray(value) {
+  if (Array.isArray(value)) return value;
+  return Object.values(value ?? {});
+}
+
+function getCourseCategoryName(course) {
+  if (!course?.category) return "Paket";
   if (typeof course.category === "string") return course.category;
-  return course.category.name || "Course";
+  return course.category.name || "Paket";
+}
+
+function getPackageCourses(learningPackage) {
+  return asArray(learningPackage?.courses);
+}
+
+function getPackageCategoryLabel(learningPackage) {
+  const categories = Array.from(
+    new Set(getPackageCourses(learningPackage).map((course) => getCourseCategoryName(course)).filter(Boolean))
+  );
+
+  if (categories.length === 0) return "Paket Belajar";
+  if (categories.length === 1) return categories[0];
+
+  return "Paket Lengkap";
 }
 
 function formatPrice(price) {
@@ -31,12 +53,14 @@ function formatPrice(price) {
   return String(price || "-");
 }
 
-export default function Checkout({ course }) {
-  const { errors } = usePage().props;
+export default function Checkout({ learningPackage }) {
+  const { errors = {} } = usePage().props;
   const [paymentMethod, setPaymentMethod] = useState("transfer_bank");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const categoryName = getCategoryName(course);
+  const packageCourses = getPackageCourses(learningPackage);
+  const packageFeatures = Array.isArray(learningPackage?.features) ? learningPackage.features : [];
+  const categoryName = getPackageCategoryLabel(learningPackage);
 
   const paymentMethods = [
     {
@@ -51,12 +75,6 @@ export default function Checkout({ course }) {
       desc: "Pembayaran real melalui dompet digital yang tersedia di Midtrans.",
       icon: Wallet,
     },
-    {
-      id: "qris",
-      title: "QRIS",
-      desc: "Pembayaran real menggunakan QRIS Midtrans.",
-      icon: QrCode,
-    },
   ];
 
   const handleCheckout = () => {
@@ -65,7 +83,7 @@ export default function Checkout({ course }) {
     router.post(
       "/checkout",
       {
-        course_id: course.id,
+        package_id: learningPackage.id,
         payment_method: paymentMethod,
       },
       {
@@ -117,11 +135,11 @@ export default function Checkout({ course }) {
 
           <div className="flex items-center gap-3">
             <Link
-              href={route("login")}
+              href="/dashboard"
               className="px-5 py-2 text-sm text-white bg-[#691D1B] rounded-md hover:bg-[#4A1412] transition-colors"
               style={{ fontWeight: 600 }}
             >
-              Masuk
+              Dashboard
             </Link>
           </div>
         </div>
@@ -135,12 +153,12 @@ export default function Checkout({ course }) {
 
         <div className="max-w-6xl mx-auto px-6 py-10 relative z-10">
           <Link
-            href={`/course/${course.id}`}
+            href="/#katalog"
             className="inline-flex items-center gap-2 text-[#FFE882]/85 hover:text-[#FFE882] text-sm mb-6"
             style={{ fontWeight: 700 }}
           >
             <ArrowLeft className="w-4 h-4" />
-            Kembali ke Detail Course
+            Kembali ke Katalog Paket
           </Link>
 
           <div className="max-w-3xl">
@@ -155,11 +173,11 @@ export default function Checkout({ course }) {
               className="text-3xl lg:text-4xl text-white mb-4"
               style={{ fontWeight: 900, lineHeight: 1.2 }}
             >
-              Selesaikan Pembelian Course
+              Selesaikan Pembelian Paket
             </h1>
 
             <p className="text-[#D8D7BE] text-sm lg:text-base leading-relaxed">
-              Periksa kembali detail course dan pilih metode pembayaran Midtrans sebelum menyelesaikan transaksi.
+              Periksa kembali isi paket dan pilih metode pembayaran sebelum sistem membuat data transaksi.
             </p>
           </div>
         </div>
@@ -175,17 +193,17 @@ export default function Checkout({ course }) {
                   className="text-xl text-[#691D1B]"
                   style={{ fontWeight: 900 }}
                 >
-                  Detail Course
+                  Detail Paket
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  Course yang akan kamu beli.
+                  Paket yang akan kamu beli.
                 </p>
               </div>
 
               <div className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="w-14 h-14 rounded-xl bg-[#691D1B] text-[#FFE882] flex items-center justify-center flex-shrink-0">
-                    <BookOpen className="w-7 h-7" />
+                    <PackageIcon className="w-7 h-7" />
                   </div>
 
                   <div className="flex-1">
@@ -204,12 +222,43 @@ export default function Checkout({ course }) {
                       className="text-xl text-gray-900 mb-2"
                       style={{ fontWeight: 900 }}
                     >
-                      {course.title}
+                      {learningPackage.name}
                     </h3>
 
                     <p className="text-sm text-gray-600 leading-relaxed">
-                      {course.description || "Deskripsi course belum tersedia."}
+                      {learningPackage.description || "Deskripsi paket belum tersedia."}
                     </p>
+                  </div>
+                </div>
+
+                {packageFeatures.length > 0 && (
+                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                    {packageFeatures.slice(0, 4).map((feature) => (
+                      <div key={feature} className="flex gap-3 rounded-xl bg-[#F7F2E7] p-3 text-sm text-gray-700">
+                        <CheckCircle className="w-5 h-5 text-[#0F7A45] flex-shrink-0" />
+                        <span>{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-6 rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] p-4">
+                  <div className="mb-3 flex items-center gap-2 text-sm text-[#691D1B]" style={{ fontWeight: 900 }}>
+                    <Layers className="w-4 h-4" />
+                    Course dalam paket
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {packageCourses.length > 0 ? (
+                      packageCourses.map((course) => (
+                        <span key={course.id} className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs text-gray-700" style={{ fontWeight: 800 }}>
+                          <BookOpen className="w-3.5 h-3.5 text-[#691D1B]" />
+                          {course.title}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-sm text-gray-500">Belum ada course aktif dalam paket ini.</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -305,7 +354,7 @@ export default function Checkout({ course }) {
 
                 <div className="flex gap-3">
                   <Clock className="w-5 h-5 text-[#691D1B] flex-shrink-0" />
-                  <span>Setelah Midtrans mengirim status berhasil, akses course akan aktif otomatis.</span>
+                  <span>Setelah pembayaran dikonfirmasi, semua course dalam paket akan diaktifkan.</span>
                 </div>
 
                 <div className="flex gap-3">
@@ -329,12 +378,12 @@ export default function Checkout({ course }) {
 
                 <div className="space-y-4">
                   <div className="flex justify-between gap-4">
-                    <span className="text-sm text-gray-600">Course</span>
+                    <span className="text-sm text-gray-600">Paket</span>
                     <span
                       className="text-sm text-gray-900 text-right"
                       style={{ fontWeight: 800 }}
                     >
-                      {course.title}
+                      {learningPackage.name}
                     </span>
                   </div>
 
@@ -359,12 +408,12 @@ export default function Checkout({ course }) {
                   </div>
 
                   <div className="flex justify-between gap-4">
-                    <span className="text-sm text-gray-600">Status Course</span>
+                    <span className="text-sm text-gray-600">Isi Paket</span>
                     <span
                       className="text-sm text-green-600 text-right"
                       style={{ fontWeight: 800 }}
                     >
-                      {course.status || "active"}
+                      {packageCourses.length} course
                     </span>
                   </div>
                 </div>
@@ -383,7 +432,7 @@ export default function Checkout({ course }) {
                     className="text-3xl text-[#691D1B]"
                     style={{ fontWeight: 900 }}
                   >
-                    {formatPrice(course.price)}
+                    {formatPrice(learningPackage.price)}
                   </span>
                 </div>
 
@@ -414,11 +463,11 @@ export default function Checkout({ course }) {
                 </div>
 
                 <Link
-                  href={`/course/${course.id}`}
+                  href="/#katalog"
                   className="mt-4 flex items-center justify-center gap-1 w-full py-3 text-center rounded-xl border-2 border-[#691D1B] text-[#691D1B] hover:bg-[#691D1B] hover:text-white transition-colors"
                   style={{ fontWeight: 800 }}
                 >
-                  Cek Detail Lagi
+                  Cek Paket Lain
                   <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>

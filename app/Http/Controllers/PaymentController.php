@@ -7,6 +7,7 @@ use App\Models\Enrollment;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\MidtransService;
+use App\Services\PackageEnrollmentService;
 use App\Support\AdminNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -65,7 +66,10 @@ class PaymentController extends Controller
     {
         $this->authorizeTransactionAccess($request, $transaction);
 
-        $transaction->load('course.category');
+        $transaction->load([
+            'course.category',
+            'package.courses.category',
+        ]);
 
         return Inertia::render('PaymentStatus', [
             'transaction' => $transaction,
@@ -135,42 +139,49 @@ class PaymentController extends Controller
             ]);
 
             if ($newStatus === 'success') {
-                $enrollment = Enrollment::updateOrCreate(
-                    [
-                        'user_id' => $transaction->user_id,
-                        'course_id' => $transaction->course_id,
-                    ],
-                    [
-                        'status' => 'active',
-                        'enrolled_at' => now(),
-                    ]
-                );
+                if ($transaction->package_id) {
+                    $enrollments = app(PackageEnrollmentService::class)
+                        ->enroll($transaction->user_id, $transaction->package_id);
 
-                $transaction->update(['enrollment_id' => $enrollment->id]);
+                    $transaction->update(['enrollment_id' => $enrollments->first()->id ?? null]);
+                } elseif ($transaction->course_id) {
+                    $enrollment = Enrollment::updateOrCreate(
+                        [
+                            'user_id' => $transaction->user_id,
+                            'course_id' => $transaction->course_id,
+                        ],
+                        [
+                            'status' => 'active',
+                            'enrolled_at' => now(),
+                        ]
+                    );
+
+                    $transaction->update(['enrollment_id' => $enrollment->id]);
+                }
             }
         });
 
         if ($newStatus === 'success' && ! in_array($previousStatus, ['paid', 'success'], true)) {
-            $transaction->loadMissing(['course', 'user']);
+            $transaction->loadMissing(['course', 'package', 'user']);
             $student = $transaction->user ?? User::find($transaction->user_id);
 
             if ($student) {
                 AdminNotifier::transactionSucceeded(
                     $student,
-                    $transaction->course?->title ?? 'course terkait',
+                    $transaction->package ? 'Paket: '.$transaction->package->name : ($transaction->course?->title ?? 'course terkait'),
                     $transaction->invoice_number
                 );
             }
         }
 
         if ($newStatus === 'failed' && $previousStatus !== 'failed') {
-            $transaction->loadMissing(['course', 'user']);
+            $transaction->loadMissing(['course', 'package', 'user']);
             $student = $transaction->user ?? User::find($transaction->user_id);
 
             if ($student) {
                 AdminNotifier::transactionFailed(
                     $student,
-                    $transaction->course?->title ?? 'course terkait',
+                    $transaction->package ? 'Paket: '.$transaction->package->name : ($transaction->course?->title ?? 'course terkait'),
                     $transaction->invoice_number
                 );
             }

@@ -40,11 +40,11 @@ export default function CourseDetail({ course }) {
 
   const benefits = [
     "Informasi paket bimbel ditampilkan dengan jelas",
-    "Pembayaran dilakukan melalui sistem",
+    "Pembayaran dilakukan melalui paket belajar",
     "Status transaksi dapat dipantau",
-    "Akses course aktif setelah pembayaran berhasil",
+    "Akses course aktif setelah paket berhasil dibeli",
     "Materi dan jadwal dapat diakses melalui dashboard siswa",
-    "Data pembelian tersimpan di sistem",
+    "Data pembelian paket tersimpan di sistem",
   ];
 
   const courseIncludes = [
@@ -191,12 +191,12 @@ export default function CourseDetail({ course }) {
 
             <div className="hidden lg:block">
               <div className="bg-white/10 border border-white/20 rounded-2xl p-5">
-                <p className="text-sm text-[#D8D7BE] mb-2">Harga course</p>
+                <p className="text-sm text-[#D8D7BE] mb-2">Harga referensi</p>
                 <p className="text-3xl text-[#FFE882]" style={{ fontWeight: 900 }}>
                   {formatPrice(course?.price)}
                 </p>
                 <p className="text-xs text-[#D8D7BE] mt-2">
-                  Harga dapat berubah sesuai paket yang tersedia.
+                  Pembelian siswa dilakukan melalui paket belajar.
                 </p>
               </div>
             </div>
@@ -274,16 +274,16 @@ export default function CourseDetail({ course }) {
                 className="text-xl text-[#691D1B] mb-5"
                 style={{ fontWeight: 900 }}
               >
-                Alur Pembelian Course
+                Alur Pembelian Paket
               </h2>
 
               <div className="space-y-4">
                 {[
-                  "Siswa memilih course yang sesuai kebutuhan.",
+                  "Siswa melihat course yang sesuai kebutuhan.",
                   "Siswa masuk atau mendaftar akun.",
-                  "Siswa melanjutkan ke halaman checkout.",
+                  "Siswa memilih paket belajar dari katalog.",
                   "Sistem membuat transaksi pembayaran.",
-                  "Setelah pembayaran berhasil, course aktif di dashboard siswa.",
+                  "Setelah pembayaran berhasil, semua course dalam paket aktif di dashboard siswa.",
                 ].map((step, index) => (
                   <div key={step} className="flex gap-4">
                     <div
@@ -333,17 +333,17 @@ export default function CourseDetail({ course }) {
                     {formatPrice(course?.price)}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Harga dapat berubah sesuai paket yang tersedia.
+                    Pembelian siswa dilakukan melalui paket belajar.
                   </p>
                 </div>
 
                 <Link
-                  href={`/checkout/${course?.id}`}
+                  href="/#katalog"
                   className="flex items-center justify-center gap-2 w-full py-3.5 text-center text-white rounded-xl mb-3 hover:bg-[#4A1412] transition-colors"
                   style={{ background: "#691D1B", fontWeight: 800 }}
                 >
                   <CreditCard className="w-4 h-4" />
-                  Beli Course
+                  Pilih Paket
                 </Link>
 
                 <Link
@@ -386,19 +386,19 @@ export default function CourseDetail({ course }) {
         <div className="rounded-2xl bg-[#691D1B] p-8 text-white flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
           <div>
             <h2 className="text-2xl mb-2" style={{ fontWeight: 900 }}>
-              Siap mengikuti course ini?
+              Siap mempelajari course ini lewat paket?
             </h2>
             <p className="text-sm text-[#D8D7BE]">
-              Lanjutkan ke checkout untuk membuat transaksi dan mengaktifkan course setelah pembayaran.
+              Pilih paket belajar yang berisi course ini untuk membuat transaksi dan mengaktifkan akses setelah pembayaran.
             </p>
           </div>
 
           <Link
-            href={`/checkout/${course?.id}`}
+            href="/#katalog"
             className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-[#691D1B] bg-[#FFE882] hover:bg-yellow-300 transition-colors"
             style={{ fontWeight: 900 }}
           >
-            Lanjut Checkout
+            Lihat Paket
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

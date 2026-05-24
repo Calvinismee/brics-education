@@ -25,6 +25,6 @@ test('tutor upload sends one admin notification for pending review', function ()
     $this->assertDatabaseHas('notifications', [
         'user_id' => $admin->id,
         'title' => 'Konten Menunggu Persetujuan',
-        'message' => 'Tutor Dev mengunggah Test untuk Pemahaman Bacaan dan Menulis dan menunggu review admin.',
+        'message' => 'Tutor Dev mengunggah "Test" untuk Pemahaman Bacaan dan Menulis dan menunggu review admin.',
     ]);
 });

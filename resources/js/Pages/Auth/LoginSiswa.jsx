@@ -1,21 +1,128 @@
-import React from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import LoginPanel from '@/Components/LoginPanel';
 import BricsLogo from '@/Components/BricsLogo';
 import {
   ArrowLeft,
   Eye,
+  EyeOff,
   LockKeyhole,
   Mail,
   UserRound,
 } from 'lucide-react';
 
-export default function LoginSiswa() {
-  const { data, setData, post, processing, errors, reset } = useForm({
+const GOOGLE_SCRIPT_URL = 'https://accounts.google.com/gsi/client';
+
+export default function LoginSiswa({ googleClientId }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const [googleScriptReady, setGoogleScriptReady] = useState(false);
+  const [googleProcessing, setGoogleProcessing] = useState(false);
+  const [googleError, setGoogleError] = useState('');
+  const googleButtonRef = useRef(null);
+  const googleButtonRendered = useRef(false);
+
+  const { data, setData, post, processing, errors: loginErrors, reset } = useForm({
     email: '',
     password: '',
     remember: false,
   });
+
+  const handleGoogleCredential = (response) => {
+    const credential = response?.credential;
+
+    if (! credential) {
+      setGoogleError('Akun Google belum dipilih.');
+      return;
+    }
+
+    setGoogleError('');
+    setGoogleProcessing(true);
+
+    router.post(
+      route('auth.google.credential'),
+      { credential },
+      {
+        preserveScroll: true,
+        onError: (incomingErrors) => {
+          setGoogleError(
+            incomingErrors.google
+              || incomingErrors.credential
+              || 'Login Google gagal. Silakan coba lagi.'
+          );
+        },
+        onFinish: () => setGoogleProcessing(false),
+      }
+    );
+  };
+
+  useEffect(() => {
+    if (! googleClientId) return undefined;
+
+    if (window.google?.accounts?.id) {
+      setGoogleScriptReady(true);
+      return undefined;
+    }
+
+    const existingScript = document.querySelector(`script[src="${GOOGLE_SCRIPT_URL}"]`);
+    const onLoad = () => setGoogleScriptReady(true);
+    const onError = () => setGoogleError('Gagal memuat modal login Google. Silakan muat ulang halaman.');
+
+    if (existingScript) {
+      existingScript.addEventListener('load', onLoad);
+      existingScript.addEventListener('error', onError);
+
+      return () => {
+        existingScript.removeEventListener('load', onLoad);
+        existingScript.removeEventListener('error', onError);
+      };
+    }
+
+    const script = document.createElement('script');
+    script.src = GOOGLE_SCRIPT_URL;
+    script.async = true;
+    script.defer = true;
+    script.onload = onLoad;
+    script.onerror = onError;
+    document.head.appendChild(script);
+
+    return () => {
+      script.onload = null;
+      script.onerror = null;
+    };
+  }, [googleClientId]);
+
+  useEffect(() => {
+    if (
+      ! googleClientId
+      || ! googleScriptReady
+      || ! googleButtonRef.current
+      || googleButtonRendered.current
+      || ! window.google?.accounts?.id
+    ) {
+      return;
+    }
+
+    window.google.accounts.id.initialize({
+      client_id: googleClientId,
+      callback: handleGoogleCredential,
+      auto_select: false,
+      cancel_on_tap_outside: true,
+      context: 'signin',
+    });
+
+    googleButtonRef.current.innerHTML = '';
+    window.google.accounts.id.renderButton(googleButtonRef.current, {
+      type: 'standard',
+      theme: 'outline',
+      size: 'large',
+      text: 'signin_with',
+      shape: 'rectangular',
+      logo_alignment: 'left',
+      locale: 'id',
+      width: Math.min(360, googleButtonRef.current.offsetWidth || 360),
+    });
+    googleButtonRendered.current = true;
+  }, [googleClientId, googleScriptReady]);
 
   const submit = (e) => {
     e.preventDefault();
@@ -24,6 +131,8 @@ export default function LoginSiswa() {
       onFinish: () => reset('password'),
     });
   };
+
+  const googleDisplayError = googleError || loginErrors.google;
 
   return (
     <div
@@ -66,20 +175,59 @@ export default function LoginSiswa() {
                   className="text-xs text-gray-500 uppercase tracking-widest"
                   style={{ fontWeight: 700 }}
                 >
-                  Masuk sebagai
+                  Selamat datang di
                 </p>
                 <h1
                   className="text-2xl text-gray-900"
                   style={{ fontWeight: 900 }}
                 >
-                  Siswa
+                  Brics Education
                 </h1>
               </div>
             </div>
 
-            <p className="text-sm text-gray-500 mb-7 leading-relaxed">
-              Masuk menggunakan email dan password siswa untuk melanjutkan pembelian course dan mengakses dashboard pembelajaran BRICS Education.
-            </p>
+
+            {googleDisplayError && (
+              <p className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {googleDisplayError}
+              </p>
+            )}
+
+            {googleClientId ? (
+              <div className="relative mb-6">
+                <div ref={googleButtonRef} className="flex w-full justify-center" />
+                {! googleScriptReady && (
+                  <div className="flex min-h-[40px] items-center justify-center text-sm text-gray-500">
+                    Memuat login Google...
+                  </div>
+                )}
+                {googleProcessing && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/80 text-sm font-bold text-[#691D1B]">
+                    Memproses...
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="flex w-full items-center justify-center gap-3 rounded-xl border-2 border-[#D8D7BE] bg-gray-50 px-4 py-3 text-sm text-gray-400"
+                style={{ fontWeight: 800 }}
+              >
+                <span className="flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-sm text-gray-400">
+                  Google
+                </span>
+                Login Google belum dikonfigurasi
+              </button>
+            )}
+
+            <div className="my-6 flex items-center gap-4">
+              <div className="h-px flex-1 bg-[#D8D7BE]" />
+              <span className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                atau
+              </span>
+              <div className="h-px flex-1 bg-[#D8D7BE]" />
+            </div>
 
             <form onSubmit={submit} className="space-y-5">
               <div>
@@ -102,15 +250,15 @@ export default function LoginSiswa() {
                     placeholder="Masukkan email siswa"
                     className="w-full pl-12 pr-4 py-3 bg-[#FDFCF8] border-2 rounded-xl text-sm focus:outline-none transition-colors"
                     style={{
-                      borderColor: errors.email ? '#dc2626' : '#D8D7BE',
+                      borderColor: loginErrors.email ? '#dc2626' : '#D8D7BE',
                     }}
                     autoComplete="username"
                   />
                 </div>
 
-                {errors.email && (
+                {loginErrors.email && (
                   <p className="text-sm text-red-600 mt-2">
-                    {errors.email}
+                    {loginErrors.email}
                   </p>
                 )}
               </div>
@@ -129,23 +277,33 @@ export default function LoginSiswa() {
 
                   <input
                     id="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={data.password}
                     onChange={(e) => setData('password', e.target.value)}
                     placeholder="Masukkan password"
                     className="w-full pl-12 pr-12 py-3 bg-[#FDFCF8] border-2 rounded-xl text-sm focus:outline-none transition-colors"
                     style={{
-                      borderColor: errors.password ? '#dc2626' : '#D8D7BE',
+                      borderColor: loginErrors.password ? '#dc2626' : '#D8D7BE',
                     }}
                     autoComplete="current-password"
                   />
 
-                  <Eye className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 hover:text-gray-600"
+                  >
+                    {!showPassword ? (
+                      <Eye className="w-5 h-5" />
+                    ) : (
+                      <EyeOff className="w-5 h-5" />
+                    )}
+                  </button>
                 </div>
 
-                {errors.password && (
+                {loginErrors.password && (
                   <p className="text-sm text-red-600 mt-2">
-                    {errors.password}
+                    {loginErrors.password}
                   </p>
                 )}
               </div>

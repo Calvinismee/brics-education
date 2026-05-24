@@ -7,27 +7,34 @@ use App\Http\Controllers\Admin\PackageController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ScheduleController;
 use App\Http\Controllers\Admin\SettingController;
-use App\Models\Course;
-use App\Models\Transaction;
-use App\Models\Enrollment;
-use App\Models\Material;
-use App\Models\Notification;
-use App\Models\Schedule;
-use App\Models\User;
 use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\Admin\TutorHistoryController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Student\ProgressController;
 use App\Http\Controllers\Tutor\ClassMonitoringController as TutorClassMonitoringController;
 use App\Http\Controllers\Tutor\DashboardController as TutorDashboardController;
 use App\Http\Controllers\Tutor\MaterialController as TutorMaterialController;
 use App\Http\Controllers\Tutor\NotificationController as TutorNotificationController;
 use App\Http\Controllers\Tutor\ScheduleController as TutorScheduleController;
+use App\Models\Course;
+use App\Models\Enrollment;
+use App\Models\Material;
+use App\Models\Notification;
+use App\Models\Package;
+use App\Models\Schedule;
+use App\Models\Transaction;
+use App\Models\User;
+use App\Services\MidtransService;
+use App\Services\PackageEnrollmentService;
+use App\Support\AdminNotifier;
 use Illuminate\Foundation\Application;
-use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 if (! function_exists('studentScheduleWeekPayload')) {
@@ -105,13 +112,19 @@ if (! function_exists('studentScheduleWeekPayload')) {
 }
 
 Route::get('/', function () {
-    $courses = Course::with('category')
-        ->where('status', 'active')
-        ->orderBy('created_at', 'desc')
+    $packages = Package::with([
+        'courses' => fn ($query) => $query
+            ->with('category')
+            ->where('status', 'active')
+            ->orderBy('title'),
+    ])
+        ->whereHas('courses', fn ($query) => $query->where('status', 'active'))
+        ->orderByDesc('popular')
+        ->orderBy('name')
         ->get();
 
     return Inertia::render('LandingPage', [
-        'courses' => $courses,
+        'packages' => $packages,
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
         'laravelVersion' => Application::VERSION,
@@ -127,22 +140,82 @@ Route::get('/course/{course}', function (Course $course) {
     ]);
 })->name('course.detail');
 
-Route::get('/checkout/{course}', function (Course $course) {
-    $course->load('category');
+Route::get('/checkout/package/{package}', function (Package $package) {
+    $package->load([
+        'courses' => fn ($query) => $query
+            ->with('category')
+            ->where('status', 'active')
+            ->orderBy('title'),
+    ]);
 
     return Inertia::render('Checkout', [
-        'course' => $course,
+        'learningPackage' => $package,
     ]);
-})->name('checkout');
+})->middleware('auth')->name('checkout.package');
 
-Route::post('/checkout', [PaymentController::class, 'checkout'])->middleware('auth');
+Route::get('/checkout/{course}', fn () => redirect('/#katalog'))
+    ->whereNumber('course');
+
+Route::post('/checkout', function (Request $request, MidtransService $midtrans) {
+    $request->validate([
+        'package_id' => ['required', 'exists:packages,id'],
+        'payment_method' => ['required', 'string'],
+    ]);
+
+    $user = Auth::user();
+
+    if (! $user) {
+        return redirect()->route('login');
+    }
+
+    $package = Package::withCount([
+        'courses as active_courses_count' => fn ($query) => $query->where('status', 'active'),
+    ])->findOrFail($request->package_id);
+
+    if ($package->active_courses_count < 1) {
+        return back()->withErrors([
+            'package_id' => 'Paket ini belum memiliki course aktif.',
+        ]);
+    }
+
+    $transaction = Transaction::create([
+        'user_id' => $user->id,
+        'course_id' => null,
+        'package_id' => $package->id,
+        'invoice_number' => sprintf('INV-%s-%04d', now()->format('YmdHis'), random_int(0, 9999)),
+        'amount' => $package->price,
+        'payment_method' => $request->payment_method,
+        'payment_status' => 'pending',
+    ]);
+
+    try {
+        $snap = $midtrans->createSnapTransaction($transaction);
+    } catch (\Throwable $exception) {
+        $transaction->update(['payment_status' => 'failed']);
+
+        throw \Illuminate\Validation\ValidationException::withMessages([
+            'payment' => $exception->getMessage(),
+        ]);
+    }
+
+    $transaction->update([
+        'payment_gateway_ref' => $snap['token'] ?? null,
+    ]);
+
+    AdminNotifier::transactionPending($user, 'Paket: '.$package->name, $transaction->invoice_number);
+
+    return redirect()->route('payment.status', [
+        'transaction' => $transaction,
+        'pay' => 1,
+    ]);
+})->middleware('auth')->name('checkout');
 
 Route::get('/payment-status/{transaction}', [PaymentController::class, 'status'])->middleware('auth')->name('payment.status');
 Route::post('/payment-status/{transaction}/refresh', [PaymentController::class, 'refresh'])->middleware('auth')->name('payment.refresh');
 Route::post('/midtrans/notification', [PaymentController::class, 'notification'])->name('midtrans.notification');
 
 Route::get('/dashboard', function () {
-    if (!auth()->check()) {
+    if (! auth()->check()) {
         return redirect()->route('login');
     }
 
@@ -162,18 +235,41 @@ Route::get('/dashboard', function () {
         return redirect()->route('login');
     }
 
-    $enrollments = Enrollment::with('course.category')
+    $enrollments = Enrollment::with([
+        'package:id,name',
+        'course' => function ($courseQuery) {
+            $courseQuery
+                ->with('category')
+                ->withCount([
+                    'materials as approved_materials_count' => function ($materialQuery) {
+                        $materialQuery->where('approval_status', 'approved');
+                    },
+                ]);
+        },
+    ])
         ->where('user_id', $user->id)
         ->orderBy('created_at', 'desc')
         ->get();
 
-    $transactions = Transaction::with('course.category')
+    $transactions = Transaction::with(['course.category', 'package.courses.category'])
         ->where('user_id', $user->id)
         ->orderBy('created_at', 'desc')
+        ->get();
+
+    $availablePackages = Package::with([
+        'courses' => fn ($query) => $query
+            ->with('category')
+            ->where('status', 'active')
+            ->orderBy('title'),
+    ])
+        ->whereHas('courses', fn ($query) => $query->where('status', 'active'))
+        ->orderByDesc('popular')
+        ->orderBy('name')
         ->get();
 
     $activeCourseIds = $enrollments
         ->where('status', 'active')
+        ->whereNotNull('package_id')
         ->pluck('course_id');
 
     $schedulePayload = studentScheduleWeekPayload($activeCourseIds);
@@ -189,6 +285,7 @@ Route::get('/dashboard', function () {
         'user' => $user,
         'enrollments' => $enrollments,
         'transactions' => $transactions,
+        'availablePackages' => $availablePackages,
         'schedules' => $schedulePayload['events'],
         'scheduleDays' => $schedulePayload['days'],
         'scheduleWeek' => $schedulePayload['week'],
@@ -203,7 +300,7 @@ Route::get('/dashboard', function () {
 })->name('dashboard');
 
 Route::get('/course/{course}/learn', function (Course $course) {
-    if (!auth()->check()) {
+    if (! auth()->check()) {
         return redirect()->route('login');
     }
 
@@ -228,9 +325,9 @@ Route::get('/course/{course}/learn', function (Course $course) {
         ->where('status', 'active')
         ->first();
 
-    if (!$enrollment) {
+    if (! $enrollment) {
         return redirect()
-            ->to('/course/' . $course->id)
+            ->to('/course/'.$course->id)
             ->withErrors([
                 'course' => 'Kamu belum memiliki akses aktif ke course ini.',
             ]);
@@ -243,7 +340,18 @@ Route::get('/course/{course}/learn', function (Course $course) {
         ->orderBy('created_at')
         ->get();
 
-    $enrollments = Enrollment::with('course.category')
+    $enrollments = Enrollment::with([
+        'package:id,name',
+        'course' => function ($courseQuery) {
+            $courseQuery
+                ->with('category')
+                ->withCount([
+                    'materials as approved_materials_count' => function ($materialQuery) {
+                        $materialQuery->where('approval_status', 'approved');
+                    },
+                ]);
+        },
+    ])
         ->where('user_id', $user->id)
         ->where('status', 'active')
         ->orderBy('created_at', 'desc')
@@ -259,7 +367,7 @@ Route::get('/course/{course}/learn', function (Course $course) {
 })->name('course.learn');
 
 Route::get('/student/schedules', function () {
-    if (!auth()->check()) {
+    if (! auth()->check()) {
         return redirect()->route('login');
     }
 
@@ -294,7 +402,9 @@ Route::get('/student/schedules', function () {
     ]);
 })->name('student.schedules');
 
-Route::get('/login', fn () => Inertia::render('Auth/LoginSiswa'))->name('login');
+Route::get('/login', fn () => Inertia::render('Auth/LoginSiswa', [
+    'googleClientId' => config('services.google.client_id'),
+]))->name('login');
 Route::get('/login/tutor', fn () => Inertia::render('Auth/LoginTutor'))->name('login.tutor');
 Route::get('/login/admin', fn () => Inertia::render('Auth/LoginAdmin'))->name('login.admin');
 
@@ -388,8 +498,8 @@ Route::middleware('auth')->group(function () {
 
 // Student progress API
 Route::middleware('auth')->group(function () {
-    Route::get('/student/progress', [\App\Http\Controllers\Student\ProgressController::class, 'index']);
-    Route::post('/student/progress', [\App\Http\Controllers\Student\ProgressController::class, 'store']);
+    Route::get('/student/progress', [ProgressController::class, 'index']);
+    Route::post('/student/progress', [ProgressController::class, 'store']);
 });
 
 require __DIR__.'/auth.php';
