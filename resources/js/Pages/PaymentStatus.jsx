@@ -1,4 +1,5 @@
 import { Link, router } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 import BricsLogo from '@/Components/BricsLogo';
 import {
   CheckCircle,
@@ -53,13 +54,22 @@ function getPackageCategoryLabel(learningPackage) {
 
 function formatPaymentMethod(method) {
   if (method === 'transfer_bank') return 'Transfer Bank';
+  if (method === 'bank_transfer') return 'Transfer Bank';
   if (method === 'ewallet') return 'E-Wallet';
+  if (method === 'gopay') return 'GoPay';
+  if (method === 'shopeepay') return 'ShopeePay';
   if (method === 'qris') return 'QRIS';
+  if (method === 'midtrans') return 'Midtrans';
 
   return method || '-';
 }
 
-export default function PaymentStatus({ transaction }) {
+export default function PaymentStatus({ transaction, midtrans = {} }) {
+  const shouldAutoOpenSnap =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('pay') === '1';
+  const [snapReady, setSnapReady] = useState(false);
+  const [isOpeningSnap, setIsOpeningSnap] = useState(false);
   const course = transaction.course;
   const learningPackage = transaction.package;
   const packageCourses = getPackageCourses(learningPackage);
@@ -68,10 +78,51 @@ export default function PaymentStatus({ transaction }) {
   const productCategory = isPackageTransaction ? getPackageCategoryLabel(learningPackage) : getCourseCategoryName(course);
   const isSuccess = transaction.payment_status === 'success';
   const isPending = transaction.payment_status === 'pending';
+  const isFailed = transaction.payment_status === 'failed';
+  const canPayWithMidtrans = isPending && midtrans.snapToken && midtrans.clientKey;
 
-  const confirmPayment = () => {
-    router.post(`/payment-status/${transaction.id}/confirm`);
+  useEffect(() => {
+    if (!midtrans.snapJsUrl || !midtrans.clientKey || window.snap) {
+      setSnapReady(Boolean(window.snap));
+      return undefined;
+    }
+
+    const script = document.createElement('script');
+    script.src = midtrans.snapJsUrl;
+    script.setAttribute('data-client-key', midtrans.clientKey);
+    script.async = true;
+    script.onload = () => setSnapReady(true);
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, [midtrans.clientKey, midtrans.snapJsUrl]);
+
+  const refreshPaymentStatus = () => {
+    router.post(`/payment-status/${transaction.id}/refresh`, {}, {
+      preserveScroll: true,
+    });
   };
+
+  const openMidtransPayment = () => {
+    if (!canPayWithMidtrans || !window.snap) return;
+
+    setIsOpeningSnap(true);
+
+    window.snap.pay(midtrans.snapToken, {
+      onSuccess: refreshPaymentStatus,
+      onPending: refreshPaymentStatus,
+      onError: refreshPaymentStatus,
+      onClose: () => setIsOpeningSnap(false),
+    });
+  };
+
+  useEffect(() => {
+    if (shouldAutoOpenSnap && canPayWithMidtrans && snapReady) {
+      openMidtransPayment();
+    }
+  }, [shouldAutoOpenSnap, canPayWithMidtrans, snapReady]);
 
   return (
     <div
@@ -163,13 +214,15 @@ export default function PaymentStatus({ transaction }) {
                 className="text-3xl lg:text-4xl text-white mb-3"
                 style={{ fontWeight: 900, lineHeight: 1.2 }}
               >
-                {isSuccess ? 'Pembayaran Berhasil' : 'Transaksi Berhasil Dibuat'}
+                {isSuccess ? 'Pembayaran Berhasil' : isFailed ? 'Pembayaran Gagal' : 'Menunggu Pembayaran'}
               </h1>
 
               <p className="text-[#D8D7BE] text-sm lg:text-base leading-relaxed">
                 {isPending
-                  ? 'Transaksi kamu sudah tercatat dan menunggu konfirmasi pembayaran.'
-                  : 'Status pembayaran sudah berhasil. Paket dapat diakses melalui dashboard siswa.'}
+                  ? 'Transaksi kamu sudah tercatat. Selesaikan pembayaran melalui Midtrans agar paket aktif otomatis.'
+                  : isFailed
+                    ? 'Pembayaran tidak berhasil. Silakan buat transaksi baru dari halaman checkout.'
+                    : 'Status pembayaran sudah berhasil. Paket dapat diakses melalui dashboard siswa.'}
               </p>
             </div>
           </div>
@@ -326,7 +379,7 @@ export default function PaymentStatus({ transaction }) {
                       className={isSuccess ? 'text-green-800' : 'text-yellow-800'}
                       style={{ fontWeight: 900 }}
                     >
-                      {isSuccess ? 'Paket sudah aktif' : 'Menunggu konfirmasi pembayaran'}
+                      {isSuccess ? 'Paket sudah aktif' : isFailed ? 'Pembayaran gagal' : 'Menunggu pembayaran'}
                     </p>
 
                     <p
@@ -336,7 +389,9 @@ export default function PaymentStatus({ transaction }) {
                     >
                       {isSuccess
                         ? 'Pembayaran sudah berhasil. Kamu dapat membuka dashboard siswa untuk mengakses semua course dalam paket, materi, dan jadwal pembelajaran.'
-                        : 'Transaksi sudah dibuat dan sedang menunggu konfirmasi pembayaran. Setelah pembayaran berhasil, paket akan aktif.'}
+                        : isFailed
+                          ? 'Transaksi ini gagal.'
+                          : 'Setelah pembayaran berhasil, paket akan aktif otomatis.'}
                     </p>
                   </div>
                 </div>
@@ -375,7 +430,7 @@ export default function PaymentStatus({ transaction }) {
                     className={isSuccess ? 'text-green-800' : 'text-yellow-800'}
                     style={{ fontWeight: 900 }}
                   >
-                    {isSuccess ? 'Success' : 'Pending'}
+                    {isSuccess ? 'Success' : isFailed ? 'Failed' : 'Pending'}
                   </p>
 
                   <p className="text-xs text-gray-500 mt-2">
@@ -385,15 +440,16 @@ export default function PaymentStatus({ transaction }) {
               </div>
 
               <div className="p-6 space-y-3">
-                {isPending ? (
+                {canPayWithMidtrans ? (
                   <button
                     type="button"
-                    onClick={confirmPayment}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-white hover:bg-[#4A1412] transition-colors"
+                    onClick={openMidtransPayment}
+                    disabled={!snapReady || isOpeningSnap}
+                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-white hover:bg-[#4A1412] transition-colors disabled:opacity-70"
                     style={{ background: '#691D1B', fontWeight: 900 }}
                   >
-                    <CheckCircle className="w-5 h-5" />
-                    Konfirmasi Pembayaran Berhasil
+                    <CreditCard className="w-5 h-5" />
+                    {snapReady ? 'Bayar dengan Midtrans' : 'Menyiapkan Midtrans...'}
                   </button>
                 ) : (
                   <Link

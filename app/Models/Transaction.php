@@ -19,11 +19,23 @@ class Transaction extends Model
         'paid_at',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'amount' => 'decimal:2',
+            'paid_at' => 'datetime',
+        ];
+    }
+
     public function course()
     {
         return $this->belongsTo(Course::class);
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
     public function package()
     {
         return $this->belongsTo(Package::class);

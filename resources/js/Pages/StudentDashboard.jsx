@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, router, useForm } from '@inertiajs/react';
 import {
   Bell,
@@ -40,9 +40,9 @@ function formatPrice(price) {
 function formatDate(dateString) {
   if (!dateString) return '-';
 
-  const date = new Date(dateString);
+  const date = parseScheduleDate(dateString);
 
-  if (Number.isNaN(date.getTime())) {
+  if (!date) {
     return dateString;
   }
 
@@ -56,15 +56,73 @@ function formatDate(dateString) {
 function formatTime(dateString) {
   if (!dateString) return '-';
 
-  const date = new Date(dateString);
+  const date = parseScheduleDate(dateString);
 
-  if (Number.isNaN(date.getTime())) {
+  if (!date) {
     return dateString;
   }
 
   return date.toLocaleTimeString('id-ID', {
     hour: '2-digit',
     minute: '2-digit',
+  });
+}
+
+function dateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseScheduleDate(dateString) {
+  if (!dateString) return null;
+
+  const date = new Date(String(dateString).replace(' ', 'T'));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getMonday(date) {
+  const monday = new Date(date);
+  const day = monday.getDay();
+  const offset = (day + 6) % 7;
+  monday.setDate(monday.getDate() - offset);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
+function sameLocalDate(a, b) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function createWeekDays(baseDate = new Date()) {
+  const today = new Date();
+  const monday = getMonday(baseDate);
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+
+    return {
+      date,
+      dateKey: dateKey(date),
+      shortLabel: date.toLocaleDateString('id-ID', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+      }),
+      fullLabel: date.toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }),
+      isToday: sameLocalDate(date, today),
+    };
   });
 }
 
@@ -92,6 +150,16 @@ function getCategoryName(course) {
   return course.category.name || 'Tryout SNBT';
 }
 
+function scheduleType(schedule) {
+  const title = String(schedule?.title || '').toLowerCase();
+
+  if (schedule?.type) return schedule.type;
+  if (title.includes('deadline')) return 'deadline';
+  if (title.includes('review')) return 'review';
+  if (title.includes('konsultasi') || title.includes('consult')) return 'consultation';
+  return 'live';
+}
+
 const dashboardTabs = ['beranda', 'katalog', 'subtes', 'jadwal', 'profil'];
 
 function getInitialDashboardTab() {
@@ -108,6 +176,9 @@ export default function StudentDashboard({
   transactions = [],
   availablePackages = [],
   schedules = [],
+  scheduleDays = [],
+  scheduleWeek = null,
+  scheduleStats = {},
   materials = [],
   notifications: serverNotifications = [],
 }) {
@@ -122,6 +193,37 @@ export default function StudentDashboard({
     phone: user?.phone ?? '',
     school_origin: user?.school_origin ?? '',
   });
+  const [progressMap, setProgressMap] = useState({});
+  const [calendarNow, setCalendarNow] = useState(() => new Date());
+  const [selectedScheduleDateKey, setSelectedScheduleDateKey] = useState(null);
+
+  useEffect(() => {
+    fetch('/student/progress')
+      .then((res) => res.json())
+      .then((data) => {
+        const map = {};
+        (data.courses || []).forEach((c) => {
+          if (c.course_id) map[c.course_id] = c.percent;
+        });
+        setProgressMap(map);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const nextDay = new Date();
+    nextDay.setDate(nextDay.getDate() + 1);
+    nextDay.setHours(0, 0, 0, 0);
+
+    const timeout = nextDay.getTime() - new Date().getTime();
+    const timer = setTimeout(() => {
+      const now = new Date();
+      setCalendarNow(now);
+      setSelectedScheduleDateKey(null);
+    }, timeout + 1000);
+
+    return () => clearTimeout(timer);
+  }, [calendarNow]);
 
   const activeEnrollments = enrollments.filter((item) => item.status === 'active');
   const activePackageEnrollments = activeEnrollments.filter((item) => item.package_id || item.package?.id);
@@ -143,6 +245,56 @@ export default function StudentDashboard({
     ? serverNotifications
     : Object.values(serverNotifications ?? {});
   const materialItems = Array.isArray(materials) ? materials : Object.values(materials ?? {});
+  const weekDays = useMemo(() => {
+    const serverDays = asArray(scheduleDays);
+
+    if (serverDays.length > 0 && serverDays.every((day) => Array.isArray(day.events))) {
+      return serverDays.map((day) => {
+        const date = parseScheduleDate(`${day.dayKey}T00:00:00`) ?? new Date();
+
+        return {
+          date,
+          dateKey: day.dayKey,
+          shortLabel: day.dateShort,
+          fullLabel: day.date,
+          isToday: day.isToday,
+          events: day.events,
+        };
+      });
+    }
+
+    return createWeekDays(calendarNow).map((day) => ({
+      ...day,
+      events: [],
+    }));
+  }, [calendarNow, scheduleDays]);
+  const weekDateKeys = useMemo(
+    () => new Set(weekDays.map((day) => day.dateKey)),
+    [weekDays]
+  );
+  const schedulesThisWeek = useMemo(() => {
+    if (weekDays.some((day) => day.events.length > 0)) {
+      return weekDays.flatMap((day) => day.events);
+    }
+
+    return schedules.filter((schedule) => {
+      const date = parseScheduleDate(schedule.start_time);
+      return date ? weekDateKeys.has(dateKey(date)) : false;
+    });
+  }, [schedules, weekDateKeys, weekDays]);
+  const selectedWeekDay = weekDays.find((day) => day.dateKey === selectedScheduleDateKey)
+    ?? weekDays.find((day) => day.isToday)
+    ?? weekDays[0];
+  const selectedDaySchedules = useMemo(() => {
+    if (selectedWeekDay.events.length > 0) {
+      return selectedWeekDay.events;
+    }
+
+    return schedulesThisWeek.filter((schedule) => {
+      const date = parseScheduleDate(schedule.start_time);
+      return date ? dateKey(date) === selectedWeekDay.dateKey : false;
+    });
+  }, [schedulesThisWeek, selectedWeekDay]);
 
   const fallbackSubtesItems = [
     {
@@ -202,7 +354,7 @@ export default function StudentDashboard({
         id: enrollment.course_id,
         title: course.title || `Course ${index + 1}`,
         category: getCategoryName(course),
-        progress: 0,
+        progress: progressMap[enrollment.course_id] ?? 0,
         color,
         iconBg: '#F8EDED',
         iconColor: color,
@@ -985,7 +1137,7 @@ export default function StudentDashboard({
   );
 
   const SchedulePreviewCard = () => {
-    const previewSchedules = schedules.slice(0, 2);
+    const previewSchedules = schedulesThisWeek.slice(0, 2);
 
     return (
       <section className="bg-white rounded-2xl border border-[#D8D7BE] shadow-sm overflow-hidden">
@@ -1037,7 +1189,7 @@ export default function StudentDashboard({
                     </span>
                   </div>
                   <p className="text-sm text-gray-400">
-                    {formatTime(schedule.start_time)} - {formatTime(schedule.end_time)}
+                    {schedule.time || `${formatTime(schedule.start_time)} - ${formatTime(schedule.end_time)}`}
                     {' '}• {schedule.course?.title || currentPackageName}
                   </p>
                 </div>
@@ -1359,18 +1511,19 @@ export default function StudentDashboard({
         </div>
 
         <div className="flex flex-wrap gap-3 mb-6">
-          {['Sen, 5 Mei', 'Sel, 6 Mei', 'Rab, 7 Mei', 'Kam, 8 Mei', 'Jum, 9 Mei', 'Sab, 10 Mei'].map((day, index) => (
+          {weekDays.map((day) => (
             <button
-              key={day}
+              key={day.dateKey}
               type="button"
+              onClick={() => setSelectedScheduleDateKey(day.dateKey)}
               className={`px-5 py-2.5 rounded-xl border text-sm ${
-                index === 0
+                day.dateKey === selectedWeekDay.dateKey
                   ? 'bg-[#691D1B] text-white border-[#691D1B]'
                   : 'bg-white text-gray-500 border-[#D8D7BE]'
               }`}
               style={{ fontWeight: 800 }}
             >
-              {day}
+              {day.shortLabel}
             </button>
           ))}
         </div>
@@ -1378,27 +1531,29 @@ export default function StudentDashboard({
         <div className="mb-4 flex items-center gap-3">
           <CalendarDays className="w-5 h-5 text-[#691D1B]" />
           <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
-            Senin, 5 Mei 2026
+            {selectedWeekDay.fullLabel}
           </h2>
-          <span
-            className="px-3 py-1 rounded-full text-xs"
-            style={{
-              background: '#FFE882',
-              color: '#691D1B',
-              fontWeight: 900,
-            }}
-          >
-            Hari ini
-          </span>
+          {selectedWeekDay.isToday && (
+            <span
+              className="px-3 py-1 rounded-full text-xs"
+              style={{
+                background: '#FFE882',
+                color: '#691D1B',
+                fontWeight: 900,
+              }}
+            >
+              Hari ini
+            </span>
+          )}
         </div>
 
         <div className="space-y-4 mb-6">
-          {schedules.length === 0 ? (
+          {selectedDaySchedules.length === 0 ? (
             <div className="bg-white rounded-2xl border border-[#D8D7BE] p-7 text-center text-gray-500">
-              Belum ada jadwal untuk course aktifmu.
+              Belum ada jadwal untuk tanggal ini.
             </div>
           ) : (
-            schedules.map((schedule, index) => {
+            selectedDaySchedules.map((schedule, index) => {
               const isConsultation = index % 2 === 1;
 
               return (
@@ -1447,7 +1602,7 @@ export default function StudentDashboard({
 
                     <p className="text-sm text-gray-400">
                       <Clock className="inline w-4 h-4 mr-1" />
-                      {formatTime(schedule.start_time)} - {formatTime(schedule.end_time)}
+                      {schedule.time || `${formatTime(schedule.start_time)} - ${formatTime(schedule.end_time)}`}
                       {' '}
                       <span className="mx-1">•</span>
                       Zoom Meeting
@@ -1486,28 +1641,28 @@ export default function StudentDashboard({
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="rounded-xl p-4 text-center" style={{ background: '#F7F2E7' }}>
               <p className="text-2xl text-[#691D1B]" style={{ fontWeight: 900 }}>
-                {schedules.length}
+                {scheduleStats.totalThisWeek ?? schedulesThisWeek.length}
               </p>
               <p className="text-sm text-gray-500">Total Sesi</p>
             </div>
 
             <div className="rounded-xl p-4 text-center" style={{ background: '#F7F2E7' }}>
               <p className="text-2xl text-[#691D1B]" style={{ fontWeight: 900 }}>
-                {schedules.filter((_, index) => index % 2 === 0).length}
+                {scheduleStats.totalLive ?? schedulesThisWeek.filter((schedule) => scheduleType(schedule) === 'live').length}
               </p>
               <p className="text-sm text-gray-500">Live Class</p>
             </div>
 
             <div className="rounded-xl p-4 text-center" style={{ background: '#F7F2E7' }}>
               <p className="text-2xl text-pink-600" style={{ fontWeight: 900 }}>
-                2
+                {scheduleStats.totalDeadlines ?? schedulesThisWeek.filter((schedule) => scheduleType(schedule) === 'deadline').length}
               </p>
               <p className="text-sm text-gray-500">Deadline</p>
             </div>
 
             <div className="rounded-xl p-4 text-center" style={{ background: '#F7F2E7' }}>
               <p className="text-2xl text-purple-600" style={{ fontWeight: 900 }}>
-                2
+                {scheduleStats.totalReviews ?? schedulesThisWeek.filter((schedule) => scheduleType(schedule) === 'review').length}
               </p>
               <p className="text-sm text-gray-500">Tryout</p>
             </div>

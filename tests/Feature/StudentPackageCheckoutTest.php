@@ -3,6 +3,7 @@
 use App\Models\Transaction;
 use App\Services\PackageEnrollmentService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('landing page menampilkan paket aktif, bukan katalog course untuk dibeli', function () {
@@ -71,6 +72,14 @@ test('student hanya dapat membuat transaksi checkout paket', function () {
         'course_id' => $course['id'],
     ]);
 
+    Http::fake([
+        'https://app.sandbox.midtrans.com/snap/v1/transactions' => Http::response([
+            'token' => 'snap-token-package-001',
+            'redirect_url' => 'https://app.sandbox.midtrans.com/snap/v2/vtweb/snap-token-package-001',
+        ]),
+    ]);
+    config(['services.midtrans.server_key' => 'SB-Mid-server-test']);
+
     $response = $this->actingAs($student)
         ->post(route('checkout'), [
             'package_id' => $package->id,
@@ -79,16 +88,19 @@ test('student hanya dapat membuat transaksi checkout paket', function () {
 
     $transaction = Transaction::query()->latest('id')->first();
 
-    $response->assertRedirect('/payment-status/'.$transaction->id);
+    $response->assertRedirect('/payment-status/'.$transaction->id.'?pay=1');
 
     expect($transaction->user_id)->toBe($student->id);
     expect($transaction->course_id)->toBeNull();
     expect($transaction->package_id)->toBe($package->id);
     expect($transaction->amount)->toBe('499000.00');
     expect($transaction->payment_status)->toBe('pending');
+    expect($transaction->payment_gateway_ref)->toBe('snap-token-package-001');
 });
 
-test('konfirmasi pembayaran paket mengaktifkan semua course dalam paket', function () {
+test('notifikasi midtrans sukses mengaktifkan semua course dalam paket', function () {
+    config(['services.midtrans.server_key' => 'SB-Mid-server-test']);
+
     $student = studentUser();
     $firstCourse = courseRecord([
         'title' => 'Literasi Bahasa Indonesia',
@@ -117,8 +129,25 @@ test('konfirmasi pembayaran paket mengaktifkan semua course dalam paket', functi
         'updated_at' => now(),
     ]);
 
-    $this->post(route('payment.confirm', $transactionId))
-        ->assertRedirect('/payment-status/'.$transactionId);
+    $payload = [
+        'order_id' => 'INV-PACKAGE-001',
+        'status_code' => '200',
+        'gross_amount' => '15000.00',
+        'transaction_status' => 'settlement',
+        'payment_type' => 'qris',
+        'fraud_status' => 'accept',
+    ];
+    $payload['signature_key'] = hash(
+        'sha512',
+        $payload['order_id'].
+        $payload['status_code'].
+        $payload['gross_amount'].
+        config('services.midtrans.server_key')
+    );
+
+    $this->postJson(route('midtrans.notification'), $payload)
+        ->assertOk()
+        ->assertJson(['message' => 'OK']);
 
     foreach ([$firstCourse, $secondCourse] as $course) {
         $this->assertDatabaseHas('enrollments', [

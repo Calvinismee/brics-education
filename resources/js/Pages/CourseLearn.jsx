@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Link, router, useForm } from '@inertiajs/react';
+import { useMemo, useState, useEffect } from 'react';
+import { Link, router } from '@inertiajs/react';
 import {
   ArrowLeft,
   Bell,
@@ -211,6 +211,30 @@ export default function CourseLearn({
       }));
   }, [materials]);
 
+  // Track progress (after normalizedMaterials is defined)
+  useEffect(() => {
+    if (!course?.id || normalizedMaterials.length === 0) return;
+    const materialsViewed = activeMaterialIndex !== null ? activeMaterialIndex + 1 : 0;
+    const percent = Math.round((materialsViewed / normalizedMaterials.length) * 100);
+
+    // Get CSRF token from meta tag
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    fetch('/student/progress', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': csrfToken,
+      },
+      body: JSON.stringify({
+        course_id: course.id,
+        material_id: materials[activeMaterialIndex]?.id || null,
+        percent,
+        status: 'in_progress',
+      }),
+    }).catch(() => {});
+  }, [activeMaterialIndex, course?.id, materials, normalizedMaterials.length]);
+
   const hasMaterials = normalizedMaterials.length > 0;
   const videoMaterials = normalizedMaterials.filter(
     (material) => material.type === 'video' && youtubeEmbedUrl(material.content)
@@ -232,7 +256,7 @@ export default function CourseLearn({
     (material) => material.type === 'bank_soal' || material.type === 'quiz'
   );
 
-  const completedCount = Math.min(2, normalizedMaterials.length);
+  const completedCount = activeMaterialIndex !== null ? activeMaterialIndex + 1 : 0;
   const courseColors = ['#691D1B', '#0F7A45', '#2447C6', '#D5A018', '#7C3AED', '#C2410C', '#0F766E'];
   const activeEnrollments = Array.isArray(enrollments) ? enrollments : Object.values(enrollments ?? {});
   const sidebarCourseItems = activeEnrollments.length > 0
