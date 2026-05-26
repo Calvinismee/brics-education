@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Receipt,
   Layers,
+  LoaderCircle,
   Package as PackageIcon,
 } from 'lucide-react';
 
@@ -70,6 +71,7 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
     new URLSearchParams(window.location.search).get('pay') === '1';
   const [snapReady, setSnapReady] = useState(false);
   const [isOpeningSnap, setIsOpeningSnap] = useState(false);
+  const [isRedirectingToDashboard, setIsRedirectingToDashboard] = useState(false);
   const course = transaction.course;
   const learningPackage = transaction.package;
   const packageCourses = getPackageCourses(learningPackage);
@@ -105,15 +107,32 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
     });
   };
 
+  const redirectToDashboardAfterSuccess = () => {
+    setIsOpeningSnap(false);
+    setIsRedirectingToDashboard(true);
+
+    router.post(`/payment-status/${transaction.id}/refresh`, {}, {
+      preserveScroll: true,
+      onSuccess: () => router.visit('/dashboard'),
+      onError: () => setIsRedirectingToDashboard(false),
+    });
+  };
+
   const openMidtransPayment = () => {
     if (!canPayWithMidtrans || !window.snap) return;
 
     setIsOpeningSnap(true);
 
     window.snap.pay(midtrans.snapToken, {
-      onSuccess: refreshPaymentStatus,
-      onPending: refreshPaymentStatus,
-      onError: refreshPaymentStatus,
+      onSuccess: redirectToDashboardAfterSuccess,
+      onPending: () => {
+        setIsOpeningSnap(false);
+        refreshPaymentStatus();
+      },
+      onError: () => {
+        setIsOpeningSnap(false);
+        refreshPaymentStatus();
+      },
       onClose: () => setIsOpeningSnap(false),
     });
   };
@@ -132,6 +151,22 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >
+      {isRedirectingToDashboard && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/55 px-6">
+          <div className="w-full max-w-sm rounded-2xl bg-white border border-[#D8D7BE] p-6 text-center shadow-xl">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#FFE882] text-[#691D1B]">
+              <LoaderCircle className="h-7 w-7 animate-spin" />
+            </div>
+            <h2 className="text-xl text-gray-900" style={{ fontWeight: 900 }}>
+              Pembayaran berhasil
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600">
+              Paket sedang diaktifkan. Kamu akan diarahkan ke dashboard.
+            </p>
+          </div>
+        </div>
+      )}
+
       <header className="bg-white border-b border-[#D8D7BE] sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
           <Link href="/">
