@@ -2,7 +2,7 @@ import { Link } from "@inertiajs/react";
 import {
   Home, BookOpen, Upload, Users, Bell, LogOut, Calendar, Clock,
   AlertCircle, TrendingUp, Star, CheckCircle, ChevronRight, ChevronDown,
-  Pencil, User, Settings as SettingsIcon, Video, ExternalLink,
+  Pencil, User, Settings as SettingsIcon, Video, ExternalLink, Menu, X,
 } from "lucide-react";
 import { BricsLogo } from "@/Components/BricsLogo";
 import { TutorProfileModal } from "@/Components/TutorProfileModal";
@@ -56,6 +56,7 @@ export function TutorDashboard({
   const shouldOpenProfile = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("edit_profile") === "1";
   const [showProfileModal, setShowProfileModal] = useState(shouldOpenProfile);
   const [classDropdownOpen, setClassDropdownOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const todaySchedule = asArray(serverTodaySchedule);
   const notifications = asArray(serverNotifications).map((notification) => ({
@@ -104,28 +105,102 @@ export function TutorDashboard({
 
   return (
     <div className="min-h-screen flex" style={{ background: "#F7F2E7", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      <style>
+        {`
+          @keyframes tutorDrawerSlideIn {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+          }
+
+          @keyframes tutorDrawerFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+
+          .tutor-drawer-panel {
+            animation: tutorDrawerSlideIn 240ms ease-out both;
+          }
+
+          .tutor-drawer-backdrop {
+            animation: tutorDrawerFadeIn 180ms ease-out both;
+          }
+
+          @media (prefers-reduced-motion: reduce) {
+            .tutor-drawer-panel,
+            .tutor-drawer-backdrop {
+              animation: none;
+            }
+          }
+        `}
+      </style>
       {/* Sidebar */}
-      <TutorSidebar user={user} tutorClasses={tutorClasses} active="dashboard" onEditProfile={() => setShowProfileModal(true)} />
+      <div className="hidden flex-shrink-0 lg:block">
+        <TutorSidebar user={user} tutorClasses={tutorClasses} active="dashboard" onEditProfile={() => setShowProfileModal(true)} />
+      </div>
+
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            className="tutor-drawer-backdrop absolute inset-0 bg-black/40"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Tutup menu tutor"
+          />
+
+          <div className="tutor-drawer-panel relative h-full w-[min(20rem,85vw)]">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#691D1B]"
+              aria-label="Tutup menu"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <TutorSidebar
+              user={user}
+              tutorClasses={tutorClasses}
+              active="dashboard"
+              drawer
+              onEditProfile={() => {
+                setSidebarOpen(false);
+                setShowProfileModal(true);
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
         {/* Header */}
-        <header className="bg-white border-b border-[#D8D7BE] px-6 py-3.5 flex-shrink-0 sticky top-0 z-10 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-gray-900" style={{ fontWeight: 700 }}>Dashboard Tutor</h2>
-              <p className="text-xs text-gray-400">Selamat datang kembali, {tutorName}!</p>
+        <header className="bg-white border-b border-[#D8D7BE] px-4 py-3 sm:px-5 lg:px-6 lg:py-3.5 flex-shrink-0 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[#D8D7BE] text-[#691D1B] lg:hidden"
+                aria-label="Buka menu tutor"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+
+              <div className="min-w-0">
+                <h2 className="truncate text-gray-900" style={{ fontWeight: 700 }}>Dashboard Tutor</h2>
+                <p className="truncate text-xs text-gray-400">Selamat datang kembali, {tutorName}!</p>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-shrink-0 items-center gap-3">
               <TutorNotificationBell />
  
             </div>
           </div>
         </header>
 
-        <div className="flex-1 p-6 overflow-auto">
+        <div className="flex-1 overflow-auto px-4 py-5 sm:px-5 sm:py-6 lg:px-6">
           {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {statsCards.map((stat, i) => (
               <div key={i} className="bg-white rounded-xl p-4 shadow-sm border border-[#D8D7BE]">
                 <div
@@ -134,18 +209,18 @@ export function TutorDashboard({
                 >
                   {stat.icon}
                 </div>
-                <div className="text-xl text-gray-900" style={{ fontWeight: 800 }}>{stat.value}</div>
+                <div className="break-words text-xl text-gray-900" style={{ fontWeight: 800 }}>{stat.value}</div>
                 <div className="text-xs text-gray-500">{stat.label}</div>
                 <div className="text-xs mt-1" style={{ color: "#691D1B", fontWeight: 600 }}>{stat.change}</div>
               </div>
             ))}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 lg:gap-6 mb-6">
             {/* Today's Schedule */}
             <div className="bg-white rounded-2xl shadow-sm border border-[#D8D7BE] overflow-hidden">
-              <div className="p-5 border-b border-[#F7F2E7] flex items-center justify-between">
-                <div>
+              <div className="p-4 sm:p-5 border-b border-[#F7F2E7] flex items-center justify-between gap-3">
+                <div className="min-w-0">
                   <h3 className="text-gray-900" style={{ fontWeight: 700 }}>Jadwal Hari Ini</h3>
                   <p className="text-xs text-gray-400">Agenda mengajar UTBK</p>
                 </div>
@@ -161,20 +236,20 @@ export function TutorDashboard({
                 ) : todaySchedule.map((s) => {
                   const style = statusStyle(s.status);
                   return (
-                    <div key={s.id} className="p-4 flex items-center gap-4">
+                    <div key={s.id} className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                       <div
-                        className="text-center p-2 rounded-lg min-w-[80px]"
+                        className="text-center p-2 rounded-lg sm:min-w-[80px]"
                         style={{ background: "#F7F2E7" }}
                       >
                         <Clock className="w-4 h-4 mx-auto mb-1" style={{ color: "#691D1B" }} />
                         <p className="text-xs text-gray-600" style={{ fontWeight: 600 }}>{s.time}</p>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-800 truncate" style={{ fontWeight: 600 }}>{s.course}</p>
+                        <p className="break-words text-sm text-gray-800" style={{ fontWeight: 600 }}>{s.course}</p>
                         <p className="text-xs text-gray-400">{s.students} siswa</p>
                       </div>
                       <span
-                        className="text-xs px-3 py-1 rounded-full flex-shrink-0"
+                        className="self-start text-xs px-3 py-1 rounded-full flex-shrink-0 sm:self-auto"
                         style={{ background: style.bg, color: style.text, fontWeight: 600 }}
                       >
                         {style.label}
@@ -184,7 +259,7 @@ export function TutorDashboard({
                           href={s.start_session_url || `/tutor/schedule/${s.id}/start`}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white hover:bg-[#4A1412]"
+                          className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white hover:bg-[#4A1412] sm:w-auto"
                           style={{ background: "#691D1B", fontWeight: 700 }}
                         >
                           <Video className="w-3.5 h-3.5" />
@@ -194,7 +269,7 @@ export function TutorDashboard({
                       ) : (
                         <button
                           type="button"
-                          className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-400"
+                          className="inline-flex min-h-10 w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-400 sm:w-auto"
                           title="Tambahkan link meeting dari halaman jadwal"
                         >
                           <Video className="w-3.5 h-3.5" />
@@ -219,8 +294,8 @@ export function TutorDashboard({
 
             {/* Notifications */}
             <div className="bg-white rounded-2xl shadow-sm border border-[#D8D7BE] overflow-hidden">
-              <div className="p-5 border-b border-[#F7F2E7] flex items-center justify-between">
-                <div>
+              <div className="p-4 sm:p-5 border-b border-[#F7F2E7] flex items-center justify-between gap-3">
+                <div className="min-w-0">
                   <h3 className="text-gray-900" style={{ fontWeight: 700 }}>Notifikasi</h3>
                   <p className="text-xs text-gray-400">3 notifikasi terbaru</p>
                 </div>
@@ -241,9 +316,9 @@ export function TutorDashboard({
                         className="w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0"
                         style={{ background: s.dot }}
                       />
-                      <div className="flex-1">
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm text-gray-900" style={{ fontWeight: 700 }}>{n.title}</p>
-                        <p className="text-sm text-gray-700">{n.message}</p>
+                        <p className="break-words text-sm text-gray-700">{n.message}</p>
                         <p className="text-xs text-gray-400 mt-1">{n.time}</p>
                       </div>
                     </div>
@@ -255,14 +330,14 @@ export function TutorDashboard({
 
           {/* Teaching History */}
           <div className="bg-white rounded-2xl shadow-sm border border-[#D8D7BE] overflow-hidden">
-            <div className="p-5 border-b border-[#F7F2E7] flex items-center justify-between">
-              <div>
+            <div className="p-4 sm:p-5 border-b border-[#F7F2E7] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
                 <h3 className="text-gray-900" style={{ fontWeight: 700 }}>Riwayat Mengajar</h3>
                 <p className="text-xs text-gray-400">5 sesi terakhir dari jadwal yang sudah selesai</p>
               </div>
               <Link
                 href="/tutor/history"
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs text-white hover:bg-[#4A1412]"
+                className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs text-white hover:bg-[#4A1412] sm:w-auto"
                 style={{ background: "#691D1B", fontWeight: 700 }}
               >
                 Lihat Semua
@@ -277,31 +352,31 @@ export function TutorDashboard({
                   <p className="mt-1 text-xs text-gray-400">Sesi akan masuk riwayat setelah jadwal selesai.</p>
                 </div>
               ) : teachingHistory.map((h) => (
-                <div key={h.id} className="p-5">
+                <div key={h.id} className="p-4 sm:p-5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm text-gray-800" style={{ fontWeight: 700 }}>{h.title}</p>
-                      <p className="text-xs text-gray-400">{h.course}</p>
+                    <div className="min-w-0">
+                      <p className="break-words text-sm text-gray-800" style={{ fontWeight: 700 }}>{h.title}</p>
+                      <p className="break-words text-xs text-gray-400">{h.course}</p>
                       <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
                         <span className="rounded-full bg-[#F7F2E7] px-2.5 py-1">{h.date}</span>
                         <span className="rounded-full bg-[#F7F2E7] px-2.5 py-1">{h.time}</span>
                         <span className="rounded-full bg-[#F7F2E7] px-2.5 py-1">{h.students} siswa</span>
                       </div>
                     </div>
-                    <div className="flex shrink-0 gap-2">
+                    <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
                       {h.meeting_link && (
                         <a
                           href={h.meeting_link}
                           target="_blank"
                           rel="noreferrer"
-                          className="rounded-lg border border-[#D8D7BE] px-3 py-2 text-xs text-gray-600 hover:bg-[#F7F2E7]"
+                          className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[#D8D7BE] px-3 py-2 text-xs text-gray-600 hover:bg-[#F7F2E7]"
                         >
                           Link sesi
                         </a>
                       )}
                       <Link
                         href={classDetailHref(h.course, h.course_id)}
-                        className="rounded-lg px-3 py-2 text-xs text-white hover:bg-[#4A1412]"
+                        className="inline-flex min-h-10 items-center justify-center rounded-lg px-3 py-2 text-xs text-white hover:bg-[#4A1412]"
                         style={{ background: "#691D1B", fontWeight: 700 }}
                       >
                         Detail
@@ -322,4 +397,3 @@ export function TutorDashboard({
 }
 
 export default TutorDashboard;
-

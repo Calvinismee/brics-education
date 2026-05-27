@@ -21,35 +21,38 @@ class MidtransService
             ?? $transaction->course?->title
             ?? 'Brics Education';
 
+        $payload = [
+            'transaction_details' => [
+                'order_id' => $transaction->invoice_number,
+                'gross_amount' => (int) round((float) $transaction->amount),
+            ],
+            'item_details' => [
+                [
+                    'id' => $itemId,
+                    'price' => (int) round((float) $transaction->amount),
+                    'quantity' => 1,
+                    'name' => mb_substr($itemName, 0, 50),
+                ],
+            ],
+            'customer_details' => [
+                'first_name' => $transaction->user?->name ?? 'Siswa Brics',
+                'email' => $transaction->user?->email,
+            ],
+            'enabled_payments' => $this->enabledPayments($transaction->payment_method),
+            'credit_card' => [
+                'secure' => (bool) config('services.midtrans.is_3ds', true),
+            ],
+        ];
+
+        $callbacks = $this->browserCallbackUrls($transaction);
+
+        if ($callbacks !== []) {
+            $payload['callbacks'] = $callbacks;
+        }
+
         $response = Http::withBasicAuth($this->serverKey(), '')
             ->acceptJson()
-            ->post($this->snapBaseUrl().'/snap/v1/transactions', [
-                'transaction_details' => [
-                    'order_id' => $transaction->invoice_number,
-                    'gross_amount' => (int) round((float) $transaction->amount),
-                ],
-                'item_details' => [
-                    [
-                        'id' => $itemId,
-                        'price' => (int) round((float) $transaction->amount),
-                        'quantity' => 1,
-                        'name' => mb_substr($itemName, 0, 50),
-                    ],
-                ],
-                'customer_details' => [
-                    'first_name' => $transaction->user?->name ?? 'Siswa Brics',
-                    'email' => $transaction->user?->email,
-                ],
-                'enabled_payments' => $this->enabledPayments($transaction->payment_method),
-                'callbacks' => [
-                    'finish' => route('payment.status', $transaction),
-                    'unfinish' => route('payment.status', $transaction),
-                    'error' => route('payment.status', $transaction),
-                ],
-                'credit_card' => [
-                    'secure' => (bool) config('services.midtrans.is_3ds', true),
-                ],
-            ]);
+            ->post($this->snapBaseUrl().'/snap/v1/transactions', $payload);
 
         try {
             $response->throw();
@@ -112,6 +115,33 @@ class MidtransService
             'qris' => ['qris'],
             default => [],
         };
+    }
+
+    private function browserCallbackUrls(Transaction $transaction): array
+    {
+        $callbackUrl = route('payment.status', $transaction);
+
+        if (! $this->isPublicHttpsUrl($callbackUrl)) {
+            return [];
+        }
+
+        return [
+            'finish' => $callbackUrl,
+            'unfinish' => $callbackUrl,
+            'error' => $callbackUrl,
+        ];
+    }
+
+    private function isPublicHttpsUrl(string $url): bool
+    {
+        $scheme = parse_url($url, PHP_URL_SCHEME);
+        $host = parse_url($url, PHP_URL_HOST);
+
+        if ($scheme !== 'https' || ! $host) {
+            return false;
+        }
+
+        return ! in_array($host, ['localhost', '127.0.0.1', '::1'], true);
     }
 
     private function snapBaseUrl(): string

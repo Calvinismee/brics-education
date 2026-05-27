@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import BricsLogo from '@/Components/BricsLogo';
 import {
   CheckCircle,
@@ -72,6 +72,8 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
   const [snapReady, setSnapReady] = useState(false);
   const [isOpeningSnap, setIsOpeningSnap] = useState(false);
   const [isRedirectingToDashboard, setIsRedirectingToDashboard] = useState(false);
+  const isSnapOpeningRef = useRef(false);
+  const openedSnapTokenRef = useRef(null);
   const course = transaction.course;
   const learningPackage = transaction.package;
   const packageCourses = getPackageCourses(learningPackage);
@@ -101,14 +103,19 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
     };
   }, [midtrans.clientKey, midtrans.snapJsUrl]);
 
-  const refreshPaymentStatus = () => {
+  const refreshPaymentStatus = useCallback(() => {
     router.post(`/payment-status/${transaction.id}/refresh`, {}, {
       preserveScroll: true,
     });
-  };
+  }, [transaction.id]);
 
-  const redirectToDashboardAfterSuccess = () => {
+  const closeSnapLoadingState = useCallback(() => {
+    isSnapOpeningRef.current = false;
     setIsOpeningSnap(false);
+  }, []);
+
+  const redirectToDashboardAfterSuccess = useCallback(() => {
+    closeSnapLoadingState();
     setIsRedirectingToDashboard(true);
 
     router.post(`/payment-status/${transaction.id}/refresh`, {}, {
@@ -116,32 +123,42 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
       onSuccess: () => router.visit('/dashboard'),
       onError: () => setIsRedirectingToDashboard(false),
     });
-  };
+  }, [closeSnapLoadingState, transaction.id]);
 
-  const openMidtransPayment = () => {
-    if (!canPayWithMidtrans || !window.snap) return;
+  const openMidtransPayment = useCallback(() => {
+    if (!canPayWithMidtrans || !window.snap || isSnapOpeningRef.current) return;
 
+    isSnapOpeningRef.current = true;
     setIsOpeningSnap(true);
 
     window.snap.pay(midtrans.snapToken, {
       onSuccess: redirectToDashboardAfterSuccess,
       onPending: () => {
-        setIsOpeningSnap(false);
+        closeSnapLoadingState();
         refreshPaymentStatus();
       },
       onError: () => {
-        setIsOpeningSnap(false);
+        closeSnapLoadingState();
         refreshPaymentStatus();
       },
-      onClose: () => setIsOpeningSnap(false),
+      onClose: closeSnapLoadingState,
     });
-  };
+  }, [
+    canPayWithMidtrans,
+    closeSnapLoadingState,
+    midtrans.snapToken,
+    redirectToDashboardAfterSuccess,
+    refreshPaymentStatus,
+  ]);
 
   useEffect(() => {
     if (shouldAutoOpenSnap && canPayWithMidtrans && snapReady) {
+      if (openedSnapTokenRef.current === midtrans.snapToken) return;
+
+      openedSnapTokenRef.current = midtrans.snapToken;
       openMidtransPayment();
     }
-  }, [shouldAutoOpenSnap, canPayWithMidtrans, snapReady]);
+  }, [shouldAutoOpenSnap, canPayWithMidtrans, midtrans.snapToken, openMidtransPayment, snapReady]);
 
   return (
     <div

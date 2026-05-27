@@ -695,6 +695,13 @@ export default function StudentDashboard({
           label="Jadwal"
           onClick={() => changeTab('jadwal')}
         />
+
+        <SidebarMenuButton
+          active={activeTab === 'profil'}
+          icon={Pencil}
+          label="Profil"
+          onClick={() => changeTab('profil')}
+        />
       </nav>
 
       <div className="px-3.5 py-4 border-t border-white/10 space-y-2 mt-auto">
@@ -713,7 +720,7 @@ export default function StudentDashboard({
   );
 
   const NotificationDropdown = () => (
-    <div className="absolute right-0 top-12 w-72 bg-white rounded-2xl border border-[#D8D7BE] shadow-xl overflow-hidden z-50">
+    <div className="absolute right-0 top-12 z-50 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-xl">
       <div className="px-4 py-3 border-b border-[#F7F2E7]">
         <h3 className="text-[#691D1B] text-base" style={{ fontWeight: 900 }}>
           Notifikasi
@@ -772,38 +779,36 @@ export default function StudentDashboard({
 
   const Topbar = ({ title, subtitle }) => (
     <header className="bg-white border-b border-[#D8D7BE] sticky top-0 z-40 shadow-sm">
-      <div className="px-5 lg:px-6 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {hasActivePackage && (
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden w-9 h-9 rounded-xl border border-[#D8D7BE] flex items-center justify-center text-[#691D1B]"
-              aria-label="Buka menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          )}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5 lg:px-6 lg:py-3.5">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[#D8D7BE] text-[#691D1B] lg:hidden"
+            aria-label="Buka menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
 
-          <div>
-            <p className="text-[10px] tracking-[0.32em] text-[#A56D6B] mb-1">
+          <div className="min-w-0">
+            <p className="mb-1 truncate text-[10px] tracking-[0.22em] text-[#A56D6B] sm:tracking-[0.32em]">
               SISWA WORKSPACE
             </p>
-            <h1 className="text-xl text-gray-900" style={{ fontWeight: 900 }}>
+            <h1 className="truncate text-lg text-gray-900 sm:text-xl" style={{ fontWeight: 900 }}>
               {title}
             </h1>
-            <p className="text-sm text-gray-400">
+            <p className="truncate text-xs text-gray-400 sm:text-sm">
               {subtitle || currentPackageName}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-shrink-0 items-center gap-2 sm:gap-3">
           <div className="relative">
             <button
               type="button"
               onClick={() => setNotificationOpen((value) => !value)}
-              className="relative w-11 h-11 rounded-2xl border border-[#D8D7BE] bg-[#F7F2E7] flex items-center justify-center hover:bg-[#EFE8D8] transition-colors"
+              className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-[#D8D7BE] bg-[#F7F2E7] transition-colors hover:bg-[#EFE8D8] sm:h-11 sm:w-11"
               aria-label="Buka notifikasi"
             >
               <Bell className="w-5 h-5 text-gray-700" />
@@ -861,10 +866,10 @@ export default function StudentDashboard({
   );
 
   const StatusBar = () => (
-    <div className="bg-white border-b border-[#D8D7BE] px-5 lg:px-6 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className={`w-2.5 h-2.5 rounded-full ${hasActivePackage ? 'bg-green-500' : 'bg-yellow-500'}`} />
-        <span className="text-gray-900 text-sm font-bold">
+    <div className="flex flex-col gap-3 border-b border-[#D8D7BE] bg-white px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 lg:px-6">
+      <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+        <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${hasActivePackage ? 'bg-green-500' : 'bg-yellow-500'}`} />
+        <span className="min-w-0 text-sm font-bold text-gray-900">
           {hasActivePackage ? `${currentPackageName} — Aktif` : 'Belum ada paket aktif'}
         </span>
         <span className="text-gray-400 hidden sm:inline">|</span>
@@ -907,7 +912,7 @@ export default function StudentDashboard({
 
             <Link
               href={`/payment-status/${pendingPackageTransactions[0].id}`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#691D1B] px-4 py-2.5 text-sm text-white"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#691D1B] px-4 py-2.5 text-sm text-white sm:w-auto"
               style={{ fontWeight: 900 }}
             >
               Lihat Status
@@ -939,15 +944,15 @@ export default function StudentDashboard({
             Belum ada paket aktif yang tersedia.
           </div>
         ) : (
-          <div className="grid gap-4 p-5 lg:grid-cols-2">
+          <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-2">
             {packageOptions.map((pkg) => {
               const packageCourses = asArray(pkg.courses);
               const packageFeatures = Array.isArray(pkg.features) ? pkg.features : [];
 
               return (
-                <article key={pkg.id} className="flex flex-col rounded-2xl border border-[#D8D7BE] bg-[#FDFCF8] p-5">
-                  <div className="mb-4 flex items-start justify-between gap-4">
-                    <div>
+                <article key={pkg.id} className="flex min-w-0 flex-col rounded-2xl border border-[#D8D7BE] bg-[#FDFCF8] p-4 sm:p-5">
+                  <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
                         {pkg.popular && (
                           <span className="rounded-full bg-[#FFE882] px-3 py-1 text-xs text-[#691D1B]" style={{ fontWeight: 900 }}>
@@ -959,7 +964,7 @@ export default function StudentDashboard({
                         </span>
                       </div>
 
-                      <h3 className="text-lg text-gray-900" style={{ fontWeight: 900 }}>
+                      <h3 className="break-words text-lg text-gray-900" style={{ fontWeight: 900 }}>
                         {pkg.name}
                       </h3>
                       <p className="mt-1 text-sm text-gray-500">
@@ -967,7 +972,7 @@ export default function StudentDashboard({
                       </p>
                     </div>
 
-                    <div className="text-right">
+                    <div className="shrink-0 text-left sm:text-right">
                       <p className="text-xs text-gray-500">Harga</p>
                       <p className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
                         {formatPrice(pkg.price)}
@@ -1006,7 +1011,7 @@ export default function StudentDashboard({
 
                   <Link
                     href={`/checkout/package/${pkg.id}`}
-                    className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[#691D1B] px-4 py-3 text-sm text-white hover:bg-[#4A1412]"
+                    className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#691D1B] px-4 py-3 text-center text-sm text-white hover:bg-[#4A1412]"
                     style={{ fontWeight: 900 }}
                   >
                     <CreditCard className="h-4 w-4" />
@@ -1022,7 +1027,7 @@ export default function StudentDashboard({
   );
 
   const StatsCards = () => (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
       <div className="bg-white rounded-2xl border border-[#D8D7BE] p-5 shadow-sm">
         <div className="w-11 h-11 rounded-xl bg-[#F8EDED] flex items-center justify-center mb-4">
           <BookOpen className="w-5 h-5 text-[#691D1B]" />
@@ -1057,10 +1062,10 @@ export default function StudentDashboard({
 
   const SubtesCard = () => (
     <section className="bg-white rounded-2xl border border-[#D8D7BE] shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#F7F2E7] flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3 border-b border-[#F7F2E7] px-4 py-4 sm:px-5">
+        <div className="flex min-w-0 items-center gap-3">
           <BookOpen className="w-5 h-5 text-[#691D1B]" />
-          <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
+          <h2 className="truncate text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
             Subtes UTBK
           </h2>
         </div>
@@ -1078,16 +1083,16 @@ export default function StudentDashboard({
 
       <div className="divide-y divide-[#F7F2E7]">
         {learningItems.slice(0, 3).map((item) => (
-          <div key={item.title} className="px-5 py-4 flex items-center gap-4">
+          <div key={item.title} className="flex items-center gap-3 px-4 py-4 sm:gap-4 sm:px-5">
             <div
-              className="w-11 h-11 rounded-xl flex items-center justify-center"
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl"
               style={{ background: item.iconBg, color: item.iconColor }}
             >
               <BookOpen className="w-5 h-5" />
             </div>
 
-            <div className="flex-1">
-              <p className="font-bold text-gray-900 text-sm mb-2">{item.title}</p>
+            <div className="min-w-0 flex-1">
+              <p className="mb-2 break-words text-sm font-bold text-gray-900">{item.title}</p>
               {item.enrolled && (
                 <p
                   className="mb-2 text-xs"
@@ -1118,12 +1123,12 @@ export default function StudentDashboard({
               </div>
             </div>
 
-            <ChevronRight className="w-5 h-5 text-gray-300" />
+            <ChevronRight className="hidden h-5 w-5 flex-shrink-0 text-gray-300 sm:block" />
           </div>
         ))}
       </div>
 
-      <div className="px-5 pb-4">
+      <div className="px-4 pb-4 sm:px-5">
         <button
           type="button"
           onClick={() => changeTab('subtes')}
@@ -1141,13 +1146,13 @@ export default function StudentDashboard({
 
     return (
       <section className="bg-white rounded-2xl border border-[#D8D7BE] shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#F7F2E7] flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CalendarDays className="w-5 h-5 text-[#691D1B]" />
-            <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
-              Jadwal Minggu Ini
-            </h2>
-          </div>
+      <div className="flex items-center justify-between gap-3 border-b border-[#F7F2E7] px-4 py-4 sm:px-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <CalendarDays className="w-5 h-5 text-[#691D1B]" />
+          <h2 className="truncate text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
+            Jadwal Minggu Ini
+          </h2>
+        </div>
 
           <button
             type="button"
@@ -1166,32 +1171,34 @@ export default function StudentDashboard({
           </div>
         ) : (
           <div>
-            <div className="px-5 py-3 bg-[#F8EDED] text-sm text-[#691D1B] font-bold">
+            <div className="bg-[#F8EDED] px-4 py-3 text-sm font-bold text-[#691D1B] sm:px-5">
               Jadwal Terdekat
             </div>
 
             {previewSchedules.map((schedule) => (
               <div
                 key={schedule.id}
-                className="px-5 py-4 flex items-center gap-4 border-b border-[#F7F2E7]"
+                className="flex flex-col gap-3 border-b border-[#F7F2E7] px-4 py-4 sm:flex-row sm:items-center sm:gap-4 sm:px-5"
               >
-                <div className="w-10 h-10 rounded-xl bg-[#F8EDED] flex items-center justify-center text-[#691D1B]">
-                  <Video className="w-5 h-5" />
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <p className="font-bold text-gray-900 text-sm">
-                      {schedule.title}
-                    </p>
-                    <span className="px-2.5 py-1 rounded-full bg-[#F8EDED] text-[#691D1B] text-xs font-bold">
-                      Live Class
-                    </span>
+                <div className="flex min-w-0 gap-3 sm:flex-1 sm:gap-4">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#F8EDED] text-[#691D1B]">
+                    <Video className="w-5 h-5" />
                   </div>
-                  <p className="text-sm text-gray-400">
-                    {schedule.time || `${formatTime(schedule.start_time)} - ${formatTime(schedule.end_time)}`}
-                    {' '}• {schedule.course?.title || currentPackageName}
-                  </p>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <p className="break-words text-sm font-bold text-gray-900">
+                        {schedule.title}
+                      </p>
+                      <span className="rounded-full bg-[#F8EDED] px-2.5 py-1 text-xs font-bold text-[#691D1B]">
+                        Live Class
+                      </span>
+                    </div>
+                    <p className="break-words text-sm text-gray-400">
+                      {schedule.time || `${formatTime(schedule.start_time)} - ${formatTime(schedule.end_time)}`}
+                      {' '}• {schedule.course?.title || currentPackageName}
+                    </p>
+                  </div>
                 </div>
 
                 {schedule.meeting_link ? (
@@ -1199,21 +1206,21 @@ export default function StudentDashboard({
                     href={schedule.meeting_link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hidden sm:inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs text-white hover:bg-[#4A1412]"
+                    className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs text-white hover:bg-[#4A1412] sm:flex-shrink-0"
                     style={{ background: '#691D1B', fontWeight: 900 }}
                   >
                     Join
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 ) : (
-                  <span className="hidden sm:inline-flex rounded-xl bg-gray-100 px-3 py-2 text-xs font-bold text-gray-400">
+                  <span className="inline-flex min-h-10 items-center justify-center rounded-xl bg-gray-100 px-3 py-2 text-xs font-bold text-gray-400 sm:flex-shrink-0">
                     Belum ada link
                   </span>
                 )}
               </div>
             ))}
 
-            <div className="px-5 pb-4 pt-3">
+            <div className="px-4 pb-4 pt-3 sm:px-5">
               <button
                 type="button"
                 onClick={() => changeTab('jadwal')}
@@ -1246,7 +1253,7 @@ export default function StudentDashboard({
       <button
         type="button"
         onClick={() => changeTab('subtes')}
-        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm text-[#691D1B]"
+        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm text-[#691D1B] md:w-auto"
         style={{ background: '#FFE882', fontWeight: 900 }}
       >
         <BookOpen className="w-4 h-4" />
@@ -1257,17 +1264,17 @@ export default function StudentDashboard({
 
   const MaterialPreviewCard = () => (
     <section className="mt-5 bg-white rounded-2xl border border-[#D8D7BE] shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#F7F2E7] flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3 border-b border-[#F7F2E7] px-4 py-4 sm:px-5">
+        <div className="flex min-w-0 items-center gap-3">
           <FileText className="w-5 h-5 text-[#691D1B]" />
-          <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
+          <h2 className="truncate text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
             Materi Terbaru
           </h2>
         </div>
         {latestEnrollment && (
           <Link
             href={`/course/${latestEnrollment.course_id}/learn`}
-            className="inline-flex items-center gap-1 text-sm text-[#691D1B]"
+            className="inline-flex flex-shrink-0 items-center gap-1 text-sm text-[#691D1B]"
             style={{ fontWeight: 800 }}
           >
             Buka Materi
@@ -1286,9 +1293,9 @@ export default function StudentDashboard({
             <Link
               key={material.id}
               href={`/course/${material.course_id}/learn`}
-              className="flex items-center gap-4 px-5 py-4 hover:bg-[#F7F2E7] transition-colors"
+              className="flex items-center gap-3 px-4 py-4 transition-colors hover:bg-[#F7F2E7] sm:gap-4 sm:px-5"
             >
-              <div className="w-10 h-10 rounded-xl bg-[#F8EDED] flex items-center justify-center text-[#691D1B]">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#F8EDED] text-[#691D1B]">
                 {material.type === 'video' ? <Video className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
               </div>
               <div className="min-w-0 flex-1">
@@ -1311,7 +1318,7 @@ export default function StudentDashboard({
       />
       <StatusBar />
 
-      <main className="px-5 lg:px-6 py-6">
+      <main className="px-4 py-5 sm:px-5 sm:py-6 lg:px-6">
         {hasActivePackage ? (
           <>
             <StatsCards />
@@ -1336,13 +1343,13 @@ export default function StudentDashboard({
       <Topbar title={hasActivePackage ? 'Subtes UTBK' : 'Pilih Paket'} subtitle={currentPackageName} />
       <StatusBar />
 
-      <main className="px-5 lg:px-6 py-6">
+      <main className="px-4 py-5 sm:px-5 sm:py-6 lg:px-6">
         {!hasActivePackage ? (
           <PackagePurchasePanel />
         ) : (
-        <section className="bg-white rounded-2xl border border-[#D8D7BE] shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#F7F2E7] flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
+        <section className="overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
+          <div className="flex flex-col gap-4 border-b border-[#F7F2E7] px-4 py-4 sm:px-5 md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0">
               <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
                 Daftar Subtes UTBK
               </h2>
@@ -1354,7 +1361,7 @@ export default function StudentDashboard({
             <button
               type="button"
               onClick={() => changeTab('katalog')}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm text-[#691D1B] border-2 border-[#691D1B] hover:bg-[#691D1B] hover:text-white transition-colors"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#691D1B] px-4 py-2.5 text-sm text-[#691D1B] transition-colors hover:bg-[#691D1B] hover:text-white sm:w-auto"
               style={{ fontWeight: 900 }}
             >
               Lihat Katalog
@@ -1362,15 +1369,15 @@ export default function StudentDashboard({
             </button>
           </div>
 
-          <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 p-4 sm:p-5 lg:grid-cols-2">
             {learningItems.map((subtes) => (
               <div
                 key={subtes.title}
-                className="rounded-2xl border border-[#D8D7BE] bg-white p-4 shadow-sm hover:shadow-md transition-shadow"
+                className="rounded-2xl border border-[#D8D7BE] bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
               >
-                <div className="flex items-start gap-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                   <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                    className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl"
                     style={{
                       background: subtes.iconBg,
                       color: subtes.iconColor,
@@ -1379,7 +1386,7 @@ export default function StudentDashboard({
                     <BookOpen className="w-6 h-6" />
                   </div>
 
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1">
                     <div className="mb-2.5 flex flex-wrap items-center gap-2">
                       <span
                         className="inline-flex rounded-full px-3 py-1 text-xs"
@@ -1406,7 +1413,7 @@ export default function StudentDashboard({
                       )}
                     </div>
 
-                    <h3 className="text-base text-gray-900 mb-2" style={{ fontWeight: 900 }}>
+                    <h3 className="mb-2 break-words text-base text-gray-900" style={{ fontWeight: 900 }}>
                       {subtes.title}
                     </h3>
 
@@ -1439,7 +1446,7 @@ export default function StudentDashboard({
                     {hasActivePackage ? (
                       <Link
                         href={subtes.href}
-                        className="block rounded-xl px-4 py-2.5 text-center text-sm transition-colors"
+                        className="block min-h-11 rounded-xl px-4 py-2.5 text-center text-sm transition-colors"
                         style={{
                           background: subtes.hasMaterials ? '#691D1B' : '#F7F2E7',
                           border: subtes.hasMaterials ? '1px solid #691D1B' : '1px solid #D8D7BE',
@@ -1453,7 +1460,7 @@ export default function StudentDashboard({
                       <button
                         type="button"
                         onClick={() => changeTab('katalog')}
-                        className="block text-center px-4 py-2.5 rounded-xl text-sm text-white"
+                        className="block min-h-11 rounded-xl px-4 py-2.5 text-center text-sm text-white"
                         style={{ background: '#691D1B', fontWeight: 900 }}
                       >
                         Pilih Paket
@@ -1475,7 +1482,7 @@ export default function StudentDashboard({
       <Topbar title="Katalog Paket" subtitle="Pilih paket belajar yang tersedia" />
       <StatusBar />
 
-      <main className="px-5 lg:px-6 py-6">
+      <main className="px-4 py-5 sm:px-5 sm:py-6 lg:px-6">
         <PackagePurchasePanel />
       </main>
     </>
@@ -1486,7 +1493,7 @@ export default function StudentDashboard({
       <Topbar title={hasActivePackage ? 'Jadwal' : 'Pilih Paket'} subtitle={currentPackageName} />
       <StatusBar />
 
-      <main className="px-5 lg:px-6 py-6">
+      <main className="px-4 py-5 sm:px-5 sm:py-6 lg:px-6">
         {!hasActivePackage ? (
           <PackagePurchasePanel />
         ) : (
@@ -1510,13 +1517,13 @@ export default function StudentDashboard({
           </span>
         </div>
 
-        <div className="flex flex-wrap gap-3 mb-6">
+        <div className="-mx-4 mb-6 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
           {weekDays.map((day) => (
             <button
               key={day.dateKey}
               type="button"
               onClick={() => setSelectedScheduleDateKey(day.dateKey)}
-              className={`px-5 py-2.5 rounded-xl border text-sm ${
+              className={`flex-shrink-0 rounded-xl border px-4 py-2.5 text-sm sm:px-5 ${
                 day.dateKey === selectedWeekDay.dateKey
                   ? 'bg-[#691D1B] text-white border-[#691D1B]'
                   : 'bg-white text-gray-500 border-[#D8D7BE]'
@@ -1528,9 +1535,9 @@ export default function StudentDashboard({
           ))}
         </div>
 
-        <div className="mb-4 flex items-center gap-3">
-          <CalendarDays className="w-5 h-5 text-[#691D1B]" />
-          <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
+        <div className="mb-4 flex items-start gap-3 sm:items-center">
+          <CalendarDays className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#691D1B] sm:mt-0" />
+          <h2 className="min-w-0 break-words text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
             {selectedWeekDay.fullLabel}
           </h2>
           {selectedWeekDay.isToday && (
@@ -1559,13 +1566,13 @@ export default function StudentDashboard({
               return (
                 <div
                   key={schedule.id}
-                  className="bg-white rounded-2xl border border-[#D8D7BE] shadow-sm p-5 flex flex-col lg:flex-row lg:items-center gap-4"
+                  className="flex flex-col gap-4 rounded-2xl border border-[#D8D7BE] bg-white p-4 shadow-sm sm:p-5 lg:flex-row lg:items-center"
                   style={{
                     borderLeft: `7px solid ${isConsultation ? '#0F7A45' : '#691D1B'}`,
                   }}
                 >
                   <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl"
                     style={{
                       background: isConsultation ? '#EAF7F0' : '#F8EDED',
                       color: isConsultation ? '#0F7A45' : '#691D1B',
@@ -1578,9 +1585,9 @@ export default function StudentDashboard({
                     )}
                   </div>
 
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <h3 className="text-base text-gray-900" style={{ fontWeight: 900 }}>
+                      <h3 className="break-words text-base text-gray-900" style={{ fontWeight: 900 }}>
                         {schedule.title}
                       </h3>
 
@@ -1596,11 +1603,11 @@ export default function StudentDashboard({
                       </span>
                     </div>
 
-                    <p className="text-sm text-gray-500 mb-1">
+                    <p className="mb-1 break-words text-sm text-gray-500">
                       {schedule.course?.title || currentPackageName} • {schedule.mentor?.name || 'Tutor Brics'}
                     </p>
 
-                    <p className="text-sm text-gray-400">
+                    <p className="break-words text-sm text-gray-400">
                       <Clock className="inline w-4 h-4 mr-1" />
                       {schedule.time || `${formatTime(schedule.start_time)} - ${formatTime(schedule.end_time)}`}
                       {' '}
@@ -1614,7 +1621,7 @@ export default function StudentDashboard({
                       href={schedule.meeting_link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-5 py-2.5 rounded-xl text-white text-center text-sm"
+                      className="min-h-11 w-full rounded-xl px-5 py-2.5 text-center text-sm text-white lg:w-auto lg:flex-shrink-0"
                       style={{
                         background: isConsultation ? '#0F7A45' : '#691D1B',
                         fontWeight: 900,
@@ -1623,7 +1630,7 @@ export default function StudentDashboard({
                       Bergabung
                     </a>
                   ) : (
-                    <span className="px-5 py-2.5 rounded-xl bg-gray-100 text-gray-500 text-center text-sm">
+                    <span className="min-h-11 w-full rounded-xl bg-gray-100 px-5 py-2.5 text-center text-sm text-gray-500 lg:w-auto lg:flex-shrink-0">
                       Link belum tersedia
                     </span>
                   )}
@@ -1638,7 +1645,7 @@ export default function StudentDashboard({
             Ringkasan Minggu Ini
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <div className="rounded-xl p-4 text-center" style={{ background: '#F7F2E7' }}>
               <p className="text-2xl text-[#691D1B]" style={{ fontWeight: 900 }}>
                 {scheduleStats.totalThisWeek ?? schedulesThisWeek.length}
@@ -1679,9 +1686,9 @@ export default function StudentDashboard({
       <Topbar title="Edit Profil" subtitle="Informasi akun siswa" />
       <StatusBar />
 
-      <main className="px-5 lg:px-6 py-6">
-        <section className="bg-white rounded-2xl border border-[#D8D7BE] shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#F7F2E7]">
+      <main className="px-4 py-5 sm:px-5 sm:py-6 lg:px-6">
+        <section className="overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
+          <div className="border-b border-[#F7F2E7] px-4 py-4 sm:px-5">
             <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
               Profil Saya
             </h2>
@@ -1690,10 +1697,10 @@ export default function StudentDashboard({
             </p>
           </div>
 
-          <div className="p-5">
-            <div className="flex flex-col md:flex-row md:items-center gap-5 mb-6">
+          <div className="p-4 sm:p-5">
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
               <div
-                className="w-16 h-16 rounded-full flex items-center justify-center text-xl"
+                className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full text-xl"
                 style={{
                   background: '#FFE882',
                   color: '#691D1B',
@@ -1703,11 +1710,11 @@ export default function StudentDashboard({
                 {getInitials(user?.name)}
               </div>
 
-              <div>
-                <h3 className="text-xl text-gray-900 mb-1" style={{ fontWeight: 900 }}>
+              <div className="min-w-0">
+                <h3 className="mb-1 break-words text-xl text-gray-900" style={{ fontWeight: 900 }}>
                   {user?.name || 'Siswa Brics'}
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p className="break-words text-sm text-gray-500">
                   {user?.email || 'Akun siswa BRICS Education'}
                 </p>
               </div>
@@ -1747,7 +1754,7 @@ export default function StudentDashboard({
               <button
                 type="button"
                 onClick={openProfileEditor}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm text-white hover:bg-[#4A1412] transition-colors"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm text-white transition-colors hover:bg-[#4A1412] sm:w-auto"
                 style={{ background: '#691D1B', fontWeight: 900 }}
               >
                 <Pencil className="w-4 h-4" />
@@ -1757,7 +1764,7 @@ export default function StudentDashboard({
               <button
                 type="button"
                 onClick={logout}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm border-2 border-[#691D1B] text-[#691D1B] hover:bg-[#691D1B] hover:text-white transition-colors"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#691D1B] px-4 py-2.5 text-sm text-[#691D1B] transition-colors hover:bg-[#691D1B] hover:text-white sm:w-auto"
                 style={{ fontWeight: 900 }}
               >
                 <LogOut className="w-4 h-4" />
@@ -1771,7 +1778,7 @@ export default function StudentDashboard({
   );
 
   const renderProfileEditorModal = () => (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center px-4 py-6">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center px-3 py-4 sm:px-4 sm:py-6">
       <button
         type="button"
         className="absolute inset-0 bg-black/45"
@@ -1779,21 +1786,21 @@ export default function StudentDashboard({
         aria-label="Tutup editor profil"
       />
 
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-[#F7F2E7] px-5 py-4">
-          <div className="flex items-center gap-3">
+      <div className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
+        <div className="flex flex-shrink-0 items-start justify-between gap-4 border-b border-[#F7F2E7] px-4 py-4 sm:px-5">
+          <div className="flex min-w-0 items-center gap-3">
             <div
-              className="flex h-11 w-11 items-center justify-center rounded-xl"
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl"
               style={{ background: '#F8EDED', color: '#691D1B' }}
             >
               <Pencil className="h-5 w-5" />
             </div>
 
-            <div>
+            <div className="min-w-0">
               <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
                 Edit Profil
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="truncate text-sm text-gray-500">
                 Data diri siswa
               </p>
             </div>
@@ -1810,7 +1817,7 @@ export default function StudentDashboard({
           </button>
         </div>
 
-        <form onSubmit={submitProfileEditor} className="grid gap-5 px-5 py-5 md:grid-cols-2">
+        <form onSubmit={submitProfileEditor} className="grid gap-5 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5 md:grid-cols-2">
           <label className="space-y-2 md:col-span-2">
             <span className="text-sm font-bold text-gray-700">Nama Lengkap</span>
             <input
@@ -1882,7 +1889,7 @@ export default function StudentDashboard({
               type="button"
               onClick={closeProfileEditor}
               disabled={profileForm.processing}
-              className="rounded-xl border border-[#D8D7BE] px-4 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:bg-[#F7F2E7] disabled:opacity-60"
+              className="min-h-11 rounded-xl border border-[#D8D7BE] px-4 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:bg-[#F7F2E7] disabled:opacity-60"
             >
               Batal
             </button>
@@ -1890,7 +1897,7 @@ export default function StudentDashboard({
             <button
               type="submit"
               disabled={profileForm.processing}
-              className="rounded-xl px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-[#4A1412] disabled:opacity-70"
+              className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-[#4A1412] disabled:opacity-70"
               style={{ background: '#691D1B' }}
             >
               {profileForm.processing ? 'Menyimpan...' : 'Simpan Profil'}
@@ -1909,32 +1916,59 @@ export default function StudentDashboard({
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >
-      <div className="flex min-h-screen">
-        {hasActivePackage && (
-          <aside className="hidden lg:block w-64 flex-shrink-0">
-            <div className="sticky top-0 h-screen">
-              {renderSidebarContent()}
-            </div>
-          </aside>
-        )}
+      <style>
+        {`
+          @keyframes studentDrawerSlideIn {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+          }
 
-        {hasActivePackage && sidebarOpen && (
+          @keyframes studentDrawerFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+
+          .student-drawer-panel {
+            animation: studentDrawerSlideIn 240ms ease-out both;
+          }
+
+          .student-drawer-backdrop {
+            animation: studentDrawerFadeIn 180ms ease-out both;
+          }
+
+          @media (prefers-reduced-motion: reduce) {
+            .student-drawer-panel,
+            .student-drawer-backdrop {
+              animation: none;
+            }
+          }
+        `}
+      </style>
+
+      <div className="flex min-h-screen">
+        <aside className="hidden w-64 flex-shrink-0 lg:block">
+          <div className="sticky top-0 h-screen">
+            {renderSidebarContent()}
+          </div>
+        </aside>
+
+        {sidebarOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <button
               type="button"
-              className="absolute inset-0 bg-black/40"
+              className="student-drawer-backdrop absolute inset-0 bg-black/40"
               onClick={() => setSidebarOpen(false)}
               aria-label="Tutup sidebar"
             />
 
-            <div className="relative w-64 h-full">
+            <div className="student-drawer-panel relative h-full w-[min(20rem,85vw)]">
               <button
                 type="button"
                 onClick={() => setSidebarOpen(false)}
-                className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#691D1B]"
+                className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#691D1B]"
                 aria-label="Tutup menu"
               >
-                <X className="w-5 h-5" />
+                <X className="h-5 w-5" />
               </button>
 
               {renderSidebarContent()}
@@ -1942,7 +1976,7 @@ export default function StudentDashboard({
           </div>
         )}
 
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1 overflow-x-hidden">
           {activeTab === 'beranda' && <BerandaPage />}
           {activeTab === 'katalog' && <KatalogPage />}
           {activeTab === 'subtes' && <SubtesPage />}

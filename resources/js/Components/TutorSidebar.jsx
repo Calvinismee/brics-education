@@ -37,6 +37,7 @@ export function TutorSidebar({
   active = "dashboard",
   selectedClassId = null,
   onEditProfile,
+  drawer = false,
 }) {
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -47,16 +48,17 @@ export function TutorSidebar({
   const tutorName = user?.name ?? "Tutor UTBK";
   const tutorInitials = initialsFor(tutorName);
   const classCount = classes.length;
+  const isCollapsed = drawer ? false : collapsed;
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && !drawer) {
       window.localStorage.setItem("tutorSidebarCollapsed", collapsed ? "1" : "0");
     }
-  }, [collapsed]);
+  }, [collapsed, drawer]);
 
   const itemClass = (isActive) => [
     "w-full flex items-center rounded-lg mb-1 text-sm transition-all",
-    collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5",
+    isCollapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5",
     isActive ? "text-[#000000]" : "text-white/80 hover:bg-white/10 hover:text-white",
   ].join(" ");
 
@@ -71,12 +73,12 @@ export function TutorSidebar({
 
   return (
     <aside
-      className={`${collapsed ? "w-20" : "w-64"} flex flex-col flex-shrink-0 transition-all duration-200`}
+      className={`${isCollapsed ? "w-20" : "w-64"} flex flex-col flex-shrink-0 transition-all duration-200`}
       style={{ background: "#691D1B", minHeight: "100vh", position: "sticky", top: 0, height: "100vh", overflowY: "auto" }}
     >
-      <div className={`${collapsed ? "p-3" : "px-5 py-5"} border-b border-white/10`}>
+      <div className={`${isCollapsed ? "p-3" : "px-5 py-5"} border-b border-white/10`}>
         <div className="flex items-start justify-between gap-2">
-          {!collapsed && (
+          {!isCollapsed && (
             <div>
               <p className="text-[11px] tracking-[0.35em] text-[#FFE882]">
                 BRICS EDUCATION
@@ -89,24 +91,26 @@ export function TutorSidebar({
               </p>
             </div>
           )}
-          {collapsed && (
+          {isCollapsed && (
             <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm mx-auto" style={{ background: "#FFE882", color: "#691D1B", fontWeight: 900 }}>
               B
             </div>
           )}
-          <button
-            type="button"
-            onClick={() => setCollapsed((value) => !value)}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#FFE882] hover:bg-white/10 transition-colors"
-            title={collapsed ? "Perluas sidebar" : "Minimalkan sidebar"}
-          >
-            {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
-          </button>
+          {!drawer && (
+            <button
+              type="button"
+              onClick={() => setCollapsed((value) => !value)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-[#FFE882] hover:bg-white/10 transition-colors"
+              title={isCollapsed ? "Perluas sidebar" : "Minimalkan sidebar"}
+            >
+              {isCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+            </button>
+          )}
         </div>
       </div>
 
-      <div className={`${collapsed ? "p-3" : "px-5 py-5"} border-b border-white/10`}>
-        {collapsed ? (
+      <div className={`${isCollapsed ? "p-3" : "px-5 py-5"} border-b border-white/10`}>
+        {isCollapsed ? (
           <button
             type="button"
             onClick={onEditProfile}
@@ -163,15 +167,15 @@ export function TutorSidebar({
       <nav className="flex-1 py-3 px-3">
         <Link href="/tutor/dashboard" className={itemClass(active === "dashboard")} style={itemStyle(active === "dashboard")} title="Dashboard">
           <Home className="w-5 h-5 flex-shrink-0" />
-          {!collapsed && <span>Dashboard</span>}
+          {!isCollapsed && <span>Dashboard</span>}
         </Link>
         <Link href="/tutor/upload" className={itemClass(active === "upload")} style={itemStyle(active === "upload")} title="Upload Materi">
           <Upload className="w-5 h-5 flex-shrink-0" />
-          {!collapsed && <span>Upload Materi</span>}
+          {!isCollapsed && <span>Upload Materi</span>}
         </Link>
 
         <div className="mb-1">
-          {collapsed ? (
+          {isCollapsed ? (
             <Link href="/tutor/classes" className={itemClass(active === "classes")} style={itemStyle(active === "classes")} title="Monitor Kelas">
               <Users className="w-5 h-5 flex-shrink-0" />
             </Link>
@@ -191,7 +195,7 @@ export function TutorSidebar({
             </button>
           )}
 
-          {!collapsed && classesOpen && (
+          {!isCollapsed && classesOpen && (
             <div className="mt-0.5 ml-3 border-l-2 border-white/15 pl-2 space-y-0.5">
               {classes.map((cls) => {
                 const isActive = active === "classes" && String(selectedClassId ?? "") === String(cls.id);
@@ -224,28 +228,28 @@ export function TutorSidebar({
           return (
             <Link key={item.key} href={item.href} className={itemClass(isActive)} style={itemStyle(isActive)} title={item.label}>
               <Icon className="w-5 h-5 flex-shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              {!isCollapsed && <span>{item.label}</span>}
             </Link>
           );
         })}
       </nav>
 
-      <div className={`${collapsed ? "p-3" : "p-4"} border-t border-white/10`}>
+      <div className={`${isCollapsed ? "p-3" : "p-4"} border-t border-white/10`}>
         <Link href="/tutor/profile" className={itemClass(active === "profile")} style={itemStyle(active === "profile")} title="Edit Profil">
           <User className="w-5 h-5 flex-shrink-0" />
-          {!collapsed && <span>Edit Profil</span>}
+          {!isCollapsed && <span>Edit Profil</span>}
         </Link>
         <Link href="/tutor/settings" className={itemClass(active === "settings")} style={itemStyle(active === "settings")} title="Settings">
           <SettingsIcon className="w-5 h-5 flex-shrink-0" />
-          {!collapsed && <span>Settings</span>}
+          {!isCollapsed && <span>Settings</span>}
         </Link>
         <Link href="/tutor/notifications" className={itemClass(active === "notifications")} style={itemStyle(active === "notifications")} title="Notifikasi">
           <Bell className="w-5 h-5 flex-shrink-0" />
-          {!collapsed && <span>Notifikasi</span>}
+          {!isCollapsed && <span>Notifikasi</span>}
         </Link>
         <Link href="/logout" method="post" as="button" className={itemClass(false)} title="Keluar">
           <LogOut className="w-5 h-5 flex-shrink-0" />
-          {!collapsed && <span>Keluar</span>}
+          {!isCollapsed && <span>Keluar</span>}
         </Link>
       </div>
     </aside>
