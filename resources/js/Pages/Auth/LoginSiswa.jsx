@@ -16,6 +16,7 @@ const GOOGLE_SCRIPT_URL = 'https://accounts.google.com/gsi/client';
 export default function LoginSiswa({ googleClientId }) {
   const [showPassword, setShowPassword] = useState(false);
   const [googleScriptReady, setGoogleScriptReady] = useState(false);
+  const [googleButtonReady, setGoogleButtonReady] = useState(false);
   const [googleProcessing, setGoogleProcessing] = useState(false);
   const [googleError, setGoogleError] = useState('');
   const googleButtonRef = useRef(null);
@@ -122,6 +123,7 @@ export default function LoginSiswa({ googleClientId }) {
       width: Math.min(360, googleButtonRef.current.offsetWidth || 360),
     });
     googleButtonRendered.current = true;
+    setGoogleButtonReady(true);
   }, [googleClientId, googleScriptReady]);
 
   const submit = (e) => {
@@ -195,16 +197,22 @@ export default function LoginSiswa({ googleClientId }) {
 
             {googleClientId ? (
               <div className="relative mb-6">
-                <div ref={googleButtonRef} className="flex w-full justify-center" />
-                {! googleScriptReady && (
-                  <div className="flex min-h-[40px] items-center justify-center text-sm text-gray-500">
-                    Memuat login Google...
-                  </div>
+                <div
+                  ref={googleButtonRef}
+                  className={`flex w-full justify-center ${googleButtonReady ? '' : 'absolute inset-0 opacity-0 pointer-events-none'}`}
+                />
+                {! googleButtonReady && (
+                  <button
+                    type="button"
+                    disabled
+                    className="flex min-h-[40px] w-full items-center justify-center gap-3 rounded border border-[#DADCE0] bg-white px-4 py-2 text-sm text-[#3C4043]"
+                  >
+                    <span className="text-lg font-bold text-[#4285F4]">G</span>
+                    Sign in with Google
+                  </button>
                 )}
                 {googleProcessing && (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/80 text-sm font-bold text-[#691D1B]">
-                    Memproses...
-                  </div>
+                  <div className="absolute inset-0 cursor-wait rounded bg-transparent" />
                 )}
               </div>
             ) : (
