@@ -11,6 +11,7 @@ import { BricsLogo } from "@/Components/BricsLogo";
 import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
+import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,7 @@ export function TutorClassMonitoring({
   const [studentMenuOpen, setStudentMenuOpen] = useState(null);
   const [materialFilter, setMaterialFilter] = useState("all");
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const tutorName = user?.name ?? "Tutor UTBK";
   const tutorInitials = initialsFor(tutorName);
   const showProgressWarnings = settings.teaching?.showProgressWarnings ?? true;
@@ -107,29 +109,39 @@ export function TutorClassMonitoring({
 
       {/* ── Sidebar ─────────────────────────────────────────────── */}
       <TutorSidebar user={user} tutorClasses={displayClasses} active="classes" selectedClassId={selectedClass} onEditProfile={() => setShowProfileModal(true)} />
+      <TutorMobileDrawer
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        user={user}
+        tutorClasses={displayClasses}
+        active="classes"
+        selectedClassId={selectedClass}
+        onEditProfile={() => setShowProfileModal(true)}
+      />
 
       {/* ── Main ────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
         {/* Header */}
-        <header className="bg-white border-b border-[#D8D7BE] px-6 py-3.5 sticky top-0 z-10 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+        <header className="bg-white border-b border-[#D8D7BE] px-4 py-3 sm:px-5 lg:px-6 lg:py-3.5 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <TutorMobileMenuButton onClick={() => setSidebarOpen(true)} />
               <Link href="/tutor/dashboard" className="p-2 rounded-lg hover:bg-[#F7F2E7] text-[#691D1B] transition-colors">
                 <ArrowLeft className="w-5 h-5" />
               </Link>
-              <div>
-                <h2 className="text-gray-900" style={{ fontWeight: 700 }}>Monitor Kelas</h2>
+              <div className="min-w-0">
+                <h2 className="truncate text-gray-900" style={{ fontWeight: 700 }}>Monitor Kelas</h2>
                 <div className="flex items-center gap-1.5">
                   <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                  <p className="text-xs text-gray-400">{cls.name}</p>
+                  <p className="truncate text-xs text-gray-400">{cls.name}</p>
                 </div>
               </div>
             </div>
-            <TutorNotificationBell />
+            <div className="flex-shrink-0"><TutorNotificationBell /></div>
           </div>
         </header>
 
-        <div className="flex-1 p-6 overflow-auto space-y-6">
+        <div className="flex-1 overflow-auto px-4 py-5 sm:p-6 space-y-5 sm:space-y-6">
 
           {/* ── Stats ─────────────────────────────────────────── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -159,15 +171,15 @@ export function TutorClassMonitoring({
                   <h3 className="text-gray-900" style={{ fontWeight: 700 }}>Daftar Siswa</h3>
                   <p className="text-xs text-gray-400">{cls.name}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-2 px-3 py-2 border border-[#D8D7BE] rounded-lg bg-[#F7F2E7]">
+                <div className="flex w-full items-center gap-2 sm:w-auto">
+                  <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[#D8D7BE] bg-[#F7F2E7] px-3 py-2 sm:flex-none">
                     <Search className="w-4 h-4 text-gray-400" />
                     <input
                       type="text"
                       placeholder="Cari siswa..."
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className="bg-transparent outline-none text-sm w-28"
+                      className="w-full bg-transparent text-sm outline-none sm:w-28"
                       style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
                     />
                   </div>
@@ -208,7 +220,7 @@ export function TutorClassMonitoring({
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-[#F7F2E7]">
@@ -299,7 +311,58 @@ export function TutorClassMonitoring({
                 </table>
               </div>
 
-              <div className="p-4 bg-[#F7F2E7] border-t border-[#D8D7BE] flex justify-between items-center">
+              <div className="divide-y divide-[#F7F2E7] md:hidden">
+                {filtered.map((s) => (
+                  <article key={s.id} className="p-4">
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-xs" style={{ background: "#691D1B", color: "#FFE882", fontWeight: 800 }}>
+                          {s.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm text-gray-800" style={{ fontWeight: 700 }}>{s.name}</p>
+                          <p className="truncate text-xs text-gray-400">{s.email}</p>
+                        </div>
+                      </div>
+                      {showProgressWarnings && s.progress < 60 && (
+                        <span className="flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px]" style={{ background: "#ef444415", color: "#ef4444", fontWeight: 700 }}>
+                          <AlertCircle className="h-3 w-3" />Perhatian
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="rounded-xl bg-[#F7F2E7] p-2">
+                        <p className="text-[11px] text-gray-400">Progres</p>
+                        <p className="text-sm" style={{ color: getProgressColor(s.progress), fontWeight: 800 }}>{s.progress}%</p>
+                      </div>
+                      <div className="rounded-xl bg-[#F7F2E7] p-2">
+                        <p className="text-[11px] text-gray-400">Nilai</p>
+                        <p className="text-sm" style={{ color: s.score >= 80 ? "#16a34a" : s.score >= 60 ? "#d97706" : "#ef4444", fontWeight: 800 }}>{s.score}</p>
+                      </div>
+                      <div className="rounded-xl bg-[#F7F2E7] p-2">
+                        <p className="text-[11px] text-gray-400">Hadir</p>
+                        <p className="text-sm" style={{ color: s.attendance >= 75 ? "#16a34a" : "#ef4444", fontWeight: 800 }}>{s.attendance}%</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                        <Clock className="h-3.5 w-3.5" />{s.lastActive}
+                      </span>
+                      <Link
+                        href={`/tutor/students/${s.id}`}
+                        className="inline-flex min-h-10 items-center justify-center rounded-xl px-3 py-2 text-xs text-white"
+                        style={{ background: "#691D1B", fontWeight: 800 }}
+                      >
+                        Lihat profil siswa
+                      </Link>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="p-4 bg-[#F7F2E7] border-t border-[#D8D7BE] flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
                 <span className="text-xs text-gray-500">Menampilkan {filtered.length} dari {students.length} siswa</span>
                 <div className="flex items-center gap-1.5">
                   {[1, 2].map((p) => (
@@ -332,7 +395,7 @@ export function TutorClassMonitoring({
               </div>
 
               {/* Filter tabs */}
-              <div className="flex border-b border-[#F7F2E7]" style={{ background: "#F7F2E7" }}>
+              <div className="flex overflow-x-auto border-b border-[#F7F2E7]" style={{ background: "#F7F2E7" }}>
                 {materialTabs.map((tab) => {
                   const active = materialFilter === tab.key;
                   return (
@@ -340,7 +403,7 @@ export function TutorClassMonitoring({
                       key={tab.key}
                       type="button"
                       onClick={() => setMaterialFilter(tab.key)}
-                      className="flex-1 py-2 text-xs transition-colors"
+                      className="min-w-[86px] flex-1 py-2 text-xs transition-colors"
                       style={{ color: active ? "#691D1B" : "#9ca3af", fontWeight: active ? 700 : 500, borderBottom: active ? "2px solid #691D1B" : "2px solid transparent" }}
                     >
                       {tab.label}
@@ -391,7 +454,7 @@ export function TutorClassMonitoring({
                       </div>
 
                       {/* Actions — show on hover */}
-                      <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                      <div className="flex flex-col gap-1 opacity-100 transition-opacity flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100">
                         <a
                           href={materialHref(m.meta)}
                           target="_blank"

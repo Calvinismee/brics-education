@@ -21,6 +21,7 @@ import { BricsLogo } from "@/Components/BricsLogo";
 import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
+import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
 
 const fallbackTutorClasses = [
   { id: 0, name: "Penalaran Umum", students: 24, progress: 75 },
@@ -57,6 +58,7 @@ export function TutorSettings({ user = null, tutorClasses: serverTutorClasses = 
   const tutorClasses = Array.isArray(serverTutorClasses) && serverTutorClasses.length > 0 ? serverTutorClasses : fallbackTutorClasses;
   const [classDropdownOpen, setClassDropdownOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [recentlySaved, setRecentlySaved] = useState(false);
   const [prefs, setPrefs] = useState({
     materialReview: settings.notifications?.materialReview ?? true,
@@ -108,19 +110,30 @@ export function TutorSettings({ user = null, tutorClasses: serverTutorClasses = 
   return (
     <div className="min-h-screen flex" style={{ background: "#F7F2E7", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <TutorSidebar user={user} tutorClasses={tutorClasses} active="settings" onEditProfile={() => setShowProfileModal(true)} />
+      <TutorMobileDrawer
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        user={user}
+        tutorClasses={tutorClasses}
+        active="settings"
+        onEditProfile={() => setShowProfileModal(true)}
+      />
 
-      <main className="flex-1 min-w-0">
-        <header className="bg-white border-b border-[#D8D7BE] px-6 py-3.5 sticky top-0 z-10 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-gray-900" style={{ fontWeight: 700 }}>Settings</h2>
-              <p className="text-xs text-gray-400">Preferensi tutor dan pengalaman mengajar</p>
+      <main className="flex-1 min-w-0 overflow-x-hidden">
+        <header className="bg-white border-b border-[#D8D7BE] px-4 py-3 sm:px-5 lg:px-6 lg:py-3.5 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <TutorMobileMenuButton onClick={() => setSidebarOpen(true)} />
+              <div className="min-w-0">
+                <h2 className="truncate text-gray-900" style={{ fontWeight: 700 }}>Settings</h2>
+                <p className="truncate text-xs text-gray-400">Preferensi tutor dan pengalaman mengajar</p>
+              </div>
             </div>
-            <TutorNotificationBell />
+            <div className="flex-shrink-0"><TutorNotificationBell /></div>
           </div>
         </header>
 
-        <div className="p-6 space-y-6">
+        <div className="px-4 py-5 sm:p-6 space-y-5 sm:space-y-6">
           <section className="bg-white rounded-2xl border border-[#D8D7BE] overflow-hidden">
             <div className="p-5 border-b border-[#F7F2E7] flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#691D1B15", color: "#691D1B" }}>
@@ -138,8 +151,8 @@ export function TutorSettings({ user = null, tutorClasses: serverTutorClasses = 
                 ["studentQuestion", "Pertanyaan siswa", "Saat siswa mengirim pertanyaan baru"],
                 ["weeklyReport", "Laporan mingguan", "Ringkasan performa kelas setiap minggu"],
               ].map(([key, title, description]) => (
-                <div key={key} className="p-5 flex items-center justify-between gap-4">
-                  <div>
+                <div key={key} className="p-5 flex items-start justify-between gap-4">
+                  <div className="min-w-0">
                     <p className="text-sm text-gray-800" style={{ fontWeight: 700 }}>{title}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{description}</p>
                   </div>
@@ -161,15 +174,15 @@ export function TutorSettings({ user = null, tutorClasses: serverTutorClasses = 
                 </div>
               </div>
               <div className="p-5 space-y-5">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
                     <p className="text-sm text-gray-800" style={{ fontWeight: 700 }}>Auto-publish materi approved</p>
                     <p className="text-xs text-gray-400">Materi langsung tampil ke siswa setelah disetujui</p>
                   </div>
                   <Toggle checked={prefs.autoPublishApprovedMaterial} onChange={(value) => setPref("autoPublishApprovedMaterial", value)} />
                 </div>
-                <div className="flex items-center justify-between gap-4">
-                  <div>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
                     <p className="text-sm text-gray-800" style={{ fontWeight: 700 }}>Tampilkan peringatan progres</p>
                     <p className="text-xs text-gray-400">Sorot siswa dengan progres rendah</p>
                   </div>
@@ -189,15 +202,15 @@ export function TutorSettings({ user = null, tutorClasses: serverTutorClasses = 
                 </div>
               </div>
               <div className="p-5 space-y-5">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
                     <p className="text-sm text-gray-800" style={{ fontWeight: 700 }}>Tampilkan email ke siswa</p>
                     <p className="text-xs text-gray-400">Siswa dapat melihat email tutor di halaman kelas</p>
                   </div>
                   <Toggle checked={prefs.showEmailToStudents} onChange={(value) => setPref("showEmailToStudents", value)} />
                 </div>
-                <div className="flex items-center justify-between gap-4">
-                  <div>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
                     <p className="text-sm text-gray-800" style={{ fontWeight: 700 }}>Tampilkan rating tutor</p>
                     <p className="text-xs text-gray-400">Rating terlihat pada profil tutor</p>
                   </div>

@@ -21,6 +21,7 @@ Developed by:
   - [Clone](#clone)
   - [GitHub Workflow Feature Development](#github-workflow-feature-development)
   - [Quick Start](#quick-start)
+  - [Permanent Material Storage](#permanent-material-storage)
   - [Testing Guide](#testing-guide)
   - [Supabase Database Setup](#supabase-database-setup)
 
@@ -125,6 +126,62 @@ php artisan migrate:status
 ```
 
 Then open [http://localhost:8000](http://localhost:8000) in your browser.
+
+## Permanent Material Storage <a id="permanent-material-storage"></a>
+
+Tutor-uploaded PDFs, docs, PPTs, and quizzes use the `MATERIALS_FILESYSTEM_DISK` value.
+
+For local development, use Laravel's public disk:
+
+```env
+MATERIALS_FILESYSTEM_DISK=public
+```
+
+Then make sure the public storage link exists:
+
+```bash
+php artisan storage:link
+```
+
+For production deployment on platforms where app files can be reset during redeploys, use persistent object storage. This project is configured to work with Cloudflare R2 through Laravel's S3-compatible filesystem driver:
+
+```env
+MATERIALS_FILESYSTEM_DISK=s3
+AWS_ACCESS_KEY_ID=<storage-access-key>
+AWS_SECRET_ACCESS_KEY=<storage-secret-key>
+AWS_DEFAULT_REGION=<storage-region>
+AWS_BUCKET=<bucket-name>
+AWS_URL=<public-bucket-url>
+AWS_ENDPOINT=<s3-compatible-endpoint>
+AWS_USE_PATH_STYLE_ENDPOINT=false
+```
+
+Example Cloudflare R2 values:
+
+```env
+MATERIALS_FILESYSTEM_DISK=s3
+AWS_DEFAULT_REGION=auto
+AWS_BUCKET=materials
+AWS_URL=https://<your-r2-public-bucket-url>
+AWS_ENDPOINT=https://<your-cloudflare-account-id>.r2.cloudflarestorage.com
+AWS_USE_PATH_STYLE_ENDPOINT=false
+```
+
+`AWS_URL` must be the public bucket URL, for example a custom domain such as `https://files.example.com` or the R2 public development URL. Use a custom domain for production because some networks may block or rewrite `r2.dev` public URLs. Keep the bucket public, or configure signed URL support before switching it to private. Students, tutors, and admins read the same stored material URL, so files remain accessible as long as the object storage bucket remains available.
+
+Cloudflare R2 setup checklist:
+
+1. Open Cloudflare Dashboard.
+2. Go to Storage & databases > R2.
+3. Create a bucket named `materials`.
+4. Open the bucket settings and enable public access. Prefer a custom domain for production; use the R2 public development URL only for quick testing.
+5. Copy that public bucket URL into `AWS_URL`.
+6. Go back to R2 Overview > Manage API Tokens.
+7. Create an API token with Object Read & Write access, scoped only to the `materials` bucket.
+8. Copy the Access Key ID into `AWS_ACCESS_KEY_ID`.
+9. Copy the Secret Access Key into `AWS_SECRET_ACCESS_KEY`. Cloudflare only shows this once.
+10. Copy your S3 API endpoint, usually `https://<your-cloudflare-account-id>.r2.cloudflarestorage.com`, into `AWS_ENDPOINT`.
+11. In deployment, run `php artisan config:clear` after changing env values.
 
 ## Testing Guide <a id="testing-guide"></a>
 

@@ -21,14 +21,14 @@ class ScheduleController extends Controller
     {
         $user = $request->user();
         $courseIds = $this->tutorCourseIds($user);
-        $weekStart = Carbon::now()->startOfWeek(Carbon::MONDAY)->startOfDay();
-        $weekEnd = Carbon::now()->endOfWeek(Carbon::SUNDAY)->endOfDay();
+        $weekStart = Carbon::now('Asia/Jakarta')->startOfWeek(Carbon::MONDAY)->startOfDay();
+        $weekEnd = Carbon::now('Asia/Jakarta')->endOfWeek(Carbon::SUNDAY)->endOfDay();
 
         $scheduleEvents = Schedule::query()
             ->with('course:id,title')
             ->where('mentor_id', $user->id)
             ->whereIn('course_id', $courseIds)
-            ->whereBetween('start_time', [$weekStart, $weekEnd])
+            ->whereBetween('start_time', [$weekStart->format('Y-m-d H:i:s'), $weekEnd->format('Y-m-d H:i:s')])
             ->orderBy('start_time')
             ->get()
             ->map(fn (Schedule $schedule) => [
@@ -154,7 +154,7 @@ class ScheduleController extends Controller
         abort_unless((int) $schedule->mentor_id === (int) $request->user()->id, 403);
         abort_unless(TutorCourseResolver::ids($request->user())->contains((int) $schedule->course_id), 403);
 
-        if ($schedule->end_time < now()) {
+        if ($this->hasEnded($schedule)) {
             return back()->withErrors([
                 'meeting_link' => 'Sesi ini sudah berakhir. Link meeting tidak bisa ditambahkan atau diubah.',
             ]);
@@ -194,14 +194,14 @@ class ScheduleController extends Controller
             ]);
         }
 
-        if ($schedule->end_time < now()) {
+        if ($this->hasEnded($schedule)) {
             return back()->withErrors([
                 'schedule' => 'Sesi ini sudah berakhir dan tidak bisa dimulai ulang.',
             ]);
         }
 
         if (! $schedule->started_at) {
-            $schedule->update(['started_at' => now()]);
+            $schedule->update(['started_at' => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s')]);
         }
 
         return redirect()->away($schedule->meeting_link);
@@ -213,8 +213,8 @@ class ScheduleController extends Controller
             'course_id' => $validated['course_id'],
             'mentor_id' => $request->user()->id,
             'title' => $validated['title'],
-            'start_time' => Carbon::createFromFormat('Y-m-d H:i', $validated['schedule_date'].' '.$validated['start_time']),
-            'end_time' => Carbon::createFromFormat('Y-m-d H:i', $validated['schedule_date'].' '.$validated['end_time']),
+            'start_time' => Carbon::createFromFormat('Y-m-d H:i', $validated['schedule_date'].' '.$validated['start_time'], 'Asia/Jakarta')->format('Y-m-d H:i:s'),
+            'end_time' => Carbon::createFromFormat('Y-m-d H:i', $validated['schedule_date'].' '.$validated['end_time'], 'Asia/Jakarta')->format('Y-m-d H:i:s'),
             'meeting_link' => $validated['meeting_link'] ?? null,
         ];
     }
@@ -238,15 +238,35 @@ class ScheduleController extends Controller
 
     private function scheduleStatus(Schedule $schedule): string
     {
-        if ($schedule->end_time < now()) {
+        $now = Carbon::now('Asia/Jakarta');
+        $start = $this->localScheduleTime($schedule->start_time);
+        $end = $this->localScheduleTime($schedule->end_time);
+
+        if ($end && $end->lessThanOrEqualTo($now)) {
             return 'completed';
         }
 
-        if ($schedule->start_time <= now() && $schedule->end_time >= now()) {
+        if ($start && $end && $start->lessThanOrEqualTo($now) && $end->greaterThan($now)) {
             return 'in-progress';
         }
 
         return 'upcoming';
+    }
+
+    private function hasEnded(Schedule $schedule): bool
+    {
+        $end = $this->localScheduleTime($schedule->end_time);
+
+        return $end ? $end->lessThanOrEqualTo(Carbon::now('Asia/Jakarta')) : false;
+    }
+
+    private function localScheduleTime($value): ?Carbon
+    {
+        if (! $value) {
+            return null;
+        }
+
+        return Carbon::parse($value->format('Y-m-d H:i:s'), 'Asia/Jakarta');
     }
 
     private function tutorCourseIds($user)

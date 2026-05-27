@@ -12,6 +12,7 @@ use App\Support\TutorCourseResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -112,13 +113,29 @@ class MaterialController extends Controller
         }
 
         if ($request->hasFile('module_file')) {
-            $path = $request->file('module_file')->store('materials/modules', 'public');
-            $createdMaterials[] = $this->createMaterial($request, $validated, 'module', Storage::url($path), $validated['description'] ?? null);
+            $storedFile = $this->storeMaterialFile($request->file('module_file'), 'materials/modules');
+            $createdMaterials[] = $this->createMaterial(
+                $request,
+                $validated,
+                'module',
+                $storedFile['url'],
+                $validated['description'] ?? null,
+                $storedFile['disk'],
+                $storedFile['path']
+            );
         }
 
         if ($request->hasFile('quiz_file')) {
-            $path = $request->file('quiz_file')->store('materials/quizzes', 'public');
-            $createdMaterials[] = $this->createMaterial($request, $validated, 'quiz', Storage::url($path), $validated['description'] ?? null);
+            $storedFile = $this->storeMaterialFile($request->file('quiz_file'), 'materials/quizzes');
+            $createdMaterials[] = $this->createMaterial(
+                $request,
+                $validated,
+                'quiz',
+                $storedFile['url'],
+                $validated['description'] ?? null,
+                $storedFile['disk'],
+                $storedFile['path']
+            );
         }
 
         $this->notifyAdmins($request->user(), $createdMaterials);
@@ -130,7 +147,9 @@ class MaterialController extends Controller
     {
         abort_unless($this->tutorCourseIds($request->user())->contains((int) $material->course_id), 403);
 
-        if ($material->file_url && str_starts_with($material->file_url, '/storage/')) {
+        if ($material->storage_disk && $material->file_path) {
+            Storage::disk($material->storage_disk)->delete($material->file_path);
+        } elseif ($material->file_url && str_starts_with($material->file_url, '/storage/')) {
             Storage::disk('public')->delete(substr($material->file_url, strlen('/storage/')));
         }
 
@@ -174,7 +193,36 @@ class MaterialController extends Controller
         return back()->with('success', 'Pengumuman berhasil dikirim ke '.$studentIds->count().' siswa.');
     }
 
-    private function createMaterial(Request $request, array $validated, string $type, ?string $fileUrl, ?string $content): Material
+    private function storeMaterialFile($file, string $directory): array
+    {
+        $disk = config('filesystems.materials_disk', 'public');
+        $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'bin');
+        $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $filename = Str::uuid().'-'.Str::slug($originalName ?: 'materi').'.'.$extension;
+        $path = $file->storeAs($directory.'/'.now()->format('Y/m'), $filename, $disk);
+
+        if (! $path) {
+            throw ValidationException::withMessages([
+                'content' => 'Upload gagal disimpan. Periksa konfigurasi storage.',
+            ]);
+        }
+
+        return [
+            'disk' => $disk,
+            'path' => $path,
+            'url' => Material::publicUrlFor($disk, $path),
+        ];
+    }
+
+    private function createMaterial(
+        Request $request,
+        array $validated,
+        string $type,
+        ?string $fileUrl,
+        ?string $content,
+        ?string $storageDisk = null,
+        ?string $filePath = null
+    ): Material
     {
         return Material::withoutEvents(fn () => Material::create([
             'course_id' => $validated['course_id'],
@@ -182,6 +230,8 @@ class MaterialController extends Controller
             'title' => $this->titleForType($validated['title'], $type),
             'type' => $type,
             'file_url' => $fileUrl,
+            'storage_disk' => $storageDisk,
+            'file_path' => $filePath,
             'content' => $content,
             'approval_status' => 'pending',
         ]));

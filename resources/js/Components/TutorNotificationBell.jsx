@@ -44,7 +44,7 @@ export function TutorNotificationBell() {
       <button
         type="button"
         onClick={openNotifications}
-        className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-[#D8D7BE] bg-[#F7F2E7] text-gray-700 transition-colors hover:bg-[#EFE8D8]"
+        className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-[#D8D7BE] bg-[#F7F2E7] text-gray-700 transition-colors hover:bg-[#EFE8D8] sm:h-12 sm:w-12"
         title="Notifikasi"
       >
         <Bell className="h-5 w-5" />
@@ -56,7 +56,7 @@ export function TutorNotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-14 z-50 w-80 overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-xl">
+        <div className="absolute right-0 top-12 z-50 w-[calc(100vw-2rem)] max-w-[20rem] overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-xl sm:top-14">
           <div className="px-4 py-3 border-b border-[#F7F2E7] flex items-center justify-between">
             <div>
               <h3 className="text-[#691D1B] text-sm" style={{ fontWeight: 900 }}>Notifikasi</h3>

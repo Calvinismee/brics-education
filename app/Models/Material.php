@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Support\AdminNotifier;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Material extends Model
 {
@@ -13,6 +15,8 @@ class Material extends Model
         'title',
         'type',
         'file_url',
+        'storage_disk',
+        'file_path',
         'content',
         'approval_status',
         'rejection_comment',
@@ -27,6 +31,51 @@ class Material extends Model
                 AdminNotifier::contentPending($material);
             }
         });
+    }
+
+    protected function fileUrl(): Attribute
+    {
+        return Attribute::get(fn ($value, array $attributes) => self::publicUrlFor(
+            $attributes['storage_disk'] ?? null,
+            $attributes['file_path'] ?? null,
+            $value
+        ));
+    }
+
+    public static function publicUrlFor(?string $disk, ?string $path, ?string $fallback = null): ?string
+    {
+        if ($disk && $path) {
+            if ($disk === 'public') {
+                return '/storage/'.ltrim($path, '/');
+            }
+
+            return self::normalizePublicUrl(Storage::disk($disk)->url($path));
+        }
+
+        return self::normalizePublicUrl($fallback);
+    }
+
+    public static function normalizePublicUrl(?string $url): ?string
+    {
+        $url = trim((string) $url);
+
+        if ($url === '') {
+            return null;
+        }
+
+        if (str_starts_with($url, 'storage/')) {
+            return '/'.$url;
+        }
+
+        $path = parse_url($url, PHP_URL_PATH);
+
+        if ($path && str_starts_with($path, '/storage/')) {
+            $query = parse_url($url, PHP_URL_QUERY);
+
+            return $path.($query ? '?'.$query : '');
+        }
+
+        return $url;
     }
 
     public function course()

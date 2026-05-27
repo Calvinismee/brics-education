@@ -10,6 +10,7 @@ import { BricsLogo } from "@/Components/BricsLogo";
 import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
+import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
 
 // ─── Schedule Data ─────────────────────────────────────────────────────────────
 
@@ -90,6 +91,7 @@ export function TutorSchedule({
   const [classDropdownOpen, setClassDropdownOpen] = useState(false);
   const [selectedClass] = useState(tutorClasses[0]?.id ?? 0);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [meetingLinkEvent, setMeetingLinkEvent] = useState(null);
   const [meetingLinkValue, setMeetingLinkValue] = useState("");
   const [currentTime, setCurrentTime] = useState(() => new Date());
@@ -146,28 +148,38 @@ export function TutorSchedule({
 
       {/* ── Sidebar ─────────────────────────────────────────────── */}
       <TutorSidebar user={user} tutorClasses={tutorClasses} active="schedule" selectedClassId={selectedClass} onEditProfile={() => setShowProfileModal(true)} />
+      <TutorMobileDrawer
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        user={user}
+        tutorClasses={tutorClasses}
+        active="schedule"
+        selectedClassId={selectedClass}
+        onEditProfile={() => setShowProfileModal(true)}
+      />
 
       {/* ── Main ────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
         {/* Header */}
-        <header className="bg-white border-b border-[#D8D7BE] px-6 py-3.5 sticky top-0 z-10 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+        <header className="bg-white border-b border-[#D8D7BE] px-4 py-3 sm:px-5 lg:px-6 lg:py-3.5 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <TutorMobileMenuButton onClick={() => setSidebarOpen(true)} />
               <Link href="/tutor/dashboard" className="p-2 rounded-lg hover:bg-[#F7F2E7] text-[#691D1B] transition-colors">
                 <ArrowLeft className="w-5 h-5" />
               </Link>
-              <div>
-                <h2 className="text-gray-900" style={{ fontWeight: 700 }}>Jadwal Mengajar</h2>
-                <p className="text-xs text-gray-400">
+              <div className="min-w-0">
+                <h2 className="truncate text-gray-900" style={{ fontWeight: 700 }}>Jadwal Mengajar</h2>
+                <p className="truncate text-xs text-gray-400">
                   Minggu ini - {week?.label ?? "jadwal aktif"} - Jam sekarang {currentTime.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
                 </p>
               </div>
             </div>
-            <TutorNotificationBell />
+            <div className="flex-shrink-0"><TutorNotificationBell /></div>
           </div>
         </header>
 
-        <div className="flex-1 p-6 overflow-auto space-y-5">
+        <div className="flex-1 overflow-auto px-4 py-5 sm:p-6 space-y-5">
 
           {/* ── Legend ──────────────────────────────────────────── */}
           <div className="flex flex-wrap items-center gap-3">
@@ -228,15 +240,15 @@ export function TutorSchedule({
                     <div key={ev.id} className="bg-white rounded-2xl border border-[#D8D7BE] overflow-hidden shadow-sm hover:shadow-md transition-all">
                       <div className="flex">
                         <div className="w-1.5 flex-shrink-0" style={{ background: cfg.color }} />
-                        <div className="flex-1 p-5">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex items-start gap-4">
+                        <div className="flex-1 p-4 sm:p-5">
+                          <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="flex min-w-0 items-start gap-3 sm:gap-4">
                               <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: cfg.bg, color: cfg.color }}>
                                 {cfg.icon}
                               </div>
-                              <div>
+                              <div className="min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                                  <h3 className="text-sm text-gray-900" style={{ fontWeight: 700 }}>{ev.title}</h3>
+                                  <h3 className="break-words text-sm text-gray-900" style={{ fontWeight: 700 }}>{ev.title}</h3>
                                   <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: cfg.bg, color: cfg.color, fontWeight: 600 }}>{cfg.label}</span>
                                 </div>
                                 <p className="text-xs text-gray-500 mb-2">
@@ -267,7 +279,7 @@ export function TutorSchedule({
                                   href={ev.start_session_url || `/tutor/schedule/${ev.id}/start`}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs transition-all hover:opacity-80"
+                                  className="inline-flex w-full flex-shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-xs transition-all hover:opacity-80 sm:w-auto"
                                   style={{ background: cfg.color, color: "white", fontWeight: 700 }}
                                 >
                                   {cfg.cta}
@@ -277,7 +289,7 @@ export function TutorSchedule({
                                 <button
                                   type="button"
                                   onClick={(event) => event.preventDefault()}
-                                  className="flex-shrink-0 px-4 py-2 rounded-xl text-xs cursor-not-allowed opacity-55"
+                                  className="w-full flex-shrink-0 rounded-xl px-4 py-2 text-xs cursor-not-allowed opacity-55 sm:w-auto"
                                   style={{ background: cfg.color, color: "white", fontWeight: 700 }}
                                   title={ev.status === "completed" ? "Sesi ini sudah berakhir" : "Tambahkan link meeting terlebih dahulu"}
                                 >
@@ -287,7 +299,7 @@ export function TutorSchedule({
                             ) : (
                               <Link
                                 href={ev.type === "deadline" ? "/tutor/upload" : classDetailHref(ev.course, ev.course_id)}
-                                className="flex-shrink-0 px-4 py-2 rounded-xl text-xs transition-all hover:opacity-80"
+                                className="inline-flex w-full flex-shrink-0 items-center justify-center rounded-xl px-4 py-2 text-xs transition-all hover:opacity-80 sm:w-auto"
                                 style={{ background: cfg.color, color: "white", fontWeight: 700 }}
                               >
                                 {cfg.cta}
@@ -413,4 +425,3 @@ export function TutorSchedule({
 }
 
 export default TutorSchedule;
-

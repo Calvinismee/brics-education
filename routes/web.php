@@ -132,6 +132,10 @@ Route::get('/', function () {
     ]);
 });
 
+Route::get('/tutors', function () {
+    return Inertia::render('Tutors');
+})->name('tutors');
+
 Route::get('/course/{course}', function (Course $course) {
     $course->load('category');
 
@@ -279,7 +283,7 @@ Route::get('/dashboard', function () {
         ->where('approval_status', 'approved')
         ->latest()
         ->take(5)
-        ->get(['id', 'course_id', 'title', 'type', 'file_url', 'content', 'created_at']);
+        ->get(['id', 'course_id', 'title', 'type', 'file_url', 'storage_disk', 'file_path', 'content', 'created_at']);
 
     return Inertia::render('StudentDashboard', [
         'user' => $user,

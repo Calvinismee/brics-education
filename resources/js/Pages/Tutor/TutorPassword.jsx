@@ -4,9 +4,11 @@ import { ArrowLeft, Eye, EyeOff, Lock, ShieldCheck } from "lucide-react";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
 import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
+import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
 
 export default function TutorPassword({ user = null, tutorClasses = [] }) {
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [visible, setVisible] = useState({
     current_password: false,
     password: false,
@@ -58,24 +60,33 @@ export default function TutorPassword({ user = null, tutorClasses = [] }) {
   return (
     <div className="min-h-screen flex" style={{ background: "#F7F2E7", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <TutorSidebar user={user} tutorClasses={tutorClasses} active="settings" onEditProfile={() => setShowProfileModal(true)} />
+      <TutorMobileDrawer
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        user={user}
+        tutorClasses={tutorClasses}
+        active="settings"
+        onEditProfile={() => setShowProfileModal(true)}
+      />
 
-      <main className="flex-1 min-w-0">
-        <header className="bg-white border-b border-[#D8D7BE] px-6 py-3.5 sticky top-0 z-10 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+      <main className="flex-1 min-w-0 overflow-x-hidden">
+        <header className="bg-white border-b border-[#D8D7BE] px-4 py-3 sm:px-5 lg:px-6 lg:py-3.5 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <TutorMobileMenuButton onClick={() => setSidebarOpen(true)} />
               <Link href="/tutor/settings" className="p-2 rounded-lg hover:bg-[#F7F2E7] text-[#691D1B] transition-colors">
                 <ArrowLeft className="w-5 h-5" />
               </Link>
-              <div>
-                <h2 className="text-gray-900" style={{ fontWeight: 800 }}>Ubah Password Tutor</h2>
-                <p className="text-xs text-gray-400">Perbarui kata sandi akun tutor Anda</p>
+              <div className="min-w-0">
+                <h2 className="truncate text-gray-900" style={{ fontWeight: 800 }}>Ubah Password Tutor</h2>
+                <p className="truncate text-xs text-gray-400">Perbarui kata sandi akun tutor Anda</p>
               </div>
             </div>
-            <TutorNotificationBell />
+            <div className="flex-shrink-0"><TutorNotificationBell /></div>
           </div>
         </header>
 
-        <div className="p-6">
+        <div className="px-4 py-5 sm:p-6">
           <section className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
             <div className="border-b border-[#F7F2E7] p-5">
               <div className="flex items-center gap-3">

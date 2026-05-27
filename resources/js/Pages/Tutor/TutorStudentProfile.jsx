@@ -15,6 +15,7 @@ import {
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
 import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
+import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
 
 const asArray = (value) => Array.isArray(value) ? value : Object.values(value ?? {});
 
@@ -34,6 +35,7 @@ export default function TutorStudentProfile({
   stats = {},
 }) {
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const classes = asArray(tutorClasses);
   const enrollmentItems = asArray(enrollments);
   const scheduleItems = asArray(recentSchedules);
@@ -42,32 +44,41 @@ export default function TutorStudentProfile({
   return (
     <div className="min-h-screen flex" style={{ background: "#F7F2E7", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <TutorSidebar user={user} tutorClasses={classes} active="classes" onEditProfile={() => setShowProfileModal(true)} />
+      <TutorMobileDrawer
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        user={user}
+        tutorClasses={classes}
+        active="classes"
+        onEditProfile={() => setShowProfileModal(true)}
+      />
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-[#D8D7BE] px-6 py-3.5 sticky top-0 z-10 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
+        <header className="bg-white border-b border-[#D8D7BE] px-4 py-3 sm:px-5 lg:px-6 lg:py-3.5 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <TutorMobileMenuButton onClick={() => setSidebarOpen(true)} />
               <Link href="/tutor/classes" className="p-2 rounded-lg hover:bg-[#F7F2E7] text-[#691D1B] transition-colors">
                 <ArrowLeft className="w-5 h-5" />
               </Link>
-              <div>
-                <h2 className="text-gray-900" style={{ fontWeight: 800 }}>Profil Siswa</h2>
-                <p className="text-xs text-gray-400">Ringkasan kelas dan aktivitas siswa</p>
+              <div className="min-w-0">
+                <h2 className="truncate text-gray-900" style={{ fontWeight: 800 }}>Profil Siswa</h2>
+                <p className="truncate text-xs text-gray-400">Ringkasan kelas dan aktivitas siswa</p>
               </div>
             </div>
-            <TutorNotificationBell />
+            <div className="flex-shrink-0"><TutorNotificationBell /></div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-6 space-y-6">
-          <section className="rounded-2xl border border-[#D8D7BE] bg-white p-6 shadow-sm">
+        <main className="flex-1 overflow-auto px-4 py-5 sm:p-6 space-y-5 sm:space-y-6">
+          <section className="rounded-2xl border border-[#D8D7BE] bg-white p-4 shadow-sm sm:p-6">
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-4">
+              <div className="flex min-w-0 items-center gap-4">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full text-xl" style={{ background: "#691D1B", color: "#FFE882", fontWeight: 900 }}>
                   {initialsFor(studentName)}
                 </div>
-                <div>
-                  <h1 className="text-2xl text-gray-900" style={{ fontWeight: 900 }}>{studentName}</h1>
+                <div className="min-w-0">
+                  <h1 className="break-words text-xl text-gray-900 sm:text-2xl" style={{ fontWeight: 900 }}>{studentName}</h1>
                   <div className="mt-2 flex flex-wrap gap-3 text-sm text-gray-500">
                     <span className="inline-flex items-center gap-1.5">
                       <Mail className="h-4 w-4 text-[#691D1B]" />
@@ -83,7 +94,7 @@ export default function TutorStudentProfile({
 
               <Link
                 href="/tutor/classes"
-                className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm text-white hover:bg-[#4A1412]"
+                className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm text-white hover:bg-[#4A1412] md:w-auto"
                 style={{ background: "#691D1B", fontWeight: 800 }}
               >
                 <BookOpen className="h-4 w-4" />
@@ -92,7 +103,7 @@ export default function TutorStudentProfile({
             </div>
           </section>
 
-          <section className="grid gap-4 md:grid-cols-4">
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
               { label: "Course Tutor", value: stats.courses ?? enrollmentItems.length, icon: BookOpen },
               { label: "Progress", value: `${stats.avgProgress ?? 0}%`, icon: TrendingUp },

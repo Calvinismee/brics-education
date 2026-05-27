@@ -73,8 +73,8 @@ export function TutorSidebar({
 
   return (
     <aside
-      className={`${isCollapsed ? "w-20" : "w-64"} flex flex-col flex-shrink-0 transition-all duration-200`}
-      style={{ background: "#691D1B", minHeight: "100vh", position: "sticky", top: 0, height: "100vh", overflowY: "auto" }}
+      className={`${drawer ? "flex w-full" : `hidden lg:flex ${isCollapsed ? "w-20" : "w-64"}`} flex-col flex-shrink-0 transition-all duration-200`}
+      style={{ background: "#691D1B", minHeight: "100vh", position: drawer ? "relative" : "sticky", top: 0, height: "100vh", overflowY: "auto" }}
     >
       <div className={`${isCollapsed ? "p-3" : "px-5 py-5"} border-b border-white/10`}>
         <div className="flex items-start justify-between gap-2">
