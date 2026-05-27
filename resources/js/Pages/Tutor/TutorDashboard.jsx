@@ -2,12 +2,13 @@ import { Link } from "@inertiajs/react";
 import {
   Home, BookOpen, Upload, Users, Bell, LogOut, Calendar, Clock,
   AlertCircle, TrendingUp, Star, CheckCircle, ChevronRight, ChevronDown,
-  Pencil, User, Settings as SettingsIcon, Video, ExternalLink, Menu, X,
+  Pencil, User, Settings as SettingsIcon, Video, ExternalLink,
 } from "lucide-react";
 import { BricsLogo } from "@/Components/BricsLogo";
 import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
+import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
 import { useState } from "react";
 
 const fallbackTutorClasses = [
@@ -105,71 +106,19 @@ export function TutorDashboard({
 
   return (
     <div className="min-h-screen flex" style={{ background: "#F7F2E7", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      <style>
-        {`
-          @keyframes tutorDrawerSlideIn {
-            from { transform: translateX(-100%); }
-            to { transform: translateX(0); }
-          }
-
-          @keyframes tutorDrawerFadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-
-          .tutor-drawer-panel {
-            animation: tutorDrawerSlideIn 240ms ease-out both;
-          }
-
-          .tutor-drawer-backdrop {
-            animation: tutorDrawerFadeIn 180ms ease-out both;
-          }
-
-          @media (prefers-reduced-motion: reduce) {
-            .tutor-drawer-panel,
-            .tutor-drawer-backdrop {
-              animation: none;
-            }
-          }
-        `}
-      </style>
       {/* Sidebar */}
       <div className="hidden flex-shrink-0 lg:block">
         <TutorSidebar user={user} tutorClasses={tutorClasses} active="dashboard" onEditProfile={() => setShowProfileModal(true)} />
       </div>
 
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button
-            type="button"
-            className="tutor-drawer-backdrop absolute inset-0 bg-black/40"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Tutup menu tutor"
-          />
-
-          <div className="tutor-drawer-panel relative h-full w-[min(20rem,85vw)]">
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(false)}
-              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#691D1B]"
-              aria-label="Tutup menu"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <TutorSidebar
-              user={user}
-              tutorClasses={tutorClasses}
-              active="dashboard"
-              drawer
-              onEditProfile={() => {
-                setSidebarOpen(false);
-                setShowProfileModal(true);
-              }}
-            />
-          </div>
-        </div>
-      )}
+      <TutorMobileDrawer
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        user={user}
+        tutorClasses={tutorClasses}
+        active="dashboard"
+        onEditProfile={() => setShowProfileModal(true)}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
@@ -177,14 +126,7 @@ export function TutorDashboard({
         <header className="bg-white border-b border-[#D8D7BE] px-4 py-3 sm:px-5 lg:px-6 lg:py-3.5 flex-shrink-0 sticky top-0 z-10 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setSidebarOpen(true)}
-                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[#D8D7BE] text-[#691D1B] lg:hidden"
-                aria-label="Buka menu tutor"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
+              <TutorMobileMenuButton onClick={() => setSidebarOpen(true)} />
 
               <div className="min-w-0">
                 <h2 className="truncate text-gray-900" style={{ fontWeight: 700 }}>Dashboard Tutor</h2>

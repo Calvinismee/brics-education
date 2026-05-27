@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Material;
 use App\Support\AdminNotifier;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -24,6 +25,8 @@ class ContentController extends Controller
                 'materials.title',
                 'materials.type',
                 'materials.file_url',
+                'materials.storage_disk',
+                'materials.file_path',
                 'materials.content',
                 'materials.course_id',
                 'materials.uploaded_by',
@@ -38,9 +41,10 @@ class ContentController extends Controller
 
         $contents->getCollection()->transform(function ($material) {
             $contentLength = strlen(trim(strip_tags((string) ($material->content ?? ''))));
+            $fileUrl = Material::publicUrlFor($material->storage_disk, $material->file_path, $material->file_url);
             $size = $contentLength > 0
                 ? number_format(max(1, round($contentLength / 1024, 1)), 1).' KB'
-                : ($material->file_url ? 'Terlampir' : '—');
+                : ($fileUrl ? 'Terlampir' : '-');
 
             return [
                 'id' => $material->id,
@@ -48,7 +52,7 @@ class ContentController extends Controller
                 'type' => $material->type,
                 'course_id' => $material->course_id,
                 'tutor_id' => $material->uploaded_by,
-                'file_url' => $material->file_url,
+                'file_url' => $fileUrl,
                 'content' => $material->content,
                 'rejection_comment' => $material->rejection_comment,
                 'tutor' => $material->tutor_name ?: 'Tutor',

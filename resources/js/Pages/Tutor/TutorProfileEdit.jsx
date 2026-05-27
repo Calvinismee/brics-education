@@ -22,6 +22,7 @@ import { BricsLogo } from "@/Components/BricsLogo";
 import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
+import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
 
 const fallbackTutorClasses = [
   { id: 0, name: "Penalaran Umum", students: 24, progress: 75 },
@@ -44,6 +45,7 @@ export function TutorProfileEdit({ user = null, tutorClasses: serverTutorClasses
   const tutorClasses = Array.isArray(serverTutorClasses) && serverTutorClasses.length > 0 ? serverTutorClasses : fallbackTutorClasses;
   const [classDropdownOpen, setClassDropdownOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileForm, setProfileForm] = useState({
     name: tutorName,
     email: tutorEmail,
@@ -82,25 +84,36 @@ export function TutorProfileEdit({ user = null, tutorClasses: serverTutorClasses
   return (
     <div className="min-h-screen flex" style={{ background: "#F7F2E7", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <TutorSidebar user={user} tutorClasses={tutorClasses} active="profile" onEditProfile={() => setShowProfileModal(true)} />
+      <TutorMobileDrawer
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        user={user}
+        tutorClasses={tutorClasses}
+        active="profile"
+        onEditProfile={() => setShowProfileModal(true)}
+      />
 
-      <main className="flex-1 min-w-0">
-        <header className="bg-white border-b border-[#D8D7BE] px-6 py-3.5 sticky top-0 z-10 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-gray-900" style={{ fontWeight: 700 }}>Edit Profil</h2>
-              <p className="text-xs text-gray-400">Kelola informasi akun tutor</p>
+      <main className="flex-1 min-w-0 overflow-x-hidden">
+        <header className="bg-white border-b border-[#D8D7BE] px-4 py-3 sm:px-5 lg:px-6 lg:py-3.5 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <TutorMobileMenuButton onClick={() => setSidebarOpen(true)} />
+              <div className="min-w-0">
+                <h2 className="truncate text-gray-900" style={{ fontWeight: 700 }}>Edit Profil</h2>
+                <p className="truncate text-xs text-gray-400">Kelola informasi akun tutor</p>
+              </div>
             </div>
-            <TutorNotificationBell />
+            <div className="flex-shrink-0"><TutorNotificationBell /></div>
           </div>
         </header>
 
-        <div className="p-6 space-y-6">
+        <div className="px-4 py-5 sm:p-6 space-y-5 sm:space-y-6">
           <section className="bg-white rounded-2xl border border-[#D8D7BE] overflow-hidden">
             <div className="p-5 border-b border-[#F7F2E7]" style={{ background: "#691D1B" }}>
               <h3 className="text-white" style={{ fontWeight: 700 }}>Informasi Akun</h3>
               <p className="text-xs" style={{ color: "#FFE882" }}>Data utama yang dipakai untuk akun tutor</p>
             </div>
-            <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-6 p-4 sm:p-6 lg:grid-cols-3">
               <div className="flex flex-col items-center justify-start gap-3">
                 <div className="relative">
                   <div className="w-24 h-24 rounded-full flex items-center justify-center text-2xl" style={{ background: "#691D1B", color: "#FFE882", fontWeight: 800 }}>
@@ -148,11 +161,11 @@ export function TutorProfileEdit({ user = null, tutorClasses: serverTutorClasses
                 </label>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-[#D8D7BE] flex justify-end gap-3" style={{ background: "#F7F2E7" }}>
-              <a href="/tutor/dashboard" className="px-4 py-2.5 rounded-xl text-sm border border-[#D8D7BE] text-gray-600 hover:bg-white transition-colors" style={{ fontWeight: 600 }}>
+            <div className="flex flex-col gap-3 border-t border-[#D8D7BE] px-4 py-4 sm:flex-row sm:justify-end sm:px-6" style={{ background: "#F7F2E7" }}>
+              <a href="/tutor/dashboard" className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[#D8D7BE] px-4 py-2.5 text-sm text-gray-600 transition-colors hover:bg-white" style={{ fontWeight: 600 }}>
                 Batal
               </a>
-              <button type="button" onClick={handleSave} className="px-5 py-2.5 rounded-xl text-sm transition-all hover:opacity-90" style={{ background: "#691D1B", color: "#FFE882", fontWeight: 700 }}>
+              <button type="button" onClick={handleSave} className="inline-flex min-h-10 items-center justify-center rounded-xl px-5 py-2.5 text-sm transition-all hover:opacity-90" style={{ background: "#691D1B", color: "#FFE882", fontWeight: 700 }}>
                 Simpan Perubahan
               </button>
             </div>

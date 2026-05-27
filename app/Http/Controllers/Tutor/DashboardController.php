@@ -57,7 +57,7 @@ class DashboardController extends Controller
             ->with('course:id,title')
             ->where('mentor_id', $user->id)
             ->whereIn('course_id', $courseIds)
-            ->whereDate('start_time', Carbon::today())
+            ->whereDate('start_time', Carbon::today('Asia/Jakarta')->toDateString())
             ->orderBy('start_time')
             ->get()
             ->map(fn (Schedule $schedule) => [
@@ -105,7 +105,7 @@ class DashboardController extends Controller
                 'upcomingSessions' => Schedule::query()
                     ->where('mentor_id', $user->id)
                     ->whereIn('course_id', $courseIds)
-                    ->where('start_time', '>=', now())
+                    ->where('start_time', '>=', Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'))
                     ->count(),
                 'completedSessions' => $this->teachingHistoryQuery($user, $courseIds)->count(),
             ],
@@ -267,11 +267,15 @@ class DashboardController extends Controller
 
     private function scheduleStatus(Schedule $schedule): string
     {
-        if ($schedule->end_time < now()) {
+        $now = Carbon::now('Asia/Jakarta');
+        $start = $this->localScheduleTime($schedule->start_time);
+        $end = $this->localScheduleTime($schedule->end_time);
+
+        if ($end && $end->lessThanOrEqualTo($now)) {
             return 'completed';
         }
 
-        if ($schedule->start_time <= now() && $schedule->end_time >= now()) {
+        if ($start && $end && $start->lessThanOrEqualTo($now) && $end->greaterThan($now)) {
             return 'in-progress';
         }
 
@@ -287,8 +291,17 @@ class DashboardController extends Controller
             ->whereNotNull('meeting_link')
             ->whereNotNull('started_at')
             ->whereColumn('started_at', '<=', 'end_time')
-            ->where('end_time', '<', now())
+            ->where('end_time', '<=', Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'))
             ->orderByDesc('end_time');
+    }
+
+    private function localScheduleTime($value): ?Carbon
+    {
+        if (! $value) {
+            return null;
+        }
+
+        return Carbon::parse($value->format('Y-m-d H:i:s'), 'Asia/Jakarta');
     }
 
     private function teachingHistoryItem(Schedule $schedule): array

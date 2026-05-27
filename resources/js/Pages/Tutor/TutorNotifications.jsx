@@ -4,6 +4,7 @@ import { ArrowLeft, Bell, CheckCircle, Circle, Clock } from "lucide-react";
 import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
+import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
 
 const asArray = (value) => Array.isArray(value) ? value : Object.values(value ?? {});
 
@@ -29,6 +30,7 @@ export function TutorNotifications({
   stats = {},
 }) {
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const rows = asArray(notifications.data ?? notifications);
   const links = asArray(notifications.links);
 
@@ -43,24 +45,33 @@ export function TutorNotifications({
   return (
     <div className="min-h-screen flex" style={{ background: "#F7F2E7", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <TutorSidebar user={user} tutorClasses={tutorClasses} active="notifications" onEditProfile={() => setShowProfileModal(true)} />
+      <TutorMobileDrawer
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        user={user}
+        tutorClasses={tutorClasses}
+        active="notifications"
+        onEditProfile={() => setShowProfileModal(true)}
+      />
 
-      <main className="flex-1 min-w-0">
-        <header className="bg-white border-b border-[#D8D7BE] px-6 py-3.5 sticky top-0 z-10 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+      <main className="flex-1 min-w-0 overflow-x-hidden">
+        <header className="bg-white border-b border-[#D8D7BE] px-4 py-3 sm:px-5 lg:px-6 lg:py-3.5 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <TutorMobileMenuButton onClick={() => setSidebarOpen(true)} />
               <Link href="/tutor/dashboard" className="p-2 rounded-lg hover:bg-[#F7F2E7] text-[#691D1B] transition-colors">
                 <ArrowLeft className="w-5 h-5" />
               </Link>
-              <div>
-                <h2 className="text-gray-900" style={{ fontWeight: 700 }}>Notifikasi</h2>
-                <p className="text-xs text-gray-400">Riwayat informasi tutor terbaru</p>
+              <div className="min-w-0">
+                <h2 className="truncate text-gray-900" style={{ fontWeight: 700 }}>Notifikasi</h2>
+                <p className="truncate text-xs text-gray-400">Riwayat informasi tutor terbaru</p>
               </div>
             </div>
-            <TutorNotificationBell />
+            <div className="flex-shrink-0"><TutorNotificationBell /></div>
           </div>
         </header>
 
-        <div className="p-6 space-y-6">
+        <div className="px-4 py-5 sm:p-6 space-y-5 sm:space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-white rounded-2xl border border-[#D8D7BE] p-5">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: "#691D1B15", color: "#691D1B" }}>
@@ -87,7 +98,7 @@ export function TutorNotifications({
               <button
                 type="button"
                 onClick={() => router.post("/tutor/notifications/mark-all-as-read", {}, { preserveScroll: true })}
-                className="px-4 py-2 rounded-xl text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all"
+                className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm transition-all hover:opacity-90 sm:w-auto"
                 style={{ background: "#691D1B", color: "#FFE882", fontWeight: 700 }}
               >
                 <CheckCircle className="w-4 h-4" />
@@ -103,11 +114,11 @@ export function TutorNotifications({
                   onClick={() => markAsRead(notification)}
                   className="w-full p-5 text-left hover:bg-[#F7F2E7] transition-colors"
                 >
-                  <div className="flex gap-3">
+                  <div className="flex min-w-0 gap-3">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: notification.is_read ? "#F7F2E7" : "#691D1B15", color: notification.is_read ? "#9ca3af" : "#691D1B" }}>
                       {notification.is_read ? <CheckCircle className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm text-gray-900" style={{ fontWeight: 800 }}>{notification.title}</p>
                         {!notification.is_read && (

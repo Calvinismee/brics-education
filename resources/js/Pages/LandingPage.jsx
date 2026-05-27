@@ -298,6 +298,7 @@ export default function LandingPage({ packages = [] }) {
               { label: "Beranda", to: "/" },
               { label: "Katalog", to: "/#katalog" },
               { label: "Tentang Kami", to: "#tentang" },
+              { label: "Tutor Kami", to: "/tutors" },
             ].map((item) => (
               <Link
                 key={item.label}

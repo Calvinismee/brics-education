@@ -10,6 +10,7 @@ import { BricsLogo } from "@/Components/BricsLogo";
 import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
+import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
 
 const fallbackTutorCourses = [
   { id: 0, title: "Penalaran Umum", students: 24, progress: 75 },
@@ -67,6 +68,7 @@ export function TutorMaterialUpload({
   const [contentError, setContentError] = useState(false);
   const [classDropdownOpen, setClassDropdownOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [announcementCourseId, setAnnouncementCourseId] = useState(courseList[0]?.id ?? "");
   const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementMessage, setAnnouncementMessage] = useState("");
@@ -201,26 +203,35 @@ export function TutorMaterialUpload({
 
       {/* ── Sidebar ─────────────────────────────────────────────── */}
       <TutorSidebar user={user} tutorClasses={tutorClasses} active="upload" onEditProfile={() => setShowProfileModal(true)} />
+      <TutorMobileDrawer
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        user={user}
+        tutorClasses={tutorClasses}
+        active="upload"
+        onEditProfile={() => setShowProfileModal(true)}
+      />
 
       {/* ── Main ────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
         {/* Header */}
-        <header className="bg-white border-b border-[#D8D7BE] px-6 py-3.5 sticky top-0 z-10 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+        <header className="bg-white border-b border-[#D8D7BE] px-4 py-3 sm:px-5 lg:px-6 lg:py-3.5 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <TutorMobileMenuButton onClick={() => setSidebarOpen(true)} />
               <Link href="/tutor/dashboard" className="p-2 rounded-lg hover:bg-[#F7F2E7] transition-colors" style={{ color: "#691D1B" }}>
                 <ArrowLeft className="w-5 h-5" />
               </Link>
-              <div>
-                <h2 className="text-gray-900" style={{ fontWeight: 700 }}>Upload Materi</h2>
-                <p className="text-xs text-gray-400">Kelola konten pembelajaran Anda</p>
+              <div className="min-w-0">
+                <h2 className="truncate text-gray-900" style={{ fontWeight: 700 }}>Upload Materi</h2>
+                <p className="truncate text-xs text-gray-400">Kelola konten pembelajaran Anda</p>
               </div>
             </div>
-            <TutorNotificationBell />
+            <div className="flex-shrink-0"><TutorNotificationBell /></div>
           </div>
         </header>
 
-        <div className="flex-1 p-6 overflow-auto">
+        <div className="flex-1 overflow-auto px-4 py-5 sm:p-6">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
 
             {/* ── Upload Form (unified) ───────────────────────── */}
@@ -230,7 +241,7 @@ export function TutorMaterialUpload({
                 <p className="text-xs" style={{ color: "#FFE882" }}>Isi semua bagian yang relevan, lalu kirim untuk review</p>
               </div>
 
-              <div className="p-6 space-y-6">
+              <div className="p-4 space-y-5 sm:p-6 sm:space-y-6">
 
                 {/* Success banner */}
                 {submitted && (
@@ -726,4 +737,3 @@ export function TutorMaterialUpload({
 }
 
 export default TutorMaterialUpload;
-
