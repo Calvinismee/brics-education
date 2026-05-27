@@ -76,7 +76,7 @@ export default function CourseDetail({ course }) {
     >
       {/* Header */}
       <header className="bg-white border-b border-[#D8D7BE] sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3 sm:px-6">
           <Link href="/">
             <BricsLogo size="sm" />
           </Link>
@@ -107,7 +107,7 @@ export default function CourseDetail({ course }) {
             </Link>
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-shrink-0 items-center gap-2 sm:gap-3">
             <Link
               href={route("register")}
               className="hidden sm:inline-flex px-5 py-2 text-sm text-[#691D1B] border border-[#691D1B] rounded-md hover:bg-[#F7F2E7] transition-colors"
@@ -118,7 +118,7 @@ export default function CourseDetail({ course }) {
 
             <Link
               href={route("login")}
-              className="px-5 py-2 text-sm text-white bg-[#691D1B] rounded-md hover:bg-[#4A1412] transition-colors"
+              className="min-h-10 px-4 py-2 text-sm text-white bg-[#691D1B] rounded-md hover:bg-[#4A1412] transition-colors sm:px-5"
               style={{ fontWeight: 600 }}
             >
               Masuk
@@ -134,7 +134,7 @@ export default function CourseDetail({ course }) {
           <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-[#FFE882] -translate-x-1/3 translate-y-1/3" />
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 py-12 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 py-8 relative z-10 sm:px-6 sm:py-12">
           <Link
             href="/#katalog"
             className="inline-flex items-center gap-2 text-[#FFE882]/85 hover:text-[#FFE882] text-sm mb-7 transition-colors"
@@ -144,7 +144,7 @@ export default function CourseDetail({ course }) {
             Kembali ke Katalog
           </Link>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 lg:gap-10 items-start">
             <div className="lg:col-span-2">
               <span
                 className="inline-flex items-center gap-2 bg-[#FFE882] text-[#691D1B] text-xs px-4 py-2 rounded-full mb-5"
@@ -156,7 +156,7 @@ export default function CourseDetail({ course }) {
               </span>
 
               <h1
-                className="text-3xl lg:text-5xl text-white mb-5"
+                className="break-words text-2xl sm:text-3xl lg:text-5xl text-white mb-5"
                 style={{ fontWeight: 900, lineHeight: 1.15 }}
               >
                 {course?.title || "Detail Course"}
@@ -166,7 +166,7 @@ export default function CourseDetail({ course }) {
                 {course?.description || "Deskripsi course belum tersedia."}
               </p>
 
-              <div className="flex flex-wrap items-center gap-5">
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-5">
                 <div className="flex items-center gap-2">
                   <Star className="w-5 h-5 fill-[#FFE882] text-[#FFE882]" />
                   <span className="text-white" style={{ fontWeight: 900 }}>
@@ -205,8 +205,8 @@ export default function CourseDetail({ course }) {
       </section>
 
       {/* Content */}
-      <section className="max-w-7xl mx-auto px-6 py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <section className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Main */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-[#D8D7BE]">
@@ -214,19 +214,19 @@ export default function CourseDetail({ course }) {
                 <img
                   src={COURSE_IMAGE}
                   alt={course?.title || "Course"}
-                  className="w-full h-72 lg:h-80 object-cover"
+                  className="w-full h-52 sm:h-72 lg:h-80 object-cover"
                 />
 
                 <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
                   <div
-                    className="w-16 h-16 rounded-full flex items-center justify-center shadow-xl"
+                    className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl sm:h-16 sm:w-16"
                     style={{ background: "#FFE882" }}
                   >
                     <Play className="w-7 h-7 ml-1 text-[#691D1B]" />
                   </div>
                 </div>
 
-                <div className="absolute left-5 bottom-5 bg-white rounded-xl px-4 py-3 shadow-lg">
+                <div className="absolute bottom-4 left-4 max-w-[calc(100%-2rem)] bg-white rounded-xl px-4 py-3 shadow-lg sm:bottom-5 sm:left-5">
                   <p className="text-xs text-gray-500">Preview Course</p>
                   <p className="text-sm text-[#691D1B]" style={{ fontWeight: 800 }}>
                     Lihat gambaran pembelajaran
@@ -235,7 +235,7 @@ export default function CourseDetail({ course }) {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#D8D7BE]">
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#D8D7BE] sm:p-6">
               <h2
                 className="text-xl text-[#691D1B] mb-4"
                 style={{ fontWeight: 900 }}
@@ -248,7 +248,7 @@ export default function CourseDetail({ course }) {
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#D8D7BE]">
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#D8D7BE] sm:p-6">
               <h2
                 className="text-xl text-[#691D1B] mb-5"
                 style={{ fontWeight: 900 }}
@@ -269,7 +269,7 @@ export default function CourseDetail({ course }) {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#D8D7BE]">
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#D8D7BE] sm:p-6">
               <h2
                 className="text-xl text-[#691D1B] mb-5"
                 style={{ fontWeight: 900 }}
@@ -305,8 +305,8 @@ export default function CourseDetail({ course }) {
 
           {/* Sidebar */}
           <aside className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-lg border border-[#D8D7BE] overflow-hidden sticky top-24">
-              <div className="p-6 border-b border-[#F7F2E7]">
+            <div className="bg-white rounded-2xl shadow-lg border border-[#D8D7BE] overflow-hidden lg:sticky lg:top-24">
+              <div className="p-5 border-b border-[#F7F2E7] sm:p-6">
                 <span
                   className="inline-block text-xs px-3 py-1 rounded-full mb-3"
                   style={{
@@ -356,7 +356,7 @@ export default function CourseDetail({ course }) {
                 </Link>
               </div>
 
-              <div className="p-6">
+              <div className="p-5 sm:p-6">
                 <h4
                   className="text-sm text-gray-900 mb-4"
                   style={{ fontWeight: 900 }}
@@ -382,10 +382,10 @@ export default function CourseDetail({ course }) {
       </section>
 
       {/* CTA bottom */}
-      <section className="max-w-7xl mx-auto px-6 pb-12">
-        <div className="rounded-2xl bg-[#691D1B] p-8 text-white flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+      <section className="max-w-7xl mx-auto px-4 pb-8 sm:px-6 sm:pb-12">
+        <div className="rounded-2xl bg-[#691D1B] p-5 text-white flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 sm:p-8">
           <div>
-            <h2 className="text-2xl mb-2" style={{ fontWeight: 900 }}>
+            <h2 className="text-xl mb-2 sm:text-2xl" style={{ fontWeight: 900 }}>
               Siap mempelajari course ini lewat paket?
             </h2>
             <p className="text-sm text-[#D8D7BE]">
@@ -395,7 +395,7 @@ export default function CourseDetail({ course }) {
 
           <Link
             href="/#katalog"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-[#691D1B] bg-[#FFE882] hover:bg-yellow-300 transition-colors"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 px-6 py-3 rounded-xl text-[#691D1B] bg-[#FFE882] hover:bg-yellow-300 transition-colors sm:w-auto"
             style={{ fontWeight: 900 }}
           >
             Lihat Paket

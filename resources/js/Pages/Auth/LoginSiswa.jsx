@@ -148,7 +148,7 @@ export default function LoginSiswa({ googleClientId }) {
 
       <LoginPanel />
 
-      <div className="flex-1 flex items-center justify-center px-6 py-10">
+      <div className="flex-1 flex items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
         <div className="w-full max-w-md">
           <div className="lg:hidden mb-8 flex justify-center">
             <BricsLogo size="md" />
@@ -163,7 +163,7 @@ export default function LoginSiswa({ googleClientId }) {
             Kembali ke Beranda
           </Link>
 
-          <div className="bg-white border border-[#D8D7BE] rounded-3xl shadow-sm p-7">
+          <div className="bg-white border border-[#D8D7BE] rounded-3xl shadow-sm p-5 sm:p-7">
             <div className="flex items-center gap-3 mb-6">
               <div
                 className="w-12 h-12 rounded-2xl flex items-center justify-center"
@@ -180,7 +180,7 @@ export default function LoginSiswa({ googleClientId }) {
                   Selamat datang di
                 </p>
                 <h1
-                  className="text-2xl text-gray-900"
+                  className="text-xl text-gray-900 sm:text-2xl"
                   style={{ fontWeight: 900 }}
                 >
                   Brics Education

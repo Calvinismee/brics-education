@@ -15,6 +15,7 @@ import {
   HelpCircle,
   Home,
   LogOut,
+  Menu,
   Pencil,
   Play,
   Star,
@@ -189,6 +190,7 @@ export default function CourseLearn({
   const [activeResourceTab, setActiveResourceTab] = useState('video');
   const [videoPreview, setVideoPreview] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [subtesOpen, setSubtesOpen] = useState(true);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const profileForm = useForm({
@@ -358,7 +360,7 @@ export default function CourseLearn({
   );
 
   const renderProfileEditorModal = () => (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center px-4 py-6">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center px-3 py-4 sm:px-4 sm:py-6">
       <button
         type="button"
         className="absolute inset-0 bg-black/45"
@@ -366,9 +368,9 @@ export default function CourseLearn({
         aria-label="Tutup editor profil"
       />
 
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-[#F7F2E7] px-5 py-4">
-          <div className="flex items-center gap-3">
+      <div className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
+        <div className="flex flex-shrink-0 items-start justify-between gap-4 border-b border-[#F7F2E7] px-4 py-4 sm:px-5">
+          <div className="flex min-w-0 items-center gap-3">
             <div
               className="flex h-11 w-11 items-center justify-center rounded-xl"
               style={{ background: '#F8EDED', color: '#691D1B' }}
@@ -376,11 +378,11 @@ export default function CourseLearn({
               <Pencil className="h-5 w-5" />
             </div>
 
-            <div>
+            <div className="min-w-0">
               <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
                 Edit Profil
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="truncate text-sm text-gray-500">
                 Data diri siswa
               </p>
             </div>
@@ -397,7 +399,7 @@ export default function CourseLearn({
           </button>
         </div>
 
-        <form onSubmit={submitProfileEditor} className="grid gap-5 px-5 py-5 md:grid-cols-2">
+        <form onSubmit={submitProfileEditor} className="grid gap-5 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5 md:grid-cols-2">
           <label className="space-y-2 md:col-span-2">
             <span className="text-sm font-bold text-gray-700">Nama Lengkap</span>
             <input
@@ -484,6 +486,229 @@ export default function CourseLearn({
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+
+  const renderSidebarContent = () => (
+    <div
+      className="h-full flex flex-col text-white overflow-y-scroll overflow-x-hidden"
+      style={{
+        background: '#741A18',
+        scrollbarGutter: 'stable',
+      }}
+    >
+      <div className="px-4 py-4 border-b border-white/10">
+        <p className="text-[10px] tracking-[0.32em] text-[#FFE882] mb-2">
+          BRICS EDUCATION
+        </p>
+
+        <div>
+          <h2 className="text-lg" style={{ fontWeight: 900 }}>
+            Siswa Panel
+          </h2>
+          <p className="text-xs text-white/60 mt-1">
+            Area pembelajaran siswa
+          </p>
+        </div>
+      </div>
+
+      <div className="px-4 py-4 border-b border-white/10">
+        <div className="rounded-2xl border border-white/15 bg-white/[0.12] p-4 shadow-sm">
+          <div className="flex min-w-0 items-start gap-3">
+            <div
+              className="h-12 w-12 flex-shrink-0 rounded-full flex items-center justify-center text-base"
+              style={{
+                background: '#FFE882',
+                color: '#691D1B',
+                fontWeight: 900,
+              }}
+            >
+              {getInitials(user?.name)}
+            </div>
+
+            <div className="min-w-0 flex-1 pt-0.5">
+              <p
+                className="overflow-hidden text-sm leading-snug text-white"
+                style={{
+                  fontWeight: 900,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                }}
+                title={user?.name || 'Siswa Brics'}
+              >
+                {user?.name || 'Siswa Brics'}
+              </p>
+              <p className="mt-1.5 truncate text-xs leading-tight text-white/65" title={categoryName}>
+                {categoryName}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSidebarOpen(false);
+                openProfileEditor();
+              }}
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition-transform hover:scale-105"
+              style={{
+                background: '#FFE882',
+                color: '#691D1B',
+              }}
+              title="Edit Profil"
+              aria-label="Edit Profil"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="mt-4">
+            <div className="mb-2 flex items-center justify-between text-xs">
+              <span className="text-white/80">Progres Belajar</span>
+              <span className="rounded-full bg-[#FFE882]/20 px-2 py-0.5 text-[#FFE882] font-black">
+                {averageProgress}%
+              </span>
+            </div>
+
+            <div className="w-full h-2.5 bg-white/20 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${averageProgress}%`,
+                  background: '#FFE882',
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <nav className="flex-1 px-3.5 py-4 space-y-2">
+        <Link
+          href="/dashboard"
+          onClick={() => setSidebarOpen(false)}
+          className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-colors hover:bg-white/10"
+          style={{ fontWeight: 800 }}
+        >
+          <Home className="h-4 w-4 flex-shrink-0" />
+          <span className="min-w-0 flex-1 truncate text-sm">Beranda</span>
+        </Link>
+
+        <Link
+          href="/dashboard?tab=katalog"
+          onClick={() => setSidebarOpen(false)}
+          className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-colors hover:bg-white/10"
+          style={{ fontWeight: 800 }}
+        >
+          <Star className="h-4 w-4 flex-shrink-0" />
+          <span className="min-w-0 flex-1 truncate text-sm">Lihat Katalog</span>
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => setSubtesOpen((value) => !value)}
+          aria-expanded={subtesOpen}
+          className="flex min-h-[42px] w-full items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-[#691D1B]"
+          style={{ background: '#FFE882', fontWeight: 800 }}
+        >
+          <span className="flex min-w-0 items-center gap-3 text-sm">
+            <BookOpen className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">Subtes UTBK</span>
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 flex-shrink-0 transition-transform ${
+              subtesOpen ? 'rotate-180' : ''
+            }`}
+          />
+        </button>
+
+        {subtesOpen && (
+          <div className="ml-5 space-y-2 border-l border-white/20 py-2 pl-3.5">
+            {sidebarCourseItems.map((item) => (
+              <Link
+                key={item.id}
+                href={item.href}
+                onClick={() => setSidebarOpen(false)}
+                className={`group block w-full rounded-lg px-2 py-2 text-left transition-colors ${
+                  item.active ? 'bg-white/10' : 'hover:bg-white/10'
+                }`}
+              >
+                <div className="mb-1 flex min-w-0 items-center gap-2">
+                  <span
+                    className="h-2 w-2 flex-shrink-0 rounded-full"
+                    style={{ background: item.color }}
+                  />
+                  <span
+                    className={`min-w-0 truncate text-xs font-bold leading-snug ${
+                      item.active ? 'text-[#FFE882]' : 'text-white/90 group-hover:text-white'
+                    }`}
+                  >
+                    {item.title}
+                  </span>
+                </div>
+
+                <div className="ml-4">
+                  <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/20">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${item.progress}%`,
+                        background: '#FFE882',
+                      }}
+                    />
+                  </div>
+
+                  <p
+                    className={`text-[11px] mt-1 ${
+                      item.active || !item.hasMaterials ? 'text-[#FFE882]' : 'text-white/60'
+                    }`}
+                  >
+                    {item.hasMaterials ? `${item.progress}% selesai` : materialStatusText(item)}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        <Link
+          href="/dashboard?tab=jadwal"
+          onClick={() => setSidebarOpen(false)}
+          className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-all hover:translate-x-0.5 hover:bg-white/10 hover:text-white"
+          style={{ fontWeight: 800 }}
+        >
+          <CalendarDays className="h-4 w-4 flex-shrink-0" />
+          <span className="min-w-0 flex-1 truncate text-sm">Jadwal</span>
+        </Link>
+      </nav>
+
+      <div className="px-3.5 py-4 border-t border-white/10 space-y-2 mt-auto">
+        <button
+          type="button"
+          onClick={() => {
+            setSidebarOpen(false);
+            openProfileEditor();
+          }}
+          className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-colors hover:bg-white/10"
+          style={{ fontWeight: 800 }}
+        >
+          <User className="h-4 w-4 flex-shrink-0" />
+          <span className="min-w-0 flex-1 truncate text-sm">Edit Profil</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setSidebarOpen(false);
+            logout();
+          }}
+          className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-white/90 transition-colors hover:bg-white/10"
+          style={{ fontWeight: 800 }}
+        >
+          <LogOut className="h-4 w-4 flex-shrink-0" />
+          <span className="min-w-0 flex-1 truncate text-sm">Keluar</span>
+        </button>
       </div>
     </div>
   );
@@ -707,10 +932,43 @@ export default function CourseLearn({
           </div>
         </aside>
 
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Tutup sidebar"
+            />
+
+            <div className="relative h-full w-[min(20rem,85vw)]">
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(false)}
+                className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#691D1B]"
+                aria-label="Tutup menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              {renderSidebarContent()}
+            </div>
+          </div>
+        )}
+
         <div className="flex-1 min-w-0">
           <header className="bg-white border-b border-[#D8D7BE] sticky top-0 z-40 shadow-sm">
-            <div className="px-5 lg:px-6 py-3.5 flex items-center justify-between">
+            <div className="px-4 py-3 sm:px-5 lg:px-6 lg:py-3.5 flex items-center justify-between">
               <div className="flex min-w-0 items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(true)}
+                  className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[#D8D7BE] text-[#691D1B] lg:hidden"
+                  aria-label="Buka menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+
                 <Link
                   href="/dashboard"
                   className="w-9 h-9 flex-shrink-0 rounded-xl border border-[#D8D7BE] flex items-center justify-center text-[#691D1B] hover:bg-[#F7F2E7]"
@@ -720,18 +978,18 @@ export default function CourseLearn({
                 </Link>
 
                 <div className="min-w-0">
-                  <p className="text-[10px] tracking-[0.32em] text-[#A56D6B] mb-1">
+                  <p className="text-[10px] tracking-[0.22em] text-[#A56D6B] mb-1 sm:tracking-[0.32em]">
                     MATERI SISWA
                   </p>
 
                   <h1
-                    className="truncate text-xl text-gray-900"
+                    className="truncate text-lg text-gray-900 sm:text-xl"
                     style={{ fontWeight: 900 }}
                   >
                     {courseTitle}
                   </h1>
 
-                  <p className="truncate text-sm text-gray-400">
+                  <p className="truncate text-xs text-gray-400 sm:text-sm">
                     Paket bundling subtes UTBK-SNBT
                   </p>
                 </div>
@@ -746,7 +1004,7 @@ export default function CourseLearn({
             </div>
           </header>
 
-          <div className="bg-white border-b border-[#D8D7BE] px-5 lg:px-6 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="bg-white border-b border-[#D8D7BE] px-4 py-2.5 sm:px-5 lg:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3">
               <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
               <span className="text-gray-900 text-sm font-bold">
@@ -770,10 +1028,10 @@ export default function CourseLearn({
             </span>
           </div>
 
-          <main className="px-5 lg:px-6 py-6">
+          <main className="px-4 py-5 sm:px-5 sm:py-6 lg:px-6">
             {!hasMaterials ? (
               <section className="min-h-[calc(100vh-190px)] rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
-                <div className="flex h-full min-h-[520px] items-center justify-center px-5 py-10">
+                <div className="flex h-full min-h-[420px] items-center justify-center px-4 py-8 sm:min-h-[520px] sm:px-5 sm:py-10">
                   <div className="w-full max-w-2xl text-center">
                     <div
                       className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl"
@@ -797,7 +1055,7 @@ export default function CourseLearn({
                     </span>
 
                     <h2
-                      className="text-2xl text-[#691D1B] md:text-3xl"
+                      className="text-xl text-[#691D1B] sm:text-2xl md:text-3xl"
                       style={{ fontWeight: 900 }}
                     >
                       Maaf, materi belum tersedia
@@ -846,9 +1104,9 @@ export default function CourseLearn({
               </section>
             ) : (
               <>
-                <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-8 mb-8">
+                <div className="grid grid-cols-1 gap-5 mb-6 xl:grid-cols-[1fr_420px] xl:gap-8 xl:mb-8">
                   <section className="bg-white rounded-2xl border border-[#D8D7BE] shadow-sm overflow-hidden">
-                    <div className="relative h-[360px] lg:h-[520px] bg-[#0F172A] flex items-center justify-center">
+                    <div className="relative h-[240px] bg-[#0F172A] flex items-center justify-center sm:h-[360px] lg:h-[520px]">
                       {activeMaterial?.file_url && isPdfUrl(activeMaterial.file_url) ? (
                         <iframe
                           src={activeMaterial.file_url}
@@ -911,15 +1169,15 @@ export default function CourseLearn({
                       </div>
                     </div>
 
-                    <div className="px-6 py-5">
+                    <div className="px-4 py-4 sm:px-6 sm:py-5">
                       <h2
-                        className="text-2xl text-gray-900 mb-2"
+                        className="break-words text-lg text-gray-900 mb-2 sm:text-2xl"
                         style={{ fontWeight: 900 }}
                       >
                         {activeMaterial?.title} — {courseTitle}
                       </h2>
 
-                      <p className="text-sm text-gray-400">
+                      <p className="break-words text-sm text-gray-400">
                         Jenis: {getMaterialLabel(activeMaterial?.type)} • Durasi: {activeMaterial?.duration}
                       </p>
 
@@ -929,7 +1187,7 @@ export default function CourseLearn({
                             href={activeMaterial.file_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#741A18] px-5 py-3 text-sm text-[#741A18]"
+                            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#741A18] px-5 py-3 text-sm text-[#741A18] sm:w-auto"
                             style={{ fontWeight: 900 }}
                           >
                             <Download className="h-4 w-4" />
@@ -946,13 +1204,13 @@ export default function CourseLearn({
 
                   <aside className="bg-white rounded-2xl border border-[#D8D7BE] shadow-sm overflow-hidden h-fit xl:sticky xl:top-28">
                     <div
-                      className="px-6 py-5"
+                      className="px-4 py-4 sm:px-6 sm:py-5"
                       style={{
                         background: '#741A18',
                         color: 'white',
                       }}
                     >
-                      <h2 className="text-2xl" style={{ fontWeight: 900 }}>
+                      <h2 className="text-xl sm:text-2xl" style={{ fontWeight: 900 }}>
                         Daftar Materi
                       </h2>
                       <p className="text-sm text-[#FFE882]">
@@ -960,7 +1218,7 @@ export default function CourseLearn({
                       </p>
                     </div>
 
-                    <div className="max-h-[520px] overflow-y-auto divide-y divide-[#F7F2E7]">
+                    <div className="max-h-[420px] overflow-y-auto divide-y divide-[#F7F2E7] sm:max-h-[520px]">
                       {normalizedMaterials.map((material, index) => {
                         const isDone = index < completedCount;
                         const isActive = index === resolvedActiveIndex;
@@ -970,7 +1228,7 @@ export default function CourseLearn({
                             key={material.id}
                             type="button"
                             onClick={() => setActiveMaterialIndex(index)}
-                            className={`w-full px-5 py-5 text-left flex items-center gap-4 hover:bg-[#F7F2E7] transition-colors ${
+                            className={`w-full px-4 py-4 text-left flex items-center gap-3 hover:bg-[#F7F2E7] transition-colors sm:px-5 sm:py-5 sm:gap-4 ${
                               isActive ? 'bg-[#FFF7D6]' : 'bg-white'
                             }`}
                           >
@@ -982,14 +1240,14 @@ export default function CourseLearn({
                               )}
                             </div>
 
-                            <div className="flex-1">
+                            <div className="min-w-0 flex-1">
                               <p
-                                className="text-gray-900"
+                                className="break-words text-sm text-gray-900 sm:text-base"
                                 style={{ fontWeight: 800 }}
                               >
                                 {material.title}
                               </p>
-                              <p className="text-sm text-gray-400">
+                              <p className="break-words text-xs text-gray-400 sm:text-sm">
                                 {getMaterialLabel(material.type)} • {material.duration}
                               </p>
                             </div>
@@ -1003,11 +1261,11 @@ export default function CourseLearn({
                 </div>
 
                 <section className="bg-white rounded-2xl border border-[#D8D7BE] shadow-sm overflow-hidden">
-                  <div className="flex border-b border-[#D8D7BE]">
+                  <div className="flex overflow-x-auto border-b border-[#D8D7BE]">
                     <button
                       type="button"
                       onClick={() => setActiveResourceTab('video')}
-                      className={`flex items-center gap-2 px-8 py-5 text-lg ${
+                      className={`flex flex-shrink-0 items-center gap-2 px-4 py-4 text-sm sm:px-8 sm:py-5 sm:text-lg ${
                         activeResourceTab === 'video'
                           ? 'text-[#691D1B] border-b-2 border-[#691D1B]'
                           : 'text-gray-500'
@@ -1021,7 +1279,7 @@ export default function CourseLearn({
                     <button
                       type="button"
                       onClick={() => setActiveResourceTab('module')}
-                      className={`flex items-center gap-2 px-8 py-5 text-lg ${
+                      className={`flex flex-shrink-0 items-center gap-2 px-4 py-4 text-sm sm:px-8 sm:py-5 sm:text-lg ${
                         activeResourceTab === 'module'
                           ? 'text-[#691D1B] border-b-2 border-[#691D1B]'
                           : 'text-gray-500'
@@ -1035,7 +1293,7 @@ export default function CourseLearn({
                     <button
                       type="button"
                       onClick={() => setActiveResourceTab('bank')}
-                      className={`flex items-center gap-2 px-8 py-5 text-lg ${
+                      className={`flex flex-shrink-0 items-center gap-2 px-4 py-4 text-sm sm:px-8 sm:py-5 sm:text-lg ${
                         activeResourceTab === 'bank'
                           ? 'text-[#691D1B] border-b-2 border-[#691D1B]'
                           : 'text-gray-500'
@@ -1047,7 +1305,7 @@ export default function CourseLearn({
                     </button>
                   </div>
 
-                  <div className="p-6 space-y-5">
+                  <div className="space-y-4 p-4 sm:space-y-5 sm:p-6">
                     {activeResourceTab === 'video' && (
                       <>
                         {videoMaterials.length === 0 ? (
@@ -1067,31 +1325,31 @@ export default function CourseLearn({
                             return (
                               <div
                                 key={`video-${material.id}`}
-                                className="border border-[#D8D7BE] rounded-2xl p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                                className="border border-[#D8D7BE] rounded-2xl p-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between sm:p-5"
                               >
-                                <div className="flex items-center gap-4">
-                                  <div className="w-14 h-14 rounded-xl bg-[#F8EDED] flex items-center justify-center text-[#691D1B]">
+                                <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
+                                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#F8EDED] text-[#691D1B] sm:h-14 sm:w-14">
                                     <Video className="w-6 h-6" />
                                   </div>
 
-                                  <div>
-                                    <h3 className="text-lg text-gray-900" style={{ fontWeight: 900 }}>
+                                  <div className="min-w-0">
+                                    <h3 className="break-words text-base text-gray-900 sm:text-lg" style={{ fontWeight: 900 }}>
                                       {material.title || `Video ${index + 1}`}
                                     </h3>
-                                    <p className="text-sm text-gray-400">
+                                    <p className="break-words text-sm text-gray-400">
                                       YouTube - {index === 0 ? 'Terbaru' : `Video ${index + 1}`}
                                     </p>
                                   </div>
                                 </div>
 
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                                   <button
                                     type="button"
                                     onClick={() => {
                                       setActiveMaterialIndex(materialIndex);
                                       setVideoPreview(material);
                                     }}
-                                    className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-white"
+                                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 px-5 py-3 rounded-xl text-white sm:w-auto"
                                     style={{ background: '#741A18', fontWeight: 900 }}
                                   >
                                     <Play className="w-4 h-4" />
@@ -1101,7 +1359,7 @@ export default function CourseLearn({
                                     href={youtubeWatchUrl(material.content)}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-[#741A18] text-[#741A18]"
+                                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 px-5 py-3 rounded-xl border border-[#741A18] text-[#741A18] sm:w-auto"
                                     style={{ fontWeight: 900 }}
                                   >
                                     <ExternalLink className="w-4 h-4" />
@@ -1131,21 +1389,21 @@ export default function CourseLearn({
                           moduleMaterials.map((material, index) => (
                             <div
                               key={`module-${material.id}`}
-                              className="border border-[#D8D7BE] rounded-2xl p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                              className="border border-[#D8D7BE] rounded-2xl p-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between sm:p-5"
                             >
-                              <div className="flex items-center gap-4">
-                                <div className="w-14 h-14 rounded-xl bg-[#F8EDED] flex items-center justify-center text-[#691D1B]">
+                              <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
+                                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#F8EDED] text-[#691D1B] sm:h-14 sm:w-14">
                                   <FileText className="w-6 h-6" />
                                 </div>
 
-                                <div>
+                                <div className="min-w-0">
                                   <h3
-                                    className="text-lg text-gray-900"
+                                    className="break-words text-base text-gray-900 sm:text-lg"
                                     style={{ fontWeight: 900 }}
                                   >
                                     {material.title || `Modul ${index + 1}`}
                                   </h3>
-                                  <p className="text-sm text-gray-400">
+                                  <p className="break-words text-sm text-gray-400">
                                     {material.file_url
                                       ? 'File tersedia'
                                       : 'Konten teks tersedia'}
@@ -1154,11 +1412,11 @@ export default function CourseLearn({
                               </div>
 
                               {material.file_url ? (
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                                   <button
                                     type="button"
                                     onClick={() => openFilePreview(material)}
-                                    className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-white"
+                                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-white sm:w-auto"
                                     style={{
                                       background: '#741A18',
                                       fontWeight: 900,
@@ -1172,7 +1430,7 @@ export default function CourseLearn({
                                     href={material.file_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#741A18] px-5 py-3 text-[#741A18]"
+                                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#741A18] px-5 py-3 text-[#741A18] sm:w-auto"
                                     style={{ fontWeight: 900 }}
                                   >
                                     <Download className="w-4 h-4" />
@@ -1189,7 +1447,7 @@ export default function CourseLearn({
                                       )
                                     )
                                   }
-                                  className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-white"
+                                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 px-5 py-3 rounded-xl text-white sm:w-auto"
                                   style={{
                                     background: '#741A18',
                                     fontWeight: 900,
@@ -1223,22 +1481,22 @@ export default function CourseLearn({
                             return (
                               <div
                                 key={`bank-${material.id}`}
-                                className="border border-[#D8D7BE] rounded-2xl p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                                className="border border-[#D8D7BE] rounded-2xl p-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between sm:p-5"
                               >
-                                <div className="flex items-center gap-4">
-                                  <div className="w-14 h-14 rounded-xl bg-[#F7F2E7] flex items-center justify-center text-[#691D1B]">
+                                <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
+                                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[#F7F2E7] text-[#691D1B] sm:h-14 sm:w-14">
                                     <HelpCircle className="w-6 h-6" />
                                   </div>
 
-                                  <div>
+                                  <div className="min-w-0">
                                     <h3
-                                      className="text-lg text-gray-900"
+                                      className="break-words text-base text-gray-900 sm:text-lg"
                                       style={{ fontWeight: 900 }}
                                     >
                                       {material.title || `Bank Soal ${index + 1}`}
                                     </h3>
 
-                                    <div className="flex flex-wrap items-center gap-3 mt-1 text-sm">
+                                    <div className="flex flex-wrap items-center gap-2 mt-1 text-xs sm:gap-3 sm:text-sm">
                                       <span className="px-3 py-1 rounded-full bg-[#FFF1DF] text-[#691D1B]">
                                         Pilihan Ganda
                                       </span>
@@ -1254,12 +1512,12 @@ export default function CourseLearn({
                                   </div>
                                 </div>
 
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                                   {material.file_url && (
                                     <button
                                       type="button"
                                       onClick={() => openFilePreview(material)}
-                                      className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-white"
+                                      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-white sm:w-auto"
                                       style={{
                                         background: '#741A18',
                                         fontWeight: 900,
@@ -1273,7 +1531,7 @@ export default function CourseLearn({
                                   <button
                                     type="button"
                                     onClick={() => openMaterial(material)}
-                                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#741A18] px-5 py-3 text-[#741A18]"
+                                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#741A18] px-5 py-3 text-[#741A18] sm:w-auto"
                                     style={{ fontWeight: 900 }}
                                   >
                                     {material.file_url && <Download className="w-4 h-4" />}
@@ -1295,9 +1553,9 @@ export default function CourseLearn({
       </div>
 
       {videoPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-3 py-4 backdrop-blur-sm sm:px-4">
           <div className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#F7F2E7] px-5 py-4">
+            <div className="flex items-center justify-between gap-3 border-b border-[#F7F2E7] px-4 py-4 sm:px-5">
               <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.25em] text-[#A56D6B]">
                   Preview Video
@@ -1327,7 +1585,7 @@ export default function CourseLearn({
               />
             </div>
 
-            <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
               <p className="text-sm text-gray-500">
                 Video ini berasal dari materi yang sudah disetujui untuk course ini.
               </p>
@@ -1336,7 +1594,7 @@ export default function CourseLearn({
                 href={youtubeWatchUrl(videoPreview.content)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm text-white"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm text-white sm:w-auto"
                 style={{ background: '#741A18', fontWeight: 900 }}
               >
                 <ExternalLink className="h-4 w-4" />
@@ -1354,9 +1612,9 @@ export default function CourseLearn({
         const canEmbedOffice = isOfficeUrl(previewUrl) && officeUrl;
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
-            <div className="flex h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-              <div className="flex items-center justify-between border-b border-[#F7F2E7] px-5 py-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-3 py-4 backdrop-blur-sm sm:px-4">
+            <div className="flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl sm:h-[88vh]">
+              <div className="flex items-center justify-between gap-3 border-b border-[#F7F2E7] px-4 py-4 sm:px-5">
                 <div className="min-w-0">
                   <p className="text-xs font-black uppercase tracking-[0.25em] text-[#A56D6B]">
                     Preview Materi
@@ -1404,7 +1662,7 @@ export default function CourseLearn({
                 )}
               </div>
 
-              <div className="flex flex-col gap-3 border-t border-[#F7F2E7] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 border-t border-[#F7F2E7] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <p className="text-sm text-gray-500">
                   Preview mendukung PDF serta DOC/PPT yang tersedia melalui URL publik.
                 </p>
@@ -1414,7 +1672,7 @@ export default function CourseLearn({
                     href={previewUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm text-white"
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm text-white sm:w-auto"
                     style={{ background: '#741A18', fontWeight: 900 }}
                   >
                     <ExternalLink className="h-4 w-4" />

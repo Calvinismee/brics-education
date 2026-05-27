@@ -1027,35 +1027,35 @@ export default function StudentDashboard({
   );
 
   const StatsCards = () => (
-    <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <div className="bg-white rounded-2xl border border-[#D8D7BE] p-5 shadow-sm">
-        <div className="w-11 h-11 rounded-xl bg-[#F8EDED] flex items-center justify-center mb-4">
-          <BookOpen className="w-5 h-5 text-[#691D1B]" />
+    <div className="mb-5 grid grid-cols-3 gap-2 sm:mb-6 sm:gap-4">
+      <div className="min-w-0 rounded-2xl border border-[#D8D7BE] bg-white p-3 shadow-sm sm:p-5">
+        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-[#F8EDED] sm:mb-4 sm:h-11 sm:w-11">
+          <BookOpen className="h-4 w-4 text-[#691D1B] sm:h-5 sm:w-5" />
         </div>
-        <p className="text-2xl text-gray-900" style={{ fontWeight: 900 }}>
+        <p className="text-xl leading-none text-gray-900 sm:text-2xl" style={{ fontWeight: 900 }}>
           {learningItems.length}
         </p>
-        <p className="text-sm text-gray-500">Subtes UTBK</p>
+        <p className="mt-1.5 text-[11px] leading-tight text-gray-500 sm:text-sm">Subtes UTBK</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-[#D8D7BE] p-5 shadow-sm">
-        <div className="w-11 h-11 rounded-xl bg-[#F8EDED] flex items-center justify-center mb-4">
-          <Star className="w-5 h-5 text-[#691D1B]" />
+      <div className="min-w-0 rounded-2xl border border-[#D8D7BE] bg-white p-3 shadow-sm sm:p-5">
+        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-[#F8EDED] sm:mb-4 sm:h-11 sm:w-11">
+          <Star className="h-4 w-4 text-[#691D1B] sm:h-5 sm:w-5" />
         </div>
-        <p className="text-2xl text-gray-900" style={{ fontWeight: 900 }}>
+        <p className="text-xl leading-none text-gray-900 sm:text-2xl" style={{ fontWeight: 900 }}>
           {averageProgress}%
         </p>
-        <p className="text-sm text-gray-500">Rata-rata Progres</p>
+        <p className="mt-1.5 text-[11px] leading-tight text-gray-500 sm:text-sm">Rata-rata Progres</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-[#D8D7BE] p-5 shadow-sm">
-        <div className="w-11 h-11 rounded-xl bg-[#F8EDED] flex items-center justify-center mb-4">
-          <Clock className="w-5 h-5 text-[#691D1B]" />
+      <div className="min-w-0 rounded-2xl border border-[#D8D7BE] bg-white p-3 shadow-sm sm:p-5">
+        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-[#F8EDED] sm:mb-4 sm:h-11 sm:w-11">
+          <Clock className="h-4 w-4 text-[#691D1B] sm:h-5 sm:w-5" />
         </div>
-        <p className="text-2xl text-gray-900" style={{ fontWeight: 900 }}>
+        <p className="text-xl leading-none text-gray-900 sm:text-2xl" style={{ fontWeight: 900 }}>
           24 jam
         </p>
-        <p className="text-sm text-gray-500">Jam Belajar</p>
+        <p className="mt-1.5 text-[11px] leading-tight text-gray-500 sm:text-sm">Jam Belajar</p>
       </div>
     </div>
   );
@@ -1145,56 +1145,50 @@ export default function StudentDashboard({
     const previewSchedules = schedulesThisWeek.slice(0, 2);
 
     return (
-      <section className="bg-white rounded-2xl border border-[#D8D7BE] shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between gap-3 border-b border-[#F7F2E7] px-4 py-4 sm:px-5">
-        <div className="flex min-w-0 items-center gap-3">
-          <CalendarDays className="w-5 h-5 text-[#691D1B]" />
-          <h2 className="truncate text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
-            Jadwal Minggu Ini
-          </h2>
-        </div>
+      <section className="overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
+        <div className="flex items-center justify-between gap-3 border-b border-[#F7F2E7] px-4 py-4 sm:px-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <CalendarDays className="h-5 w-5 flex-shrink-0 text-[#691D1B]" />
+            <h2 className="truncate text-base text-[#691D1B] sm:text-lg" style={{ fontWeight: 900 }}>
+              Jadwal Minggu Ini
+            </h2>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => changeTab('jadwal')}
-            className="inline-flex items-center gap-1 text-sm text-[#691D1B]"
-            style={{ fontWeight: 800 }}
-          >
-            Lihat Semua
-            <ChevronRight className="w-4 h-4" />
-          </button>
+          <span className="flex-shrink-0 rounded-full bg-[#F8EDED] px-3 py-1 text-xs text-[#691D1B]" style={{ fontWeight: 900 }}>
+            {schedulesThisWeek.length} sesi
+          </span>
         </div>
 
         {previewSchedules.length === 0 ? (
-          <div className="p-5 text-sm text-gray-600">
-            Belum ada jadwal minggu ini.
+          <div className="px-5 py-7 text-center">
+            <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-[#F8EDED] text-[#691D1B]">
+              <CalendarDays className="h-5 w-5" />
+            </div>
+            <p className="text-sm font-bold text-gray-800">Belum ada jadwal minggu ini</p>
+            <p className="mt-1 text-sm text-gray-500">Jadwal terbaru akan muncul di sini.</p>
           </div>
         ) : (
-          <div>
-            <div className="bg-[#F8EDED] px-4 py-3 text-sm font-bold text-[#691D1B] sm:px-5">
-              Jadwal Terdekat
-            </div>
-
+          <div className="space-y-3 p-4 sm:p-5">
             {previewSchedules.map((schedule) => (
               <div
                 key={schedule.id}
-                className="flex flex-col gap-3 border-b border-[#F7F2E7] px-4 py-4 sm:flex-row sm:items-center sm:gap-4 sm:px-5"
+                className="rounded-2xl border border-[#EFE7D3] bg-[#FDFCF8] p-4"
               >
-                <div className="flex min-w-0 gap-3 sm:flex-1 sm:gap-4">
+                <div className="flex min-w-0 gap-3">
                   <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#F8EDED] text-[#691D1B]">
                     <Video className="w-5 h-5" />
                   </div>
 
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 flex flex-wrap items-center gap-2">
-                      <p className="break-words text-sm font-bold text-gray-900">
+                      <p className="break-words text-sm text-gray-900" style={{ fontWeight: 900 }}>
                         {schedule.title}
                       </p>
-                      <span className="rounded-full bg-[#F8EDED] px-2.5 py-1 text-xs font-bold text-[#691D1B]">
+                      <span className="rounded-full bg-[#F8EDED] px-2.5 py-1 text-[11px] font-bold text-[#691D1B]">
                         Live Class
                       </span>
                     </div>
-                    <p className="break-words text-sm text-gray-400">
+                    <p className="break-words text-xs text-gray-500 sm:text-sm">
                       {schedule.time || `${formatTime(schedule.start_time)} - ${formatTime(schedule.end_time)}`}
                       {' '}• {schedule.course?.title || currentPackageName}
                     </p>
@@ -1206,21 +1200,21 @@ export default function StudentDashboard({
                     href={schedule.meeting_link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs text-white hover:bg-[#4A1412] sm:flex-shrink-0"
+                    className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs text-white hover:bg-[#4A1412]"
                     style={{ background: '#691D1B', fontWeight: 900 }}
                   >
                     Join
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 ) : (
-                  <span className="inline-flex min-h-10 items-center justify-center rounded-xl bg-gray-100 px-3 py-2 text-xs font-bold text-gray-400 sm:flex-shrink-0">
+                  <span className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-gray-100 px-3 py-2 text-xs font-bold text-gray-400">
                     Belum ada link
                   </span>
                 )}
               </div>
             ))}
 
-            <div className="px-4 pb-4 pt-3 sm:px-5">
+            <div className="pt-1">
               <button
                 type="button"
                 onClick={() => changeTab('jadwal')}
@@ -1498,20 +1492,20 @@ export default function StudentDashboard({
           <PackagePurchasePanel />
         ) : (
         <>
-        <div className="flex flex-wrap items-center gap-4 mb-5">
-          <span className="inline-flex items-center gap-2 text-sm font-bold text-[#691D1B]">
+        <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+          <span className="inline-flex flex-shrink-0 items-center gap-2 rounded-full border border-[#D8D7BE] bg-white px-3 py-2 text-xs font-bold text-[#691D1B] sm:text-sm">
             <Video className="w-4 h-4" />
             Live Class
           </span>
-          <span className="inline-flex items-center gap-2 text-sm font-bold text-green-700">
+          <span className="inline-flex flex-shrink-0 items-center gap-2 rounded-full border border-[#D8D7BE] bg-white px-3 py-2 text-xs font-bold text-green-700 sm:text-sm">
             <FileText className="w-4 h-4" />
             Konsultasi
           </span>
-          <span className="inline-flex items-center gap-2 text-sm font-bold text-pink-600">
+          <span className="inline-flex flex-shrink-0 items-center gap-2 rounded-full border border-[#D8D7BE] bg-white px-3 py-2 text-xs font-bold text-pink-600 sm:text-sm">
             <Clock className="w-4 h-4" />
             Deadline
           </span>
-          <span className="inline-flex items-center gap-2 text-sm font-bold text-purple-600">
+          <span className="inline-flex flex-shrink-0 items-center gap-2 rounded-full border border-[#D8D7BE] bg-white px-3 py-2 text-xs font-bold text-purple-600 sm:text-sm">
             <ClipboardList className="w-4 h-4" />
             Tryout
           </span>
@@ -1523,7 +1517,7 @@ export default function StudentDashboard({
               key={day.dateKey}
               type="button"
               onClick={() => setSelectedScheduleDateKey(day.dateKey)}
-              className={`flex-shrink-0 rounded-xl border px-4 py-2.5 text-sm sm:px-5 ${
+              className={`min-w-[5.6rem] flex-shrink-0 rounded-2xl border px-3 py-2.5 text-xs sm:min-w-0 sm:px-5 sm:text-sm ${
                 day.dateKey === selectedWeekDay.dateKey
                   ? 'bg-[#691D1B] text-white border-[#691D1B]'
                   : 'bg-white text-gray-500 border-[#D8D7BE]'
@@ -1535,54 +1529,76 @@ export default function StudentDashboard({
           ))}
         </div>
 
-        <div className="mb-4 flex items-start gap-3 sm:items-center">
-          <CalendarDays className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#691D1B] sm:mt-0" />
-          <h2 className="min-w-0 break-words text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
-            {selectedWeekDay.fullLabel}
-          </h2>
-          {selectedWeekDay.isToday && (
-            <span
-              className="px-3 py-1 rounded-full text-xs"
-              style={{
-                background: '#FFE882',
-                color: '#691D1B',
-                fontWeight: 900,
-              }}
-            >
-              Hari ini
-            </span>
-          )}
+        <div className="mb-4 rounded-2xl border border-[#D8D7BE] bg-white p-4 shadow-sm">
+          <div className="flex items-start gap-3 sm:items-center">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#F8EDED] text-[#691D1B]">
+              <CalendarDays className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="mb-1 text-xs font-bold uppercase text-gray-400">
+                Jadwal dipilih
+              </p>
+              <h2 className="min-w-0 break-words text-base text-[#691D1B] sm:text-lg" style={{ fontWeight: 900 }}>
+                {selectedWeekDay.fullLabel}
+              </h2>
+            </div>
+            {selectedWeekDay.isToday && (
+              <span
+                className="flex-shrink-0 rounded-full px-3 py-1 text-xs"
+                style={{
+                  background: '#FFE882',
+                  color: '#691D1B',
+                  fontWeight: 900,
+                }}
+              >
+                Hari ini
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="space-y-4 mb-6">
           {selectedDaySchedules.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-[#D8D7BE] p-7 text-center text-gray-500">
-              Belum ada jadwal untuk tanggal ini.
+            <div className="rounded-2xl border border-[#D8D7BE] bg-white p-7 text-center shadow-sm">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#F8EDED] text-[#691D1B]">
+                <CalendarDays className="h-6 w-6" />
+              </div>
+              <p className="text-sm font-bold text-gray-800">Belum ada jadwal</p>
+              <p className="mt-1 text-sm text-gray-500">Tidak ada sesi untuk tanggal ini.</p>
             </div>
           ) : (
-            selectedDaySchedules.map((schedule, index) => {
-              const isConsultation = index % 2 === 1;
+            selectedDaySchedules.map((schedule) => {
+              const type = scheduleType(schedule);
+              const isConsultation = type === 'consultation';
+              const isDeadline = type === 'deadline';
+              const isReview = type === 'review';
+              const scheduleColor = isConsultation
+                ? '#0F7A45'
+                : isDeadline
+                  ? '#DB2777'
+                  : isReview
+                    ? '#7C3AED'
+                    : '#691D1B';
+              const scheduleBg = isConsultation ? '#EAF7F0' : isDeadline ? '#FCE7F3' : isReview ? '#F3E8FF' : '#F8EDED';
+              const ScheduleIcon = isConsultation ? FileText : isDeadline ? Clock : isReview ? ClipboardList : Video;
+              const scheduleLabel = isConsultation ? 'Konsultasi' : isDeadline ? 'Deadline' : isReview ? 'Tryout' : 'Live Class';
 
               return (
                 <div
                   key={schedule.id}
-                  className="flex flex-col gap-4 rounded-2xl border border-[#D8D7BE] bg-white p-4 shadow-sm sm:p-5 lg:flex-row lg:items-center"
+                  className="grid grid-cols-[auto_1fr] gap-3 rounded-2xl border border-[#D8D7BE] bg-white p-4 shadow-sm sm:p-5 lg:grid-cols-[auto_1fr_auto] lg:items-center"
                   style={{
-                    borderLeft: `7px solid ${isConsultation ? '#0F7A45' : '#691D1B'}`,
+                    borderLeft: `5px solid ${scheduleColor}`,
                   }}
                 >
                   <div
-                    className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl"
+                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12"
                     style={{
-                      background: isConsultation ? '#EAF7F0' : '#F8EDED',
-                      color: isConsultation ? '#0F7A45' : '#691D1B',
+                      background: scheduleBg,
+                      color: scheduleColor,
                     }}
                   >
-                    {isConsultation ? (
-                      <FileText className="w-5 h-5" />
-                    ) : (
-                      <Video className="w-5 h-5" />
-                    )}
+                    <ScheduleIcon className="w-5 h-5" />
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -1594,12 +1610,12 @@ export default function StudentDashboard({
                       <span
                         className="px-2.5 py-1 rounded-full text-xs"
                         style={{
-                          background: isConsultation ? '#EAF7F0' : '#F8EDED',
-                          color: isConsultation ? '#0F7A45' : '#691D1B',
+                          background: scheduleBg,
+                          color: scheduleColor,
                           fontWeight: 900,
                         }}
                       >
-                        {isConsultation ? 'Konsultasi' : 'Live Class'}
+                        {scheduleLabel}
                       </span>
                     </div>
 
@@ -1621,16 +1637,16 @@ export default function StudentDashboard({
                       href={schedule.meeting_link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="min-h-11 w-full rounded-xl px-5 py-2.5 text-center text-sm text-white lg:w-auto lg:flex-shrink-0"
+                      className="col-span-2 min-h-11 w-full rounded-xl px-5 py-2.5 text-center text-sm text-white lg:col-span-1 lg:w-auto lg:flex-shrink-0"
                       style={{
-                        background: isConsultation ? '#0F7A45' : '#691D1B',
+                        background: scheduleColor,
                         fontWeight: 900,
                       }}
                     >
                       Bergabung
                     </a>
                   ) : (
-                    <span className="min-h-11 w-full rounded-xl bg-gray-100 px-5 py-2.5 text-center text-sm text-gray-500 lg:w-auto lg:flex-shrink-0">
+                    <span className="col-span-2 min-h-11 w-full rounded-xl bg-gray-100 px-5 py-2.5 text-center text-sm text-gray-500 lg:col-span-1 lg:w-auto lg:flex-shrink-0">
                       Link belum tersedia
                     </span>
                   )}
@@ -1640,38 +1656,38 @@ export default function StudentDashboard({
           )}
         </div>
 
-        <section className="bg-white rounded-2xl border border-[#D8D7BE] shadow-sm p-5">
+        <section className="bg-white rounded-2xl border border-[#D8D7BE] shadow-sm p-4 sm:p-5">
           <h2 className="text-base text-[#691D1B] mb-4" style={{ fontWeight: 900 }}>
             Ringkasan Minggu Ini
           </h2>
 
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <div className="rounded-xl p-4 text-center" style={{ background: '#F7F2E7' }}>
-              <p className="text-2xl text-[#691D1B]" style={{ fontWeight: 900 }}>
+          <div className="grid grid-cols-4 gap-2 sm:gap-4">
+            <div className="rounded-xl p-3 text-center sm:p-4" style={{ background: '#F7F2E7' }}>
+              <p className="text-xl text-[#691D1B] sm:text-2xl" style={{ fontWeight: 900 }}>
                 {scheduleStats.totalThisWeek ?? schedulesThisWeek.length}
               </p>
-              <p className="text-sm text-gray-500">Total Sesi</p>
+              <p className="text-[11px] leading-tight text-gray-500 sm:text-sm">Total</p>
             </div>
 
-            <div className="rounded-xl p-4 text-center" style={{ background: '#F7F2E7' }}>
-              <p className="text-2xl text-[#691D1B]" style={{ fontWeight: 900 }}>
+            <div className="rounded-xl p-3 text-center sm:p-4" style={{ background: '#F7F2E7' }}>
+              <p className="text-xl text-[#691D1B] sm:text-2xl" style={{ fontWeight: 900 }}>
                 {scheduleStats.totalLive ?? schedulesThisWeek.filter((schedule) => scheduleType(schedule) === 'live').length}
               </p>
-              <p className="text-sm text-gray-500">Live Class</p>
+              <p className="text-[11px] leading-tight text-gray-500 sm:text-sm">Live</p>
             </div>
 
-            <div className="rounded-xl p-4 text-center" style={{ background: '#F7F2E7' }}>
-              <p className="text-2xl text-pink-600" style={{ fontWeight: 900 }}>
+            <div className="rounded-xl p-3 text-center sm:p-4" style={{ background: '#F7F2E7' }}>
+              <p className="text-xl text-pink-600 sm:text-2xl" style={{ fontWeight: 900 }}>
                 {scheduleStats.totalDeadlines ?? schedulesThisWeek.filter((schedule) => scheduleType(schedule) === 'deadline').length}
               </p>
-              <p className="text-sm text-gray-500">Deadline</p>
+              <p className="text-[11px] leading-tight text-gray-500 sm:text-sm">Deadline</p>
             </div>
 
-            <div className="rounded-xl p-4 text-center" style={{ background: '#F7F2E7' }}>
-              <p className="text-2xl text-purple-600" style={{ fontWeight: 900 }}>
+            <div className="rounded-xl p-3 text-center sm:p-4" style={{ background: '#F7F2E7' }}>
+              <p className="text-xl text-purple-600 sm:text-2xl" style={{ fontWeight: 900 }}>
                 {scheduleStats.totalReviews ?? schedulesThisWeek.filter((schedule) => scheduleType(schedule) === 'review').length}
               </p>
-              <p className="text-sm text-gray-500">Tryout</p>
+              <p className="text-[11px] leading-tight text-gray-500 sm:text-sm">Tryout</p>
             </div>
           </div>
         </section>
