@@ -48,13 +48,14 @@ if (! function_exists('studentScheduleWeekPayload')) {
             ->orderBy('start_time')
             ->get()
             ->map(function (Schedule $schedule) {
-                $title = strtolower($schedule->title);
-                $type = match (true) {
-                    str_contains($title, 'deadline') => 'deadline',
-                    str_contains($title, 'review') => 'review',
-                    str_contains($title, 'konsultasi') || str_contains($title, 'consult') => 'consultation',
-                    default => 'live',
-                };
+                $type = in_array($schedule->type, Schedule::TYPES, true)
+                    ? $schedule->type
+                    : match (true) {
+                        str_contains(strtolower($schedule->title), 'deadline') => 'deadline',
+                        str_contains(strtolower($schedule->title), 'review') => 'review',
+                        str_contains(strtolower($schedule->title), 'konsultasi') || str_contains(strtolower($schedule->title), 'consult') => 'consultation',
+                        default => 'live',
+                    };
 
                 return [
                     'id' => $schedule->id,

@@ -2,13 +2,11 @@ import { Link, useForm } from "@inertiajs/react";
 import { useState } from "react";
 import { ArrowLeft, Eye, EyeOff, Lock, ShieldCheck } from "lucide-react";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
-import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
 import { StagedLoadingContent } from "@/Components/ui/LoadingStates";
 
 export default function TutorPassword({ user = null, tutorClasses = [] }) {
-  const [showProfileModal, setShowProfileModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [visible, setVisible] = useState({
     current_password: false,
@@ -34,7 +32,7 @@ export default function TutorPassword({ user = null, tutorClasses = [] }) {
     });
   };
 
-  const PasswordInput = ({ field, label, placeholder }) => (
+  const PasswordInput = ({ field, label, placeholder, autoComplete }) => (
     <label className="block space-y-2">
       <span className="text-sm font-semibold text-gray-700">{label}</span>
       <div className="relative">
@@ -43,6 +41,9 @@ export default function TutorPassword({ user = null, tutorClasses = [] }) {
           value={form.data[field]}
           onChange={(event) => form.setData(field, event.target.value)}
           placeholder={placeholder}
+          autoComplete={autoComplete}
+          required
+          disabled={form.processing}
           className="w-full rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 pr-12 text-sm outline-none focus:border-[#691D1B]"
         />
         <button
@@ -60,14 +61,13 @@ export default function TutorPassword({ user = null, tutorClasses = [] }) {
 
   return (
     <div className="min-h-screen flex" style={{ background: "#F7F2E7", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      <TutorSidebar user={user} tutorClasses={tutorClasses} active="settings" onEditProfile={() => setShowProfileModal(true)} />
+      <TutorSidebar user={user} tutorClasses={tutorClasses} active="settings" />
       <TutorMobileDrawer
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         user={user}
         tutorClasses={tutorClasses}
         active="settings"
-        onEditProfile={() => setShowProfileModal(true)}
       />
 
       <main className="flex-1 min-w-0 overflow-x-hidden">
@@ -102,9 +102,9 @@ export default function TutorPassword({ user = null, tutorClasses = [] }) {
             </div>
 
             <form onSubmit={submit} className="space-y-5 p-5">
-              <PasswordInput field="current_password" label="Password Saat Ini" placeholder="Masukkan password lama" />
-              <PasswordInput field="password" label="Password Baru" placeholder="Minimal 8 karakter" />
-              <PasswordInput field="password_confirmation" label="Konfirmasi Password Baru" placeholder="Ulangi password baru" />
+              <PasswordInput field="current_password" label="Password Saat Ini" placeholder="Masukkan password lama" autoComplete="current-password" />
+              <PasswordInput field="password" label="Password Baru" placeholder="Minimal 8 karakter" autoComplete="new-password" />
+              <PasswordInput field="password_confirmation" label="Konfirmasi Password Baru" placeholder="Ulangi password baru" autoComplete="new-password" />
 
               {form.recentlySuccessful && (
                 <div className="flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">
@@ -136,7 +136,6 @@ export default function TutorPassword({ user = null, tutorClasses = [] }) {
         </div>
       </main>
 
-      <TutorProfileModal user={user} open={showProfileModal} onClose={() => setShowProfileModal(false)} />
     </div>
   );
 }

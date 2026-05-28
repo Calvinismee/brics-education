@@ -72,6 +72,7 @@ class DashboardController extends Controller
                     ->where('status', 'active')
                     ->count(),
                 'status' => $this->scheduleStatus($schedule),
+                'type' => $this->eventType($schedule),
                 'meeting_link' => $schedule->meeting_link,
                 'started_at' => $schedule->started_at,
                 'start_session_url' => route('tutor.schedule.start', $schedule),
@@ -144,9 +145,17 @@ class DashboardController extends Controller
 
     public function updateProfile(Request $request): RedirectResponse
     {
+        if ($request->has('phone')) {
+            $phone = preg_replace('/\D+/', '', (string) $request->input('phone'));
+            $request->merge([
+                'phone' => $phone !== '' ? $phone : null,
+            ]);
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
+            'phone' => ['nullable', 'string', 'max:20', 'regex:/^\d+$/'],
+            'gender' => ['nullable', Rule::in(['male', 'female'])],
             'expertise' => ['nullable', 'string', 'max:255'],
             'education' => ['nullable', Rule::in(['SMA', 'S1', 'S2', 'S3'])],
             'bio' => ['nullable', 'string', 'max:1000'],
@@ -170,10 +179,16 @@ class DashboardController extends Controller
             ]);
         }
 
+        $phone = $request->has('phone')
+            ? ($validated['phone'] ?? null)
+            : ($user->phone ?? ($profile['phone'] ?? null));
+
         $user->update([
             'name' => $validated['name'],
+            'phone' => $request->has('phone') ? $phone : $user->phone,
+            'gender' => $request->has('gender') ? ($validated['gender'] ?? null) : $user->gender,
             'tutor_profile' => array_merge($profile, [
-                'phone' => $request->has('phone') ? ($validated['phone'] ?? null) : ($profile['phone'] ?? null),
+                'phone' => $phone,
                 'expertise' => $request->has('expertise') ? ($validated['expertise'] ?? null) : ($profile['expertise'] ?? null),
                 'education' => $request->has('education') ? ($validated['education'] ?? null) : ($profile['education'] ?? null),
                 'bio' => $request->has('bio') ? ($validated['bio'] ?? null) : ($profile['bio'] ?? null),
@@ -318,6 +333,22 @@ class DashboardController extends Controller
         }
 
         return 'upcoming';
+    }
+
+    private function eventType(Schedule $schedule): string
+    {
+        if (in_array($schedule->type, Schedule::TYPES, true)) {
+            return $schedule->type;
+        }
+
+        $title = strtolower($schedule->title);
+
+        return match (true) {
+            str_contains($title, 'deadline') => 'deadline',
+            str_contains($title, 'review') => 'review',
+            str_contains($title, 'konsultasi') || str_contains($title, 'consult') => 'consultation',
+            default => 'live',
+        };
     }
 
     private function teachingHistoryQuery($user, $courseIds)

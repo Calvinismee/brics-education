@@ -3,11 +3,10 @@ import { useState } from "react";
 import {
   Home, BookOpen, Upload, Users, LogOut, Calendar, Video, FileText,
   Plus, X, CheckCircle, Clock, AlertCircle, ArrowLeft, Bell,
-  Link2, Paperclip, ChevronDown, Star, Info, Pencil, Settings as SettingsIcon,
+  Link2, Paperclip, ChevronDown, Star, Info,
   Megaphone, Send,
 } from "lucide-react";
 import { BricsLogo } from "@/Components/BricsLogo";
-import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
 import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
@@ -67,7 +66,6 @@ export function TutorMaterialUpload({
   const [submitted, setSubmitted] = useState(false);
   const [contentError, setContentError] = useState(false);
   const [classDropdownOpen, setClassDropdownOpen] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [announcementCourseId, setAnnouncementCourseId] = useState(courseList[0]?.id ?? "");
   const [announcementTitle, setAnnouncementTitle] = useState("");
@@ -204,14 +202,13 @@ export function TutorMaterialUpload({
     <div className="min-h-screen flex" style={{ background: "#F7F2E7", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
 
       {/* ── Sidebar ─────────────────────────────────────────────── */}
-      <TutorSidebar user={user} tutorClasses={tutorClasses} active="upload" onEditProfile={() => setShowProfileModal(true)} />
+      <TutorSidebar user={user} tutorClasses={tutorClasses} active="upload" />
       <TutorMobileDrawer
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         user={user}
         tutorClasses={tutorClasses}
         active="upload"
-        onEditProfile={() => setShowProfileModal(true)}
       />
 
       {/* ── Main ────────────────────────────────────────────────── */}
@@ -733,7 +730,6 @@ export function TutorMaterialUpload({
           </div>
         </div>
       </div>
-      <TutorProfileModal user={user} open={showProfileModal} onClose={() => setShowProfileModal(false)} />
     </div>
   );
 }

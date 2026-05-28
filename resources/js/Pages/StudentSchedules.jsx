@@ -44,11 +44,14 @@ function formatTime(dateString) {
   });
 }
 
-function getCategoryName(course) {
-  if (!course?.category) return 'Course';
-  if (typeof course.category === 'string') return course.category;
-  return course.category.name || 'Course';
-}
+const scheduleTypes = {
+  live: { label: 'Live Class', color: '#691D1B', bg: '#691D1B15', needsMeeting: true },
+  consultation: { label: 'Konsultasi', color: '#7c3aed', bg: '#7c3aed15', needsMeeting: true },
+  deadline: { label: 'Deadline', color: '#d4183d', bg: '#d4183d15', needsMeeting: false },
+  review: { label: 'Review', color: '#1a6b3c', bg: '#1a6b3c15', needsMeeting: false },
+};
+
+const scheduleTypeConfig = (type) => scheduleTypes[type] || scheduleTypes.live;
 
 export default function StudentSchedules({ user, schedules = [] }) {
   const logout = () => {
@@ -152,7 +155,10 @@ export default function StudentSchedules({ user, schedules = [] }) {
             </div>
           ) : (
             <div className="divide-y divide-[#F7F2E7]">
-              {schedules.map((schedule) => (
+              {schedules.map((schedule) => {
+                const type = scheduleTypeConfig(schedule.type);
+
+                return (
                 <div key={schedule.id} className="p-4 sm:p-6">
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
                     <div className="flex min-w-0 gap-3 sm:gap-4">
@@ -170,12 +176,12 @@ export default function StudentSchedules({ user, schedules = [] }) {
                         <span
                           className="inline-block text-xs px-3 py-1 rounded-full mb-2"
                           style={{
-                            background: '#FFE882',
-                            color: '#691D1B',
+                            background: type.bg,
+                            color: type.color,
                             fontWeight: 700,
                           }}
                         >
-                          {getCategoryName(schedule.course)}
+                          {type.label}
                         </span>
 
                         <h3 className="break-words text-base text-gray-900 mb-1 sm:text-lg" style={{ fontWeight: 800 }}>
@@ -200,7 +206,7 @@ export default function StudentSchedules({ user, schedules = [] }) {
                       </div>
                     </div>
 
-                    {schedule.meeting_link ? (
+                    {type.needsMeeting && schedule.meeting_link ? (
                       <a
                         href={schedule.meeting_link}
                         target="_blank"
@@ -215,12 +221,13 @@ export default function StudentSchedules({ user, schedules = [] }) {
                     ) : (
                       <span className="inline-flex min-h-11 w-full items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gray-100 text-gray-500 text-sm sm:w-auto">
                         <BookOpen className="w-4 h-4" />
-                        Link belum tersedia
+                        {type.needsMeeting ? 'Link belum tersedia' : 'Pengingat'}
                       </span>
                     )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>

@@ -9,8 +9,6 @@ import {
   Lock,
   LogOut,
   Monitor,
-  Pencil,
-  Settings as SettingsIcon,
   Shield,
   Star,
   Upload,
@@ -18,7 +16,6 @@ import {
   Users,
 } from "lucide-react";
 import { BricsLogo } from "@/Components/BricsLogo";
-import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
 import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
@@ -57,7 +54,6 @@ export function TutorSettings({ user = null, tutorClasses: serverTutorClasses = 
   const tutorName = user?.name ?? "Tutor UTBK";
   const tutorClasses = Array.isArray(serverTutorClasses) && serverTutorClasses.length > 0 ? serverTutorClasses : fallbackTutorClasses;
   const [classDropdownOpen, setClassDropdownOpen] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [recentlySaved, setRecentlySaved] = useState(false);
   const [prefs, setPrefs] = useState({
@@ -109,14 +105,13 @@ export function TutorSettings({ user = null, tutorClasses: serverTutorClasses = 
 
   return (
     <div className="min-h-screen flex" style={{ background: "#F7F2E7", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      <TutorSidebar user={user} tutorClasses={tutorClasses} active="settings" onEditProfile={() => setShowProfileModal(true)} />
+      <TutorSidebar user={user} tutorClasses={tutorClasses} active="settings" />
       <TutorMobileDrawer
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         user={user}
         tutorClasses={tutorClasses}
         active="settings"
-        onEditProfile={() => setShowProfileModal(true)}
       />
 
       <main className="flex-1 min-w-0 overflow-x-hidden">
@@ -277,7 +272,6 @@ export function TutorSettings({ user = null, tutorClasses: serverTutorClasses = 
         </div>
       </main>
 
-      <TutorProfileModal user={user} open={showProfileModal} onClose={() => setShowProfileModal(false)} />
     </div>
   );
 }

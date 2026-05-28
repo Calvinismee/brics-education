@@ -98,6 +98,7 @@ class ScheduleController extends Controller
                 'totalLive' => $scheduleEvents->where('type', 'live')->count(),
                 'totalDeadlines' => $scheduleEvents->where('type', 'deadline')->count(),
                 'totalReviews' => $scheduleEvents->where('type', 'review')->count(),
+                'totalConsultations' => $scheduleEvents->where('type', 'consultation')->count(),
             ],
         ]);
     }
@@ -160,6 +161,12 @@ class ScheduleController extends Controller
             ]);
         }
 
+        if (! in_array($this->eventType($schedule), Schedule::MEETING_TYPES, true)) {
+            return back()->withErrors([
+                'meeting_link' => 'Jadwal ini hanya berupa pengingat, jadi tidak membutuhkan link meeting.',
+            ]);
+        }
+
         $validated = $request->validate([
             'meeting_link' => ['nullable', 'url', 'max:1024'],
         ]);
@@ -188,6 +195,12 @@ class ScheduleController extends Controller
         abort_unless((int) $schedule->mentor_id === (int) $request->user()->id, 403);
         abort_unless(TutorCourseResolver::ids($request->user())->contains((int) $schedule->course_id), 403);
 
+        if (! in_array($this->eventType($schedule), Schedule::MEETING_TYPES, true)) {
+            return back()->withErrors([
+                'schedule' => 'Jadwal ini hanya berupa pengingat dan tidak bisa dimulai sebagai sesi meeting.',
+            ]);
+        }
+
         if (blank($schedule->meeting_link)) {
             return back()->withErrors([
                 'meeting_link' => 'Tambahkan link meeting terlebih dahulu sebelum memulai sesi.',
@@ -213,6 +226,7 @@ class ScheduleController extends Controller
             'course_id' => $validated['course_id'],
             'mentor_id' => $request->user()->id,
             'title' => $validated['title'],
+            'type' => 'live',
             'start_time' => Carbon::createFromFormat('Y-m-d H:i', $validated['schedule_date'].' '.$validated['start_time'], 'Asia/Jakarta')->format('Y-m-d H:i:s'),
             'end_time' => Carbon::createFromFormat('Y-m-d H:i', $validated['schedule_date'].' '.$validated['end_time'], 'Asia/Jakarta')->format('Y-m-d H:i:s'),
             'meeting_link' => $validated['meeting_link'] ?? null,
@@ -221,6 +235,10 @@ class ScheduleController extends Controller
 
     private function eventType(Schedule $schedule): string
     {
+        if (in_array($schedule->type, Schedule::TYPES, true)) {
+            return $schedule->type;
+        }
+
         $title = strtolower($schedule->title);
 
         return match (true) {
