@@ -17,13 +17,13 @@ import {
 import { useEffect } from "react";
 
 const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1758612898312-708f2ffdcd53?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHVkZW50cyUyMHN0dWR5aW5nJTIwb25saW5lJTIwbGVhcm5pbmclMjBlZHVjYXRpb258ZW58MXx8fHwxNzc3MzgwNTA0fDA&ixlib=rb-4.1.0&q=80&w=1080";
+  "/images/landing/brics-on-abts-2025.jpg";
 
 const TUTOR_IMAGE =
   "https://images.unsplash.com/photo-1619852182277-79aa23f82c8e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvbmxpbmUlMjB0dXRvcmluZyUyMGNsYXNzcm9vbSUyMHRlYWNoaW5nfGVufDF8fHx8MTc3NzM4MDUwNHww&ixlib=rb-4.1.0&q=80&w=1080";
 
 const COURSE_IMAGE =
-  "https://images.unsplash.com/photo-1758612898312-708f2ffdcd53?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHVkZW50cyUyMHN0dWR5aW5nJTIwb25saW5lJTIwbGVhcm5pbmclMjBlZHVjYXRpb258ZW58MXx8fHwxNzc3MzgwNTA0fDA&ixlib=rb-4.1.0&q=80&w=400";
+  "/images/landing/brics-zoom-lesson.jpg";
 
 const stats = [
   { value: "15.000+", label: "Siswa Aktif" },
@@ -425,7 +425,7 @@ export default function LandingPage({ packages = [] }) {
               <div className="brics-float rounded-2xl overflow-hidden shadow-2xl border-4 border-white/20">
                 <img
                   src={HERO_IMAGE}
-                  alt="Students learning"
+                  alt="BRICS on ABTS 2025"
                   className="w-full h-80 object-cover"
                 />
               </div>

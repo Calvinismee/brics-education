@@ -46,6 +46,8 @@ export function TutorSidebar({
   const [classesOpen, setClassesOpen] = useState(active === "classes");
   const classes = normalizedClasses(tutorClasses);
   const tutorName = user?.name ?? "Tutor UTBK";
+  const tutorProfile = user?.tutor_profile ?? {};
+  const tutorPhoto = tutorProfile.photo_url ?? user?.google_avatar ?? "";
   const tutorInitials = initialsFor(tutorName);
   const classCount = classes.length;
   const isCollapsed = drawer ? false : collapsed;
@@ -114,19 +116,25 @@ export function TutorSidebar({
           <button
             type="button"
             onClick={onEditProfile}
-            className="mx-auto flex h-11 w-11 items-center justify-center rounded-full transition-transform hover:scale-105"
+            className="mx-auto flex h-11 w-11 items-center justify-center overflow-hidden rounded-full transition-transform hover:scale-105"
             style={{ background: "#FFE882", color: "#691D1B", fontWeight: 900 }}
             title="Edit Profil"
           >
-            {tutorInitials}
+            {tutorPhoto ? (
+              <img src={tutorPhoto} alt={tutorName} className="h-full w-full object-cover" />
+            ) : tutorInitials}
           </button>
         ) : (
           <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-lg" style={{ background: "#FFE882", color: "#691D1B", fontWeight: 900 }}>
-                  {tutorInitials}
-                </div>
+                {tutorPhoto ? (
+                  <img src={tutorPhoto} alt={tutorName} className="h-12 w-12 flex-shrink-0 rounded-full object-cover" />
+                ) : (
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-lg" style={{ background: "#FFE882", color: "#691D1B", fontWeight: 900 }}>
+                    {tutorInitials}
+                  </div>
+                )}
 
                 <div className="min-w-0">
                   <div className="truncate text-base text-white" style={{ fontWeight: 900 }}>
