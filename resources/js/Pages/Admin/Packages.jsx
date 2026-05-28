@@ -3,7 +3,7 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { useState } from 'react';
 import { Plus, Edit, Trash2, Package, Users, Check } from 'lucide-react';
 import DeleteConfirmModal from '@/Components/DeleteConfirmModal';
-import { Spinner } from '@/Components/ui/LoadingStates';
+import { StagedLoadingContent } from '@/Components/ui/LoadingStates';
 import { showSuccessToast } from '@/utils/toast';
 
 const formatPriceInput = (value) => {
@@ -325,8 +325,13 @@ export default function Packages({ packages = [], courses = [], stats = {} }) {
                                         style={{ background: '#691D1B' }}
                                         disabled={form.processing}
                                     >
-                                        {form.processing && <Spinner size="xs" color="#FFE882" />}
-                                        {form.processing ? (editingPkgId ? 'Menyimpan perubahan...' : 'Menambahkan paket...') : 'Simpan'}
+                                        <StagedLoadingContent
+                                            loading={form.processing}
+                                            loadingLabel={editingPkgId ? 'Menyimpan perubahan...' : 'Menambahkan paket...'}
+                                            longLoadingLabel="Masih memproses paket..."
+                                        >
+                                            Simpan
+                                        </StagedLoadingContent>
                                     </button>
                                 </div>
                             </form>

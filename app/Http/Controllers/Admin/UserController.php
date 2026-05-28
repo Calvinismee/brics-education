@@ -15,15 +15,18 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $roles = User::adminRoleIds();
+        $selectedRole = $request->string('role')->toString();
+        $selectedRole = in_array($selectedRole, ['student', 'tutor', 'admin'], true) ? $selectedRole : 'student';
         $courseTitles = DB::table('courses')->pluck('title', 'id');
 
         $users = User::query()
             ->select('id', 'name', 'email', 'role_id', 'mentor_course_id', 'created_at')
             ->with('role:id,name')
             ->with('mentorCourse:id,title')
+            ->where('role_id', $roles[$selectedRole])
             ->orderBy('created_at', 'desc')
             ->paginate(15)
             ->withQueryString();
@@ -83,6 +86,9 @@ class UserController extends Controller
                 'student' => $roleStats->get($roles['student'], 0),
                 'tutor' => $roleStats->get($roles['tutor'], 0),
                 'admin' => $roleStats->get($roles['admin'], 0),
+            ],
+            'filters' => [
+                'role' => $selectedRole,
             ],
         ]);
     }

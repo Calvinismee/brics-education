@@ -1,5 +1,40 @@
 
+import { useEffect, useState } from 'react';
 import BricsLogo from '../BricsLogo';
+
+const LOADING_SPINNER_DELAY = 1000;
+const LOADING_PROGRESS_DELAY = 10000;
+
+export function useStagedLoading(isLoading, {
+	spinnerDelay = LOADING_SPINNER_DELAY,
+	progressDelay = LOADING_PROGRESS_DELAY,
+} = {}) {
+	const [stage, setStage] = useState('idle');
+
+	useEffect(() => {
+		if (!isLoading) {
+			setStage('idle');
+			return undefined;
+		}
+
+		setStage('idle');
+
+		const spinnerTimer = window.setTimeout(() => setStage('spinner'), spinnerDelay);
+		const progressTimer = window.setTimeout(() => setStage('progress'), progressDelay);
+
+		return () => {
+			window.clearTimeout(spinnerTimer);
+			window.clearTimeout(progressTimer);
+		};
+	}, [isLoading, spinnerDelay, progressDelay]);
+
+	return {
+		stage,
+		showSpinner: isLoading && stage === 'spinner',
+		showProgress: isLoading && stage === 'progress',
+		showFeedback: isLoading && stage !== 'idle',
+	};
+}
 
 function Shimmer({ className = '' }) {
 	return (
@@ -33,6 +68,10 @@ if (typeof document !== 'undefined' && !document.getElementById('brics-shimmer-s
 			0% { transform: scale(0.85); opacity: 1; }
 			70% { transform: scale(1.15); opacity: 0; }
 			100% { transform: scale(0.85); opacity: 0; }
+		}
+		@keyframes bricsProgressIndeterminate {
+			0% { transform: translateX(-100%); }
+			100% { transform: translateX(250%); }
 		}
 	`;
 	document.head.appendChild(styleTag);
@@ -88,6 +127,52 @@ export function InlineLoader({ label = 'Memuat...', size = 'sm' }) {
 	);
 }
 
+export function IndeterminateProgressBar({ color = '#691D1B' }) {
+	return (
+		<div className="h-1 w-full overflow-hidden rounded-full" style={{ background: `${color}25` }}>
+			<div
+				className="h-full w-1/3 rounded-full"
+				style={{
+					background: color,
+					animation: 'bricsProgressIndeterminate 1.2s ease-in-out infinite',
+				}}
+			/>
+		</div>
+	);
+}
+
+export function StagedLoadingContent({
+	loading,
+	children,
+	loadingLabel = 'Memproses...',
+	longLoadingLabel = 'Masih memproses...',
+	spinnerColor = '#FFE882',
+	progressColor = '#FFE882',
+	spinnerSize = 'xs',
+}) {
+	const loadingState = useStagedLoading(loading);
+
+	if (!loading || loadingState.stage === 'idle') {
+		return children;
+	}
+
+	if (loadingState.showProgress) {
+		return (
+			<span className="flex w-full min-w-0 max-w-full flex-col items-center gap-1.5">
+				<span className="text-center leading-tight">{longLoadingLabel}</span>
+				<IndeterminateProgressBar color={progressColor} />
+			</span>
+		);
+	}
+
+	return (
+		<span className="flex items-center justify-center gap-2">
+			<Spinner size={spinnerSize} color={spinnerColor} />
+			{loadingLabel}
+		</span>
+	);
+}
+
 export function BricsPageLoader({ message = 'Memuat...' }) {
 	return (
 		<div
@@ -127,13 +212,14 @@ export function BricsPageLoader({ message = 'Memuat...' }) {
 	);
 }
 
-export function LoadingButton({ label = 'Memproses...', variant = 'primary' }) {
+export function LoadingButton({ label = 'Memproses...', idleLabel = null, longLabel = 'Masih memproses...', variant = 'primary' }) {
 	const isPrimary = variant === 'primary';
+	const loadingState = useStagedLoading(true);
 
 	return (
 		<button
 			disabled
-			className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm cursor-not-allowed opacity-80 transition-all"
+			className="flex max-w-full items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm cursor-not-allowed opacity-80 transition-all"
 			style={{
 				background: isPrimary ? '#691D1B' : '#F7F2E7',
 				color: isPrimary ? '#FFE882' : '#691D1B',
@@ -141,8 +227,19 @@ export function LoadingButton({ label = 'Memproses...', variant = 'primary' }) {
 				fontFamily: "'Plus Jakarta Sans', sans-serif",
 			}}
 		>
-			<Spinner size="xs" color={isPrimary ? '#FFE882' : '#691D1B'} />
-			{label}
+			{loadingState.showProgress ? (
+				<span className="flex w-full min-w-0 max-w-full flex-col items-center gap-1.5">
+					<span className="text-center leading-tight">{longLabel}</span>
+					<IndeterminateProgressBar color={isPrimary ? '#FFE882' : '#691D1B'} />
+				</span>
+			) : loadingState.showSpinner ? (
+				<>
+					<Spinner size="xs" color={isPrimary ? '#FFE882' : '#691D1B'} />
+					{label}
+				</>
+			) : (
+				idleLabel ?? label
+			)}
 		</button>
 	);
 }

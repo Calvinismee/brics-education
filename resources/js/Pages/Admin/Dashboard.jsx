@@ -2,14 +2,12 @@ import React, { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import {
-    TrendingUp,
     UserPlus,
     Activity,
     Users,
     UserCheck,
     UserX,
     GraduationCap,
-    ArrowUpRight,
 } from 'lucide-react';
 
 const fallbackMonthLabels = () => {
@@ -23,18 +21,12 @@ const fallbackMonthLabels = () => {
     });
 };
 
-function StatCard({ label, value, change, icon, color }) {
-    const isPositive = change.startsWith('+');
-
+function StatCard({ label, value, icon, color }) {
     return (
         <div className="rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: 'var(--brics-beige)' }}>
             <div className="mb-4 flex items-center justify-between">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl" style={{ background: `${color}15`, color }}>
                     {icon}
-                </div>
-                <div className="flex items-center gap-1" style={{ color: isPositive ? '#16a34a' : '#ef4444' }}>
-                    <ArrowUpRight className={`h-4 w-4 ${!isPositive ? 'rotate-180' : ''}`} />
-                    <span className="text-xs font-bold">{change}</span>
                 </div>
             </div>
             <div className="mb-1 text-2xl font-extrabold text-gray-900">{value}</div>
@@ -106,10 +98,6 @@ export default function Dashboard({ userStats = [], growthData = [], growthLabel
                             <div>
                                 <h3 className="font-bold text-gray-900">Pertumbuhan Pengguna</h3>
                                 <p className="text-xs text-gray-400">6 bulan terakhir</p>
-                            </div>
-                            <div className="flex items-center gap-1 text-xs font-bold text-emerald-600">
-                                <TrendingUp className="h-4 w-4" />
-                                +8.2%
                             </div>
                         </div>
                         <div className="flex h-48 items-end justify-between gap-2">

@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
-import { TrendingUp, DollarSign, CreditCard, AlertCircle, ArrowUpRight, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { TrendingUp, DollarSign, CreditCard, AlertCircle, CheckCircle, XCircle, Clock } from 'lucide-react';
 
 export default function TransactionStats({ stats = [], summary = {}, paymentMethods = [], successRate = 0, recentTransactions = [] }) {
     const { monthlyRevenue = [], averageTransaction = 0, transactionGrowth = 0, totalRevenue = 0 } = summary;
@@ -36,10 +36,10 @@ export default function TransactionStats({ stats = [], summary = {}, paymentMeth
     };
 
     const overviewCards = [
-        { label: 'Total Pendapatan', value: formatCurrency(totalRevenue), change: `${transactionGrowth > 0 ? '+' : ''}${transactionGrowth.toFixed(1)}%`, icon: <DollarSign className="h-6 w-6" /> },
-        { label: 'Rata-rata Transaksi/Bulan', value: formatCurrency(averageTransaction), change: '+8.2%', icon: <CreditCard className="h-6 w-6" /> },
-        { label: 'Tingkat Keberhasilan', value: `${successRate}%`, change: '+1.8%', icon: <TrendingUp className="h-6 w-6" /> },
-        { label: 'Pertumbuhan', value: `${transactionGrowth.toFixed(1)}%`, change: transactionGrowth > 0 ? '+' : '-', icon: <AlertCircle className="h-6 w-6" /> },
+        { label: 'Total Pendapatan', value: formatCurrency(totalRevenue), icon: <DollarSign className="h-6 w-6" /> },
+        { label: 'Rata-rata Transaksi/Bulan', value: formatCurrency(averageTransaction), icon: <CreditCard className="h-6 w-6" /> },
+        { label: 'Tingkat Keberhasilan', value: `${successRate}%`, icon: <TrendingUp className="h-6 w-6" /> },
+        { label: 'Pertumbuhan', value: `${transactionGrowth.toFixed(1)}%`, icon: <AlertCircle className="h-6 w-6" /> },
     ];
 
     return (
@@ -54,10 +54,6 @@ export default function TransactionStats({ stats = [], summary = {}, paymentMeth
                             <div className="mb-4 flex items-center justify-between">
                                 <div className="flex h-12 w-12 items-center justify-center rounded-xl" style={{ background: '#691D1B15', color: '#691D1B' }}>
                                     {card.icon}
-                                </div>
-                                <div className="flex items-center gap-1 text-xs" style={{ color: card.change.startsWith('+') ? '#16a34a' : '#ef4444', fontWeight: 700 }}>
-                                    <ArrowUpRight className="h-4 w-4" />
-                                    <span>{card.change}</span>
                                 </div>
                             </div>
                             <div className="mb-1 text-2xl font-extrabold text-gray-900">{card.value}</div>
@@ -75,10 +71,6 @@ export default function TransactionStats({ stats = [], summary = {}, paymentMeth
                                     Pendapatan Bulanan
                                 </h3>
                                 <p className="text-xs text-gray-400">6 bulan terakhir</p>
-                            </div>
-                            <div className="flex items-center gap-1 text-xs" style={{ color: '#16a34a', fontWeight: 700 }}>
-                                <TrendingUp className="h-4 w-4" />
-                                {transactionGrowth > 0 ? '+' : ''}{transactionGrowth.toFixed(1)}%
                             </div>
                         </div>
                         <div className="flex h-48 items-end justify-between gap-2">

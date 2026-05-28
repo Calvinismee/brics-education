@@ -23,6 +23,7 @@ import {
   Video,
   X,
 } from 'lucide-react';
+import { StagedLoadingContent } from '@/Components/ui/LoadingStates';
 
 function getInitials(name) {
   if (!name) return 'SI';
@@ -482,7 +483,9 @@ export default function CourseLearn({
               className="rounded-xl px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-[#4A1412] disabled:opacity-70"
               style={{ background: '#691D1B' }}
             >
-              {profileForm.processing ? 'Menyimpan...' : 'Simpan Profil'}
+              <StagedLoadingContent loading={profileForm.processing} loadingLabel="Menyimpan..." longLoadingLabel="Masih menyimpan profil...">
+                Simpan Profil
+              </StagedLoadingContent>
             </button>
           </div>
         </form>

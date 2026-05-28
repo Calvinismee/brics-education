@@ -179,6 +179,8 @@ export function TutorMaterialUpload({
     return `https://${meta}`;
   };
 
+  const materialUrl = (item) => materialHref(item.url || item.meta);
+
   const deleteMaterial = (item) => {
     const confirmed = window.confirm(
       `Hapus materi "${item.name}"?\n\nMateri yang sudah dihapus tidak bisa dikembalikan. Jika ingin mengupload ulang, tutor perlu request ke admin untuk proses review ulang.`
@@ -642,7 +644,7 @@ export function TutorMaterialUpload({
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-gray-800 truncate" style={{ fontWeight: 600 }}>{item.name}</p>
                           {item.type === "video" ? (
-                            <a href={materialHref(item.meta)}
+                            <a href={materialUrl(item)}
                               target="_blank" rel="noreferrer"
                               className="flex items-center gap-1 text-xs mt-0.5 hover:underline truncate"
                               style={{ color: "#691D1B" }}>
@@ -650,7 +652,7 @@ export function TutorMaterialUpload({
                             </a>
                           ) : (
                             <a
-                              href={materialHref(item.meta)}
+                              href={materialUrl(item)}
                               target="_blank"
                               rel="noreferrer"
                               className="flex items-center gap-1 text-xs mt-0.5 text-gray-500 hover:underline truncate"

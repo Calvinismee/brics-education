@@ -3,7 +3,7 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { useState } from 'react';
 import { Calendar, Plus, Clock, Users, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import DeleteConfirmModal from '@/Components/DeleteConfirmModal';
-import { Spinner } from '@/Components/ui/LoadingStates';
+import { StagedLoadingContent } from '@/Components/ui/LoadingStates';
 import { showSuccessToast } from '@/utils/toast';
 
 const daysOfWeek = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
@@ -484,8 +484,13 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                         style={{ background: '#691D1B' }}
                                         disabled={form.processing}
                                     >
-                                        {form.processing && <Spinner size="xs" color="#FFE882" />}
-                                        {form.processing ? (editingScheduleId ? 'Menyimpan perubahan...' : 'Menambahkan jadwal...') : 'Simpan'}
+                                        <StagedLoadingContent
+                                            loading={form.processing}
+                                            loadingLabel={editingScheduleId ? 'Menyimpan perubahan...' : 'Menambahkan jadwal...'}
+                                            longLoadingLabel="Masih memproses jadwal..."
+                                        >
+                                            Simpan
+                                        </StagedLoadingContent>
                                     </button>
                                 </div>
                             </form>

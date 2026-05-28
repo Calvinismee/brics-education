@@ -2,6 +2,7 @@ import React from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import LoginPanel from '@/Components/LoginPanel';
 import BricsLogo from '@/Components/BricsLogo';
+import { StagedLoadingContent } from '@/Components/ui/LoadingStates';
 import {
   ArrowLeft,
   LockKeyhole,
@@ -228,7 +229,9 @@ export default function Register() {
                   fontWeight: 800,
                 }}
               >
-                {processing ? 'Memproses...' : 'Daftar Akun Siswa'}
+                <StagedLoadingContent loading={processing} loadingLabel="Memproses..." longLoadingLabel="Masih memproses...">
+                  Daftar Akun Siswa
+                </StagedLoadingContent>
               </button>
             </form>
 

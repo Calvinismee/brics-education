@@ -15,7 +15,7 @@ import {
     ExternalLink,
 } from 'lucide-react';
 import DeleteConfirmModal from '@/Components/DeleteConfirmModal';
-import { Spinner } from '@/Components/ui/LoadingStates';
+import { StagedLoadingContent } from '@/Components/ui/LoadingStates';
 import { showSuccessToast } from '@/utils/toast';
 
 const typeIcon = {
@@ -319,8 +319,12 @@ export default function Content({ contents = [], courses = [], stats = {} }) {
                                                                 type="button"
                                                                 title="Setujui konten"
                                                             >
-                                                                {isApproving ? <Spinner size="xs" color="#16a34a" /> : <Check className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110" />}
-                                                                {isApproving ? 'Memproses...' : 'Setujui'}
+                                                                <StagedLoadingContent loading={isApproving} loadingLabel="Memproses..." longLoadingLabel="Masih memproses..." spinnerColor="#16a34a" progressColor="#16a34a">
+                                                                    <>
+                                                                        <Check className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110" />
+                                                                        Setujui
+                                                                    </>
+                                                                </StagedLoadingContent>
                                                             </button>
                                                             <button
                                                                 onClick={() => openRejectConfirm(content)}
@@ -329,8 +333,12 @@ export default function Content({ contents = [], courses = [], stats = {} }) {
                                                                 type="button"
                                                                 title="Tolak konten"
                                                             >
-                                                                {isRejecting ? <Spinner size="xs" color="#dc2626" /> : <X className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110" />}
-                                                                {isRejecting ? 'Memproses...' : 'Tolak'}
+                                                                <StagedLoadingContent loading={isRejecting} loadingLabel="Memproses..." longLoadingLabel="Masih memproses..." spinnerColor="#dc2626" progressColor="#dc2626">
+                                                                    <>
+                                                                        <X className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110" />
+                                                                        Tolak
+                                                                    </>
+                                                                </StagedLoadingContent>
                                                             </button>
                                                         </>
                                                     )}

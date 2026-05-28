@@ -79,7 +79,7 @@ export default function LoginAdmin() {
             </div>
 
             {processing ? (
-              <LoadingButton label="Memproses..." variant="primary" />
+              <LoadingButton label="Memproses..." idleLabel="Masuk sebagai Admin" variant="primary" />
             ) : (
               <button type="submit" className="w-full py-3.5 rounded-xl text-white hover:opacity-90 transition-all" style={{ background: 'var(--brics-maroon)', fontWeight: 700 }}>
                 Masuk sebagai Admin

@@ -715,73 +715,31 @@ export default function LandingPage({ packages = [] }) {
       <footer className="bg-[#000000] text-white">
         <div className="max-w-7xl mx-auto px-6 py-14">
           <div className="brics-stagger grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
-            <div className="brics-scroll-reveal md:col-span-1">
+            <div className="brics-scroll-reveal md:col-span-2">
               <div className="mb-4 bg-[var(--accent)] rounded-lg w-max p-2">
                 <BricsLogo variant="light" size="lg" />
               </div>
               <p className="text-sm text-gray-400 leading-relaxed mb-4">
-                Platform edukasi online terpercaya untuk persiapan ujian dan
-                pengembangan skill profesional.
+                Platform belajar UTBK dengan paket course, materi, jadwal live class,
+                dan dashboard progres siswa.
               </p>
-
-              <div className="flex gap-3">
-                <a
-                  onClick={(e) => window.open("https://www.instagram.com/bricseducation/")}
-                  aria-label="Instagram"
-                  className="w-9 h-9 rounded-full bg-[#691D1B] flex items-center justify-center text-white hover:bg-[#8B2523] transition-colors"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37Z" />
-                    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-                  </svg>
-                </a>
-                <a
-                  onClick={(e) => window.open("https://www.youtube.com/@BricsEdu-t4m")}
-                  aria-label="YouTube"
-                  className="w-9 h-9 rounded-full bg-[#691D1B] flex items-center justify-center text-white hover:bg-[#8B2523] transition-colors"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path d="M23.5 6.2a3.02 3.02 0 0 0-2.12-2.14C19.5 3.56 12 3.56 12 3.56s-7.5 0-9.38.5A3.02 3.02 0 0 0 .5 6.2 31.6 31.6 0 0 0 0 12a31.6 31.6 0 0 0 .5 5.8 3.02 3.02 0 0 0 2.12 2.14c1.88.5 9.38.5 9.38.5s7.5 0 9.38-.5a3.02 3.02 0 0 0 2.12-2.14A31.6 31.6 0 0 0 24 12a31.6 31.6 0 0 0-.5-5.8ZM9.6 15.57V8.43L15.86 12 9.6 15.57Z" />
-                  </svg>
-                </a>
-              </div>
             </div>
 
             {[
               {
-                title: "Paket",
+                title: "Belajar",
                 links: [
-                  "Persiapan UTBK",
-                  "Tryout",
-                  "Live Class",
+                  { label: "Paket Belajar", to: "/#katalog" },
+                  { label: "Tentang BRICS", to: "#tentang" },
+                  { label: "Tutor Kami", to: "/tutors" },
                 ],
               },
               {
-                title: "Perusahaan",
-                links: ["Tentang Kami", "exi"],
-              },
-              {
-                title: "Bantuan",
+                title: "Mulai Belajar",
                 links: [
-                  "FAQ",
-                  "Pusat Bantuan",
-                  "Kebijakan Privasi",
-                  "Syarat & Ketentuan",
+                  { label: "Daftar Akun", to: route("register") },
+                  { label: "Masuk Siswa", to: route("login") },
+                  { label: "Dashboard Belajar", to: "/dashboard" },
                 ],
               },
             ].map((col) => (
@@ -793,14 +751,16 @@ export default function LandingPage({ packages = [] }) {
                   {col.title}
                 </h4>
                 <ul className="space-y-2">
-                  {col.links.map((l) => (
-                    <li key={l}>
-                      <a
-                        href="#"
+                  {col.links.map((item) => (
+                    <li key={item.label}>
+                      <Link
+                        href={item.to}
+                        onClick={(event) => handleAnchorNavigation(event, item.to)}
+                        onSuccess={() => scrollToTarget(item.to, "auto")}
                         className="text-sm text-gray-400 hover:text-white transition-colors"
                       >
-                        {l}
-                      </a>
+                        {item.label}
+                      </Link>
                     </li>
                   ))}
                 </ul>
@@ -810,10 +770,10 @@ export default function LandingPage({ packages = [] }) {
 
           <div className="brics-scroll-reveal border-t border-gray-800 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
             <p className="text-sm text-gray-500">
-              © 2025 BRICS Education. All rights reserved.
+              © 2026 BRICS Education.
             </p>
             <p className="text-sm text-gray-500">
-              Dibuat dengan ❤️ untuk pelajar Indonesia
+              Paket belajar, pembayaran, materi, jadwal, dan dashboard dalam satu aplikasi.
             </p>
           </div>
         </div>

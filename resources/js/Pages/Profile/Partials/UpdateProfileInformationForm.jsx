@@ -2,6 +2,7 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
+import { StagedLoadingContent } from '@/Components/ui/LoadingStates';
 import { Transition } from '@headlessui/react';
 import { useForm, usePage } from '@inertiajs/react';
 import { toast } from 'sonner';
@@ -111,7 +112,9 @@ export default function UpdateProfileInformation({
 
                 <div className="flex items-center gap-4 md:col-span-2">
                     <PrimaryButton disabled={processing}>
-                        {processing ? 'Menyimpan...' : 'Simpan Profil'}
+                        <StagedLoadingContent loading={processing} loadingLabel="Menyimpan..." longLoadingLabel="Masih menyimpan profil...">
+                            Simpan Profil
+                        </StagedLoadingContent>
                     </PrimaryButton>
 
                     <Transition

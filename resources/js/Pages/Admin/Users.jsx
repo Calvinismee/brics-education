@@ -3,7 +3,7 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { useMemo, useState } from 'react';
 import { Search, UserPlus, Download, CheckSquare, Edit, X, ArrowUpDown, Trash2 } from 'lucide-react';
 import DeleteConfirmModal from '@/Components/DeleteConfirmModal';
-import { Spinner } from '@/Components/ui/LoadingStates';
+import { StagedLoadingContent } from '@/Components/ui/LoadingStates';
 import { showSuccessToast } from '@/utils/toast';
 
 const roleLabels = {
@@ -16,6 +16,29 @@ const roleColors = {
     student: '#691D1B',
     tutor: '#8B2523',
     admin: '#CD9B1D',
+};
+
+const roleViewConfig = {
+    student: {
+        title: 'Daftar Siswa',
+        description: 'Kelola akun siswa dan course yang sedang diikuti.',
+        empty: 'Tidak ada siswa ditemukan',
+        courseHeading: 'Course Diikuti',
+        courseEmpty: 'Belum enroll',
+    },
+    tutor: {
+        title: 'Daftar Tutor',
+        description: 'Kelola tutor dan penugasan course yang diajar.',
+        empty: 'Tidak ada tutor ditemukan',
+        courseHeading: 'Course Diajar',
+        courseEmpty: 'Belum ditugaskan',
+    },
+    admin: {
+        title: 'Daftar Admin',
+        description: 'Kelola akun administrator dan akses panel.',
+        empty: 'Tidak ada admin ditemukan',
+        accessHeading: 'Akses',
+    },
 };
 
 const emptyForm = {
@@ -38,10 +61,10 @@ const extractRoleName = (user) => {
     return normalizeRoleName(user.role);
 };
 
-export default function Users({ users = { data: [] }, courses = [], totalUsers = 0, stats = {} }) {
+export default function Users({ users = { data: [] }, courses = [], totalUsers = 0, stats = {}, filters = {} }) {
     const [selectedUsers, setSelectedUsers] = useState([]);
     const [search, setSearch] = useState('');
-    const [selectedRole, setSelectedRole] = useState('all');
+    const [selectedRole, setSelectedRole] = useState(filters.role ?? 'student');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
     const [sortOrder, setSortOrder] = useState('desc');
@@ -59,7 +82,7 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
             const matchesSearch =
                 user.name.toLowerCase().includes(search.toLowerCase()) ||
                 user.email.toLowerCase().includes(search.toLowerCase());
-            const matchesRole = selectedRole === 'all' || extractRoleName(user) === selectedRole;
+            const matchesRole = extractRoleName(user) === selectedRole;
 
             const userDate = user.created_at ? new Date(user.created_at) : null;
             let matchesDateFrom = true;
@@ -95,6 +118,16 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
     const getRoleDisplay = (role) => roleLabels[role] || role;
 
     const getStatusColor = (role) => roleColors[role] || '#6b7280';
+
+    const handleRoleChange = (role) => {
+        setSelectedRole(role);
+        setSelectedUsers([]);
+        router.get(route('admin.users'), { role }, {
+            preserveScroll: true,
+            preserveState: false,
+            replace: true,
+        });
+    };
 
     const openCreate = () => {
         setEditingUser(null);
@@ -228,7 +261,7 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
 
     const handleExport = () => {
         const params = new URLSearchParams();
-        if (selectedRole !== 'all') params.append('role', selectedRole);
+        params.append('role', selectedRole);
         if (search) params.append('search', search);
         if (dateFrom) params.append('dateFrom', dateFrom);
         if (dateTo) params.append('dateTo', dateTo);
@@ -237,8 +270,13 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
         window.location.href = href;
     };
 
+    const currentRoleView = roleViewConfig[selectedRole] || roleViewConfig.student;
+    const currentTableHeadings = selectedRole === 'admin'
+        ? ['Pengguna', 'Email', currentRoleView.accessHeading, 'Bergabung', 'Aksi']
+        : ['Pengguna', 'Email', currentRoleView.courseHeading, 'Bergabung', 'Aksi'];
+
     return (
-        <AdminLayout title="Manajemen Pengguna" subtitle="Kelola data siswa dan tutor platform.">
+        <AdminLayout title="Manajemen Pengguna" subtitle="Kelola data siswa, tutor, dan admin platform.">
             <div className="p-4 lg:p-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 <div className="mb-6 flex items-center justify-between gap-4">
                     <button
@@ -267,8 +305,42 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
                     ))}
                 </div>
 
+                <div className="mb-5 grid gap-3 md:grid-cols-3">
+                    {['student', 'tutor', 'admin'].map((role) => {
+                        const active = selectedRole === role;
+                        const config = roleViewConfig[role];
+
+                        return (
+                            <button
+                                key={role}
+                                type="button"
+                                onClick={() => handleRoleChange(role)}
+                                className={`rounded-2xl border p-4 text-left transition-all ${active ? 'bg-white shadow-sm' : 'bg-white/60 hover:bg-white'}`}
+                                style={{
+                                    borderColor: active ? getStatusColor(role) : '#D8D7BE',
+                                    boxShadow: active ? `inset 0 0 0 1px ${getStatusColor(role)}` : undefined,
+                                }}
+                            >
+                                <div className="mb-2 flex items-center justify-between gap-3">
+                                    <span className="text-sm font-extrabold" style={{ color: getStatusColor(role) }}>
+                                        {getRoleDisplay(role)}
+                                    </span>
+                                    <span className="rounded-full px-2 py-0.5 text-xs font-bold" style={{ background: `${getStatusColor(role)}15`, color: getStatusColor(role) }}>
+                                        {Number(stats[role] || 0).toLocaleString()}
+                                    </span>
+                                </div>
+                                <p className="text-xs leading-5 text-gray-500">{config.description}</p>
+                            </button>
+                        );
+                    })}
+                </div>
+
                 <div className="overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
                     <div className="border-b border-[#F7F2E7] p-5">
+                        <div className="mb-4">
+                            <h2 className="text-lg font-extrabold text-gray-900">{currentRoleView.title}</h2>
+                            <p className="text-sm text-gray-500">{currentRoleView.description}</p>
+                        </div>
                         <div className="grid gap-4 xl:grid-cols-[minmax(240px,320px)_1fr] xl:items-center">
                             <div className="flex min-h-11 items-center gap-2 rounded-lg border border-[#D8D7BE] bg-[#F7F2E7] px-3 py-2">
                                 <Search className="h-4 w-4 text-gray-400" />
@@ -282,26 +354,12 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
                             </div>
                             <div className="flex flex-col gap-3 xl:items-end">
                                 <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-                                    <div className="flex min-h-11 items-center gap-1 rounded-lg border border-[#D8D7BE] bg-white p-1">
-                                        {['all', 'student', 'tutor', 'admin'].map((role) => (
-                                            <button
-                                                key={role}
-                                                onClick={() => setSelectedRole(role)}
-                                                className={`min-w-16 rounded-md px-3 py-2 text-xs font-semibold transition-colors ${
-                                                    selectedRole === role ? 'text-white' : 'text-gray-600 hover:bg-[#F7F2E7]'
-                                                }`}
-                                                style={selectedRole === role ? { background: '#691D1B' } : {}}
-                                            >
-                                                {role === 'all' ? 'Semua' : getRoleDisplay(role)}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <div className="flex min-h-11 flex-wrap items-center gap-2 rounded-lg border border-[#D8D7BE] bg-white px-2 py-1.5">
+                                    <div className="grid min-h-11 w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 rounded-lg border border-[#D8D7BE] bg-white px-2 py-1.5 sm:w-auto sm:grid-cols-[9rem_auto_9rem]">
                                         <input
                                             type="date"
                                             value={dateFrom}
                                             onChange={(event) => setDateFrom(event.target.value)}
-                                            className="w-36 rounded-md border-0 px-2 py-1.5 text-sm outline-none focus:ring-0"
+                                            className="min-w-0 rounded-md border-0 px-2 py-1.5 text-sm outline-none focus:ring-0"
                                             title="Dari tanggal"
                                         />
                                         <span className="text-sm text-gray-500">s/d</span>
@@ -309,14 +367,14 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
                                             type="date"
                                             value={dateTo}
                                             onChange={(event) => setDateTo(event.target.value)}
-                                            className="w-36 rounded-md border-0 px-2 py-1.5 text-sm outline-none focus:ring-0"
+                                            className="min-w-0 rounded-md border-0 px-2 py-1.5 text-sm outline-none focus:ring-0"
                                             title="Sampai tanggal"
                                         />
                                     </div>
-                                    <div className="flex flex-wrap items-center gap-2">
+                                    <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
                                         <button
                                             onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-                                            className="flex min-h-11 items-center gap-1.5 rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm text-gray-600 transition-colors hover:border-[#691D1B]"
+                                            className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm text-gray-600 transition-colors hover:border-[#691D1B]"
                                             title={`Urutkan ${sortOrder === 'desc' ? 'Terbaru dulu' : 'Terlama dulu'}`}
                                         >
                                             <ArrowUpDown className="h-4 w-4" />
@@ -324,10 +382,10 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
                                         </button>
                                         <button
                                             onClick={handleExport}
-                                            className="flex min-h-11 items-center gap-1.5 rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm text-gray-600 transition-colors hover:border-[#691D1B]"
+                                            className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-[#D8D7BE] px-3 py-2 text-sm text-gray-600 transition-colors hover:border-[#691D1B]"
                                         >
                                             <Download className="h-4 w-4" />
-                                            Export Pengguna
+                                            <span className="truncate">Export Pengguna</span>
                                         </button>
                                     </div>
                                 </div>
@@ -347,7 +405,7 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
                                     <th className="w-10 px-5 py-3">
                                         <CheckSquare className="h-4 w-4 cursor-pointer text-gray-400" />
                                     </th>
-                                    {['Pengguna', 'Email', 'Peran', 'Course', 'Bergabung', 'Aksi'].map((heading) => (
+                                    {currentTableHeadings.map((heading) => (
                                         <th
                                             key={heading}
                                             className="px-5 py-3 text-left text-xs uppercase tracking-wide text-gray-500"
@@ -401,19 +459,7 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
                                                 <span className="text-sm text-gray-700">{user.email}</span>
                                             </td>
                                             <td className="px-5 py-4">
-                                                <span
-                                                    className="rounded-full px-2 py-1 text-xs"
-                                                    style={{
-                                                        background: `${getStatusColor(roleName)}15`,
-                                                        color: getStatusColor(roleName),
-                                                        fontWeight: 600,
-                                                    }}
-                                                >
-                                                    {getRoleDisplay(roleName)}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                {roleName === 'student' ? (
+                                                {selectedRole === 'student' ? (
                                                     <div className="flex max-w-xs flex-wrap gap-1.5">
                                                         {(user.enrolledCourses || []).length > 0 ? (
                                                             user.enrolledCourses.map((course) => (
@@ -422,10 +468,10 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
                                                                 </span>
                                                             ))
                                                         ) : (
-                                                            <span className="text-xs text-gray-400">Belum enroll</span>
+                                                            <span className="text-xs text-gray-400">{currentRoleView.courseEmpty}</span>
                                                         )}
                                                     </div>
-                                                ) : roleName === 'tutor' ? (
+                                                ) : selectedRole === 'tutor' ? (
                                                     <div className="flex max-w-xs flex-wrap gap-1.5">
                                                         {(user.taughtCourses || []).length > 0 ? (
                                                             user.taughtCourses.map((course) => (
@@ -434,11 +480,20 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
                                                                 </span>
                                                             ))
                                                         ) : (
-                                                            <span className="text-xs text-gray-400">Belum ditugaskan</span>
+                                                            <span className="text-xs text-gray-400">{currentRoleView.courseEmpty}</span>
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-xs text-gray-400">-</span>
+                                                    <span
+                                                        className="rounded-full px-2 py-1 text-xs"
+                                                        style={{
+                                                            background: `${getStatusColor(roleName)}15`,
+                                                            color: getStatusColor(roleName),
+                                                            fontWeight: 600,
+                                                        }}
+                                                    >
+                                                        Akses Admin
+                                                    </span>
                                                 )}
                                             </td>
                                             <td className="px-5 py-4">
@@ -472,7 +527,7 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
                     {filtered.length === 0 && (
                         <div className="flex items-center justify-center py-12">
                             <div className="text-center">
-                                <p className="text-sm text-gray-500">Tidak ada pengguna ditemukan</p>
+                                <p className="text-sm text-gray-500">{currentRoleView.empty}</p>
                             </div>
                         </div>
                     )}
@@ -620,8 +675,13 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
                                         className="flex min-w-40 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#4A1412] disabled:cursor-not-allowed disabled:opacity-80"
                                         style={{ background: '#691D1B' }}
                                     >
-                                        {(isSubmitting || form.processing) && <Spinner size="xs" color="#FFE882" />}
-                                        {(isSubmitting || form.processing) ? (editingUser ? 'Menyimpan perubahan...' : 'Menambahkan pengguna...') : editingUser ? 'Simpan Perubahan' : 'Tambah Pengguna'}
+                                        <StagedLoadingContent
+                                            loading={isSubmitting || form.processing}
+                                            loadingLabel={editingUser ? 'Menyimpan perubahan...' : 'Menambahkan pengguna...'}
+                                            longLoadingLabel="Masih memproses pengguna..."
+                                        >
+                                            {editingUser ? 'Simpan Perubahan' : 'Tambah Pengguna'}
+                                        </StagedLoadingContent>
                                     </button>
                                 </div>
                             </form>

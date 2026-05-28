@@ -129,7 +129,7 @@ export default function UpdatePasswordForm({ className = '' }) {
 
                 <div className="flex items-center gap-4">
                     {processing ? (
-                        <LoadingButton label="Menyimpan..." variant="primary" />
+                        <LoadingButton label="Menyimpan..." idleLabel="Save" variant="primary" />
                     ) : (
                         <button
                             type="submit"

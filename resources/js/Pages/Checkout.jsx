@@ -1,5 +1,6 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import BricsLogo from '@/Components/BricsLogo';
+import { StagedLoadingContent } from '@/Components/ui/LoadingStates';
 import {
   ArrowLeft,
   CreditCard,
@@ -443,8 +444,12 @@ export default function Checkout({ learningPackage }) {
                   className="w-full py-3.5 rounded-xl text-white hover:bg-[#4A1412] transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
                   style={{ background: "#691D1B", fontWeight: 900 }}
                 >
-                  <CreditCard className="w-5 h-5" />
-                  {isSubmitting ? "Memproses..." : "Bayar Sekarang"}
+                  <StagedLoadingContent loading={isSubmitting} loadingLabel="Memproses..." longLoadingLabel="Masih menyiapkan pembayaran...">
+                    <span className="flex items-center justify-center gap-2">
+                      <CreditCard className="w-5 h-5" />
+                      Bayar Sekarang
+                    </span>
+                  </StagedLoadingContent>
                 </button>
 
                 {errors?.payment && (

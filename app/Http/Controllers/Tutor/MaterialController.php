@@ -29,20 +29,25 @@ class MaterialController extends Controller
             ->whereIn('course_id', $courseIds)
             ->latest()
             ->get()
-            ->map(fn (Material $material) => [
-                'id' => $material->id,
-                'name' => $material->title,
-                'title' => $material->title,
-                'meta' => $material->file_url ?: $material->content,
-                'type' => $this->materialType($material->type),
-                'status' => $material->approval_status,
-                'course' => $material->course?->title,
-                'course_id' => $material->course_id,
-                'uploaded_by_current_tutor' => (int) $material->uploaded_by === (int) $user->id,
-                'can_delete' => $courseIds->contains((int) $material->course_id),
-                'rejection_comment' => $material->rejection_comment,
-                'created_at' => $material->created_at,
-            ]);
+            ->map(function (Material $material) use ($courseIds, $user) {
+                $fileUrl = $material->file_url;
+
+                return [
+                    'id' => $material->id,
+                    'name' => $material->title,
+                    'title' => $material->title,
+                    'meta' => $this->materialMetaLabel($material, $fileUrl),
+                    'url' => $fileUrl ?: $material->content,
+                    'type' => $this->materialType($material->type),
+                    'status' => $material->approval_status,
+                    'course' => $material->course?->title,
+                    'course_id' => $material->course_id,
+                    'uploaded_by_current_tutor' => (int) $material->uploaded_by === (int) $user->id,
+                    'can_delete' => $courseIds->contains((int) $material->course_id),
+                    'rejection_comment' => $material->rejection_comment,
+                    'created_at' => $material->created_at,
+                ];
+            });
 
         $courses = Course::query()
             ->withCount([
@@ -254,6 +259,23 @@ class MaterialController extends Controller
     private function materialType(?string $type): string
     {
         return $type === 'bank_soal' ? 'quiz' : ($type ?? 'module');
+    }
+
+    private function materialMetaLabel(Material $material, ?string $fileUrl): string
+    {
+        $type = $this->materialType($material->type);
+
+        if ($type === 'video') {
+            return 'Link video YouTube';
+        }
+
+        if ($fileUrl) {
+            $extension = strtoupper(pathinfo(parse_url($fileUrl, PHP_URL_PATH) ?: $fileUrl, PATHINFO_EXTENSION));
+
+            return $extension ? "File {$extension} terlampir" : 'File terlampir';
+        }
+
+        return 'Konten teks';
     }
 
     private function tutorCourseIds($user)

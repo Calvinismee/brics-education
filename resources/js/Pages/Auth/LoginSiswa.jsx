@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import LoginPanel from '@/Components/LoginPanel';
 import BricsLogo from '@/Components/BricsLogo';
+import { StagedLoadingContent } from '@/Components/ui/LoadingStates';
 import {
   ArrowLeft,
   Eye,
@@ -348,7 +349,9 @@ export default function LoginSiswa({ googleClientId }) {
                   fontWeight: 800,
                 }}
               >
-                {processing ? 'Memproses...' : 'Masuk ke Dashboard'}
+                <StagedLoadingContent loading={processing} loadingLabel="Memproses..." longLoadingLabel="Masih memproses...">
+                  Masuk ke Dashboard
+                </StagedLoadingContent>
               </button>
             </form>
 

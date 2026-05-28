@@ -30,6 +30,17 @@ export default defineConfig(({ mode }) => ({
         tailwindcss(),
     ],
 
+    server: {
+        watch: {
+            ignored: [
+                '**/vendor/**',
+                '**/node_modules/**',
+                '**/storage/**',
+                '**/bootstrap/cache/**',
+            ],
+        },
+    },
+
     test: {
         environment: 'jsdom',
         globals: true,

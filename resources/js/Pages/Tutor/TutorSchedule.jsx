@@ -4,13 +4,14 @@ import {
   Home, Upload, Users, LogOut, Calendar, Bell, ArrowLeft,
   Clock, MapPin, BookOpen, ChevronDown, ChevronRight,
   Video, FileText, CheckSquare, MessageSquare, Star, Pencil, Settings as SettingsIcon,
-  Link2, ExternalLink, X,
+  Link2, ExternalLink, X, Plus,
 } from "lucide-react";
 import { BricsLogo } from "@/Components/BricsLogo";
 import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
 import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
+import { StagedLoadingContent } from "@/Components/ui/LoadingStates";
 
 // ─── Schedule Data ─────────────────────────────────────────────────────────────
 
@@ -79,7 +80,9 @@ export function TutorSchedule({
   week = null,
   stats: serverStats = {},
 }) {
-  const tutorClasses = asArray(serverTutorClasses).length > 0 ? asArray(serverTutorClasses) : fallbackTutorClasses;
+  const assignedTutorClasses = asArray(serverTutorClasses);
+  const tutorClasses = assignedTutorClasses.length > 0 ? assignedTutorClasses : fallbackTutorClasses;
+  const canCreateSchedule = assignedTutorClasses.length > 0;
   const tutorName = user?.name ?? "Tutor UTBK";
   const tutorInitials = initialsFor(tutorName);
   const serverDays = asArray(serverSchedules);
@@ -95,6 +98,17 @@ export function TutorSchedule({
   const [meetingLinkEvent, setMeetingLinkEvent] = useState(null);
   const [meetingLinkValue, setMeetingLinkValue] = useState("");
   const [currentTime, setCurrentTime] = useState(() => new Date());
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [scheduleForm, setScheduleForm] = useState({
+    course_id: tutorClasses[0]?.id ? String(tutorClasses[0].id) : "",
+    title: "",
+    schedule_date: defaultSelectedDay || dateKey(new Date()),
+    start_time: "09:00",
+    end_time: "10:00",
+    meeting_link: "",
+  });
+  const [scheduleErrors, setScheduleErrors] = useState({});
+  const [scheduleProcessing, setScheduleProcessing] = useState(false);
 
   const selectedDayData = displayScheduleData.find((d) => d.dayKey === selectedDay) ?? displayScheduleData[0] ?? { date: "Jadwal Tutor", dayKey: "", events: [] };
 
@@ -119,6 +133,40 @@ export function TutorSchedule({
       .filter(Boolean);
 
     return [...new Set(labels)].join(" / ") || cls.weeklySchedule || "Belum ada jadwal minggu ini";
+  };
+  const openScheduleForm = () => {
+    setScheduleForm({
+      course_id: tutorClasses[0]?.id ? String(tutorClasses[0].id) : "",
+      title: "",
+      schedule_date: selectedDay || dateKey(new Date()),
+      start_time: "09:00",
+      end_time: "10:00",
+      meeting_link: "",
+    });
+    setScheduleErrors({});
+    setScheduleModalOpen(true);
+  };
+  const closeScheduleForm = () => {
+    if (!scheduleProcessing) {
+      setScheduleModalOpen(false);
+      setScheduleErrors({});
+    }
+  };
+  const updateScheduleField = (field, value) => {
+    setScheduleForm((current) => ({ ...current, [field]: value }));
+  };
+  const saveSchedule = (event) => {
+    event.preventDefault();
+
+    setScheduleProcessing(true);
+    setScheduleErrors({});
+
+    router.post("/tutor/schedule", scheduleForm, {
+      preserveScroll: true,
+      onError: (errors) => setScheduleErrors(errors),
+      onSuccess: () => setScheduleModalOpen(false),
+      onFinish: () => setScheduleProcessing(false),
+    });
   };
   const openMeetingLinkEditor = (event) => {
     setMeetingLinkEvent(event);
@@ -175,7 +223,20 @@ export function TutorSchedule({
                 </p>
               </div>
             </div>
-            <div className="flex-shrink-0"><TutorNotificationBell /></div>
+            <div className="flex flex-shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={openScheduleForm}
+                disabled={!canCreateSchedule}
+                className="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-white transition hover:bg-[#4A1412] disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
+                style={{ background: "#691D1B" }}
+                title={canCreateSchedule ? "Tambah jadwal mengajar" : "Belum ada course yang ditugaskan"}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Tambah Jadwal</span>
+              </button>
+              <TutorNotificationBell />
+            </div>
           </div>
         </header>
 
@@ -229,6 +290,16 @@ export function TutorSchedule({
               <div className="bg-white rounded-2xl border border-[#D8D7BE] p-12 text-center">
                 <Calendar className="w-10 h-10 mx-auto mb-3 text-gray-200" />
                 <p className="text-sm text-gray-400">Tidak ada jadwal untuk hari ini.</p>
+                <button
+                  type="button"
+                  onClick={openScheduleForm}
+                  disabled={!canCreateSchedule}
+                  className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-bold text-white transition hover:bg-[#4A1412] disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{ background: "#691D1B" }}
+                >
+                  <Plus className="h-4 w-4" />
+                  Tambah Jadwal
+                </button>
               </div>
             ) : (
               <div className="space-y-4">
@@ -288,12 +359,17 @@ export function TutorSchedule({
                               ) : (
                                 <button
                                   type="button"
-                                  onClick={(event) => event.preventDefault()}
-                                  className="w-full flex-shrink-0 rounded-xl px-4 py-2 text-xs cursor-not-allowed opacity-55 sm:w-auto"
+                                  onClick={() => {
+                                    if (ev.status !== "completed") {
+                                      openMeetingLinkEditor(ev);
+                                    }
+                                  }}
+                                  className={`w-full flex-shrink-0 rounded-xl px-4 py-2 text-xs sm:w-auto ${ev.status === "completed" ? "cursor-not-allowed opacity-55" : "hover:opacity-80"}`}
                                   style={{ background: cfg.color, color: "white", fontWeight: 700 }}
                                   title={ev.status === "completed" ? "Sesi ini sudah berakhir" : "Tambahkan link meeting terlebih dahulu"}
+                                  disabled={ev.status === "completed"}
                                 >
-                                  {cfg.cta}
+                                  {ev.status === "completed" ? cfg.cta : "Tambah Link"}
                                 </button>
                               )
                             ) : (
@@ -365,6 +441,122 @@ export function TutorSchedule({
 
         </div>
       </div>
+      {scheduleModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-[#F7F2E7] p-5" style={{ background: "#691D1B" }}>
+              <div>
+                <h3 className="text-white" style={{ fontWeight: 800 }}>Tambah Jadwal Mengajar</h3>
+                <p className="mt-1 text-xs text-white/70">Buat jadwal live class, review, deadline, atau konsultasi untuk course yang kamu ampu.</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeScheduleForm}
+                className="rounded-lg p-1.5 text-white/80 hover:bg-white/10 hover:text-white"
+                aria-label="Tutup"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={saveSchedule} className="max-h-[calc(92vh-84px)] space-y-4 overflow-y-auto p-5">
+              <label className="block space-y-2">
+                <span className="text-sm font-semibold text-gray-700">Course</span>
+                <select
+                  value={scheduleForm.course_id}
+                  onChange={(event) => updateScheduleField("course_id", event.target.value)}
+                  className="w-full rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
+                >
+                  {assignedTutorClasses.map((course) => (
+                    <option key={course.id} value={course.id}>{course.name || course.title}</option>
+                  ))}
+                </select>
+                {scheduleErrors.course_id && <p className="text-xs font-semibold text-red-600">{scheduleErrors.course_id}</p>}
+              </label>
+
+              <label className="block space-y-2">
+                <span className="text-sm font-semibold text-gray-700">Judul Jadwal</span>
+                <input
+                  type="text"
+                  value={scheduleForm.title}
+                  onChange={(event) => updateScheduleField("title", event.target.value)}
+                  placeholder="Contoh: Live Class Penalaran Umum"
+                  className="w-full rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
+                />
+                {scheduleErrors.title && <p className="text-xs font-semibold text-red-600">{scheduleErrors.title}</p>}
+              </label>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <label className="block space-y-2">
+                  <span className="text-sm font-semibold text-gray-700">Tanggal</span>
+                  <input
+                    type="date"
+                    value={scheduleForm.schedule_date}
+                    onChange={(event) => updateScheduleField("schedule_date", event.target.value)}
+                    className="w-full rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
+                  />
+                  {scheduleErrors.schedule_date && <p className="text-xs font-semibold text-red-600">{scheduleErrors.schedule_date}</p>}
+                </label>
+
+                <label className="block space-y-2">
+                  <span className="text-sm font-semibold text-gray-700">Mulai</span>
+                  <input
+                    type="time"
+                    value={scheduleForm.start_time}
+                    onChange={(event) => updateScheduleField("start_time", event.target.value)}
+                    className="w-full rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
+                  />
+                  {scheduleErrors.start_time && <p className="text-xs font-semibold text-red-600">{scheduleErrors.start_time}</p>}
+                </label>
+
+                <label className="block space-y-2">
+                  <span className="text-sm font-semibold text-gray-700">Selesai</span>
+                  <input
+                    type="time"
+                    value={scheduleForm.end_time}
+                    onChange={(event) => updateScheduleField("end_time", event.target.value)}
+                    className="w-full rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
+                  />
+                  {scheduleErrors.end_time && <p className="text-xs font-semibold text-red-600">{scheduleErrors.end_time}</p>}
+                </label>
+              </div>
+
+              <label className="block space-y-2">
+                <span className="text-sm font-semibold text-gray-700">Link Meeting</span>
+                <input
+                  type="url"
+                  value={scheduleForm.meeting_link}
+                  onChange={(event) => updateScheduleField("meeting_link", event.target.value)}
+                  placeholder="https://meet.google.com/..."
+                  className="w-full rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm outline-none focus:border-[#691D1B]"
+                />
+                {scheduleErrors.meeting_link && <p className="text-xs font-semibold text-red-600">{scheduleErrors.meeting_link}</p>}
+              </label>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={closeScheduleForm}
+                  disabled={scheduleProcessing}
+                  className="rounded-xl border border-[#D8D7BE] px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-[#F7F2E7] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={scheduleProcessing || !canCreateSchedule}
+                  className="rounded-xl px-4 py-2 text-sm font-semibold text-white hover:bg-[#4A1412] disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{ background: "#691D1B" }}
+                >
+                  <StagedLoadingContent loading={scheduleProcessing} loadingLabel="Menyimpan..." longLoadingLabel="Masih menyimpan jadwal...">
+                    Simpan Jadwal
+                  </StagedLoadingContent>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {meetingLinkEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">

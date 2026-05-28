@@ -5,6 +5,7 @@ import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
 import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
+import { StagedLoadingContent } from "@/Components/ui/LoadingStates";
 
 export default function TutorPassword({ user = null, tutorClasses = [] }) {
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -125,7 +126,9 @@ export default function TutorPassword({ user = null, tutorClasses = [] }) {
                   className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm text-white hover:bg-[#4A1412] disabled:cursor-not-allowed disabled:opacity-60"
                   style={{ background: "#691D1B", fontWeight: 800 }}
                 >
-                  {form.processing ? "Menyimpan..." : "Simpan Password"}
+                  <StagedLoadingContent loading={form.processing} loadingLabel="Menyimpan..." longLoadingLabel="Masih menyimpan password...">
+                    Simpan Password
+                  </StagedLoadingContent>
                 </button>
               </div>
             </form>

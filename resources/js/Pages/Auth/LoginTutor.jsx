@@ -88,7 +88,7 @@ export default function LoginTutor() {
             </div>
 
             {processing ? (
-              <LoadingButton label="Memproses..." variant="primary" />
+              <LoadingButton label="Memproses..." idleLabel="Masuk" variant="primary" />
             ) : (
               <button type="submit" className="w-full py-3.5 rounded-xl text-white hover:opacity-90 transition-all mb-4" style={{ background: 'var(--brics-maroon)', fontWeight: 700 }}>
                 Masuk

@@ -209,14 +209,14 @@ export function TutorDashboard({
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                       ) : (
-                        <button
-                          type="button"
-                          className="inline-flex min-h-10 w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-400 sm:w-auto"
-                          title="Tambahkan link meeting dari halaman jadwal"
+                        <Link
+                          href="/tutor/schedule"
+                          className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-500 transition hover:bg-[#F7F2E7] hover:text-[#691D1B] sm:w-auto"
+                          title={s.status === "completed" ? "Sesi ini sudah berakhir" : "Tambahkan link meeting dari halaman jadwal"}
                         >
                           <Video className="w-3.5 h-3.5" />
-                          Mulai
-                        </button>
+                          {s.status === "completed" ? "Selesai" : "Tambah Link"}
+                        </Link>
                       )}
                     </div>
                   );

@@ -119,7 +119,7 @@ export default function DeleteUserForm({ className = '' }) {
 
                         {processing ? (
                             <div className="ms-3">
-                                <LoadingButton label="Menghapus..." variant="primary" />
+                                <LoadingButton label="Menghapus..." idleLabel="Delete Account" variant="primary" />
                             </div>
                         ) : (
                             <DangerButton className="ms-3" disabled={processing}>

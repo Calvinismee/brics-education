@@ -1,5 +1,5 @@
 import { AlertTriangle, Sparkles } from 'lucide-react';
-import { Spinner } from '@/Components/ui/LoadingStates';
+import { StagedLoadingContent } from '@/Components/ui/LoadingStates';
 
 export default function DeleteConfirmModal({
     open,
@@ -53,8 +53,9 @@ export default function DeleteConfirmModal({
                         disabled={processing}
                         className="flex items-center gap-2 rounded-xl bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-destructive/90 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
                     >
-                        {processing && <Spinner size="xs" color="#ffffff" />}
-                        {confirmLabel}
+                        <StagedLoadingContent loading={processing} loadingLabel="Memproses..." longLoadingLabel="Masih memproses...">
+                            {confirmLabel}
+                        </StagedLoadingContent>
                     </button>
                 </div>
             </div>
