@@ -18,6 +18,7 @@ import {
   CreditCard,
   ExternalLink,
   Package as PackageIcon,
+  User,
   X,
 } from 'lucide-react';
 import { DashboardNotificationBell } from '@/Components/DashboardNotificationBell';
@@ -179,6 +180,129 @@ function getInitialDashboardTab() {
   return dashboardTabs.includes(tab) ? tab : 'beranda';
 }
 
+function getInitialProfileEditing() {
+  if (typeof window === 'undefined') return false;
+
+  const params = new URLSearchParams(window.location.search);
+
+  return params.get('tab') === 'profil' && params.get('edit') === '1';
+}
+
+function ProfileEditorForm({ user, onCancel, onSaved }) {
+  const profileForm = useForm({
+    name: user?.name ?? '',
+    gender: user?.gender ?? '',
+    phone: user?.phone ?? '',
+    school_origin: user?.school_origin ?? '',
+  });
+
+  const submit = (event) => {
+    event.preventDefault();
+
+    profileForm.patch(route('profile.update'), {
+      preserveScroll: true,
+      onSuccess: onSaved,
+    });
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-5">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <label className="space-y-2 rounded-xl border border-[#D8D7BE] p-4 md:col-span-2">
+          <span className="text-sm font-bold text-gray-700">Nama Lengkap</span>
+          <input
+            type="text"
+            value={profileForm.data.name}
+            onChange={(event) => profileForm.setData('name', event.target.value)}
+            disabled={profileForm.processing}
+            className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+            placeholder="Masukkan nama lengkap"
+            autoComplete="name"
+            required
+          />
+          {profileForm.errors.name && (
+            <p className="text-xs font-semibold text-red-600">{profileForm.errors.name}</p>
+          )}
+        </label>
+
+        <label className="space-y-2 rounded-xl border border-[#D8D7BE] p-4">
+          <span className="text-sm font-bold text-gray-700">Jenis Kelamin</span>
+          <select
+            value={profileForm.data.gender}
+            onChange={(event) => profileForm.setData('gender', event.target.value)}
+            disabled={profileForm.processing}
+            className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+          >
+            <option value="">Pilih jenis kelamin</option>
+            <option value="male">Laki-laki</option>
+            <option value="female">Perempuan</option>
+          </select>
+          {profileForm.errors.gender && (
+            <p className="text-xs font-semibold text-red-600">{profileForm.errors.gender}</p>
+          )}
+        </label>
+
+        <label className="space-y-2 rounded-xl border border-[#D8D7BE] p-4">
+          <span className="text-sm font-bold text-gray-700">No Telepon/WhatsApp</span>
+          <input
+            type="tel"
+            value={profileForm.data.phone}
+            onChange={(event) => profileForm.setData('phone', event.target.value)}
+            disabled={profileForm.processing}
+            className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+            placeholder="Contoh: 081234567890"
+            autoComplete="tel"
+          />
+          <p className="text-xs text-gray-500">
+            Contoh format: 081234567890 atau +6281234567890.
+          </p>
+          {profileForm.errors.phone && (
+            <p className="text-xs font-semibold text-red-600">{profileForm.errors.phone}</p>
+          )}
+        </label>
+
+        <label className="space-y-2 rounded-xl border border-[#D8D7BE] p-4 md:col-span-2">
+          <span className="text-sm font-bold text-gray-700">Sekolah Asal</span>
+          <input
+            type="text"
+            value={profileForm.data.school_origin}
+            onChange={(event) => profileForm.setData('school_origin', event.target.value)}
+            disabled={profileForm.processing}
+            className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+            placeholder="Masukkan nama sekolah asal"
+            autoComplete="organization"
+          />
+          {profileForm.errors.school_origin && (
+            <p className="text-xs font-semibold text-red-600">{profileForm.errors.school_origin}</p>
+          )}
+        </label>
+      </div>
+
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={profileForm.processing}
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#D8D7BE] px-4 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:bg-[#F7F2E7] disabled:opacity-60 sm:w-auto"
+        >
+          Batal
+        </button>
+
+        <button
+          type="submit"
+          disabled={profileForm.processing}
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-[#4A1412] disabled:opacity-70 sm:w-auto"
+          style={{ background: '#691D1B' }}
+        >
+          <StagedLoadingContent loading={profileForm.processing} loadingLabel="Menyimpan..." longLoadingLabel="Masih menyimpan profil...">
+            Simpan Profil
+          </StagedLoadingContent>
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export default function StudentDashboard({
   user,
   enrollments = [],
@@ -193,13 +317,7 @@ export default function StudentDashboard({
   const [activeTab, setActiveTab] = useState(getInitialDashboardTab);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [subtesOpen, setSubtesOpen] = useState(true);
-  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
-  const profileForm = useForm({
-    name: user?.name ?? '',
-    gender: user?.gender ?? '',
-    phone: user?.phone ?? '',
-    school_origin: user?.school_origin ?? '',
-  });
+  const [profileEditing, setProfileEditing] = useState(getInitialProfileEditing);
   const [progressMap, setProgressMap] = useState({});
   const [calendarNow, setCalendarNow] = useState(() => new Date());
   const [scheduleNow, setScheduleNow] = useState(() => new Date());
@@ -395,12 +513,23 @@ export default function StudentDashboard({
     router.post(route('logout'));
   };
 
-  const updateDashboardTabUrl = (tab) => {
+  const updateDashboardTabUrl = (tab, options = {}) => {
     if (typeof window === 'undefined' || !dashboardTabs.includes(tab)) return;
 
-    const nextUrl = tab === 'beranda'
-      ? window.location.pathname
-      : `${window.location.pathname}?tab=${encodeURIComponent(tab)}`;
+    const params = new URLSearchParams();
+
+    if (tab !== 'beranda') {
+      params.set('tab', tab);
+    }
+
+    if (tab === 'profil' && options.edit) {
+      params.set('edit', '1');
+    }
+
+    const queryString = params.toString();
+    const nextUrl = queryString
+      ? `${window.location.pathname}?${queryString}`
+      : window.location.pathname;
 
     window.history.replaceState(window.history.state, '', nextUrl);
   };
@@ -418,30 +547,20 @@ export default function StudentDashboard({
   };
 
   const openProfileEditor = () => {
-    profileForm.setData({
-      name: user?.name ?? '',
-      gender: user?.gender ?? '',
-      phone: user?.phone ?? '',
-      school_origin: user?.school_origin ?? '',
-    });
-    profileForm.clearErrors();
     setSidebarOpen(false);
-    setProfileEditorOpen(true);
+    setActiveTab('profil');
+    setProfileEditing(true);
+    updateDashboardTabUrl('profil', { edit: true });
   };
 
-  const closeProfileEditor = () => {
-    if (profileForm.processing) return;
-
-    setProfileEditorOpen(false);
+  const cancelProfileEditor = () => {
+    setProfileEditing(false);
+    updateDashboardTabUrl('profil');
   };
 
-  const submitProfileEditor = (event) => {
-    event.preventDefault();
-
-    profileForm.patch(route('profile.update'), {
-      preserveScroll: true,
-      onSuccess: () => setProfileEditorOpen(false),
-    });
+  const finishProfileEditor = () => {
+    setProfileEditing(false);
+    updateDashboardTabUrl('profil');
   };
 
   const materialStatusText = (item) => {
@@ -673,7 +792,7 @@ export default function StudentDashboard({
 
         <SidebarMenuButton
           active={activeTab === 'profil'}
-          icon={Pencil}
+          icon={User}
           label="Profil"
           onClick={() => changeTab('profil')}
         />
@@ -1644,194 +1763,71 @@ export default function StudentDashboard({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="border border-[#D8D7BE] rounded-xl p-4">
-                <p className="text-sm text-gray-500 mb-2">Nama Lengkap</p>
-                <p className="text-gray-900 text-sm" style={{ fontWeight: 800 }}>
-                  {user?.name || '-'}
-                </p>
-              </div>
+            {profileEditing ? (
+              <ProfileEditorForm
+                user={user}
+                onCancel={cancelProfileEditor}
+                onSaved={finishProfileEditor}
+              />
+            ) : (
+              <>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="rounded-xl border border-[#D8D7BE] p-4">
+                    <p className="mb-2 text-sm text-gray-500">Nama Lengkap</p>
+                    <p className="text-sm text-gray-900" style={{ fontWeight: 800 }}>
+                      {user?.name || '-'}
+                    </p>
+                  </div>
 
-              <div className="border border-[#D8D7BE] rounded-xl p-4">
-                <p className="text-sm text-gray-500 mb-2">Jenis Kelamin</p>
-                <p className="text-gray-900 text-sm" style={{ fontWeight: 800 }}>
-                  {formatGender(user?.gender)}
-                </p>
-              </div>
+                  <div className="rounded-xl border border-[#D8D7BE] p-4">
+                    <p className="mb-2 text-sm text-gray-500">Jenis Kelamin</p>
+                    <p className="text-sm text-gray-900" style={{ fontWeight: 800 }}>
+                      {formatGender(user?.gender)}
+                    </p>
+                  </div>
 
-              <div className="border border-[#D8D7BE] rounded-xl p-4">
-                <p className="text-sm text-gray-500 mb-2">No Telepon/WhatsApp</p>
-                <p className="text-gray-900 text-sm" style={{ fontWeight: 800 }}>
-                  {user?.phone || '-'}
-                </p>
-              </div>
+                  <div className="rounded-xl border border-[#D8D7BE] p-4">
+                    <p className="mb-2 text-sm text-gray-500">No Telepon/WhatsApp</p>
+                    <p className="text-sm text-gray-900" style={{ fontWeight: 800 }}>
+                      {user?.phone || '-'}
+                    </p>
+                  </div>
 
-              <div className="border border-[#D8D7BE] rounded-xl p-4">
-                <p className="text-sm text-gray-500 mb-2">Sekolah Asal</p>
-                <p className="text-gray-900 text-sm" style={{ fontWeight: 800 }}>
-                  {user?.school_origin || '-'}
-                </p>
-              </div>
-            </div>
+                  <div className="rounded-xl border border-[#D8D7BE] p-4">
+                    <p className="mb-2 text-sm text-gray-500">Sekolah Asal</p>
+                    <p className="text-sm text-gray-900" style={{ fontWeight: 800 }}>
+                      {user?.school_origin || '-'}
+                    </p>
+                  </div>
+                </div>
 
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={openProfileEditor}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm text-white transition-colors hover:bg-[#4A1412] sm:w-auto"
-                style={{ background: '#691D1B', fontWeight: 900 }}
-              >
-                <Pencil className="w-4 h-4" />
-                Edit Profil
-              </button>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={openProfileEditor}
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm text-white transition-colors hover:bg-[#4A1412] sm:w-auto"
+                    style={{ background: '#691D1B', fontWeight: 900 }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit Profil
+                  </button>
 
-              <button
-                type="button"
-                onClick={logout}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#691D1B] px-4 py-2.5 text-sm text-[#691D1B] transition-colors hover:bg-[#691D1B] hover:text-white sm:w-auto"
-                style={{ fontWeight: 900 }}
-              >
-                <LogOut className="w-4 h-4" />
-                Keluar
-              </button>
-            </div>
+                  <button
+                    type="button"
+                    onClick={logout}
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#691D1B] px-4 py-2.5 text-sm text-[#691D1B] transition-colors hover:bg-[#691D1B] hover:text-white sm:w-auto"
+                    style={{ fontWeight: 900 }}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Keluar
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </section>
       </main>
     </>
-  );
-
-  const renderProfileEditorModal = () => (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center px-3 py-4 sm:px-4 sm:py-6">
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/45"
-        onClick={closeProfileEditor}
-        aria-label="Tutup editor profil"
-      />
-
-      <div className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
-        <div className="flex flex-shrink-0 items-start justify-between gap-4 border-b border-[#F7F2E7] px-4 py-4 sm:px-5">
-          <div className="flex min-w-0 items-center gap-3">
-            <div
-              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl"
-              style={{ background: '#F8EDED', color: '#691D1B' }}
-            >
-              <Pencil className="h-5 w-5" />
-            </div>
-
-            <div className="min-w-0">
-              <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
-                Edit Profil
-              </h2>
-              <p className="truncate text-sm text-gray-500">
-                Data diri siswa
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={closeProfileEditor}
-            disabled={profileForm.processing}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-[#F7F2E7] hover:text-[#691D1B] disabled:opacity-60"
-            aria-label="Tutup editor profil"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <form onSubmit={submitProfileEditor} className="grid gap-5 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5 md:grid-cols-2">
-          <label className="space-y-2 md:col-span-2">
-            <span className="text-sm font-bold text-gray-700">Nama Lengkap</span>
-            <input
-              type="text"
-              value={profileForm.data.name}
-              onChange={(event) => profileForm.setData('name', event.target.value)}
-              disabled={profileForm.processing}
-              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
-              placeholder="Masukkan nama lengkap"
-              autoComplete="name"
-              required
-            />
-            {profileForm.errors.name && (
-              <p className="text-xs font-semibold text-red-600">{profileForm.errors.name}</p>
-            )}
-          </label>
-
-          <label className="space-y-2">
-            <span className="text-sm font-bold text-gray-700">Jenis Kelamin</span>
-            <select
-              value={profileForm.data.gender}
-              onChange={(event) => profileForm.setData('gender', event.target.value)}
-              disabled={profileForm.processing}
-              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
-            >
-              <option value="">Pilih jenis kelamin</option>
-              <option value="male">Laki-laki</option>
-              <option value="female">Perempuan</option>
-            </select>
-            {profileForm.errors.gender && (
-              <p className="text-xs font-semibold text-red-600">{profileForm.errors.gender}</p>
-            )}
-          </label>
-
-          <label className="space-y-2">
-            <span className="text-sm font-bold text-gray-700">No Telepon/WhatsApp</span>
-            <input
-              type="tel"
-              value={profileForm.data.phone}
-              onChange={(event) => profileForm.setData('phone', event.target.value)}
-              disabled={profileForm.processing}
-              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
-              placeholder="Contoh: 081234567890"
-              autoComplete="tel"
-            />
-            {profileForm.errors.phone && (
-              <p className="text-xs font-semibold text-red-600">{profileForm.errors.phone}</p>
-            )}
-          </label>
-
-          <label className="space-y-2 md:col-span-2">
-            <span className="text-sm font-bold text-gray-700">Sekolah Asal</span>
-            <input
-              type="text"
-              value={profileForm.data.school_origin}
-              onChange={(event) => profileForm.setData('school_origin', event.target.value)}
-              disabled={profileForm.processing}
-              className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
-              placeholder="Masukkan nama sekolah asal"
-              autoComplete="organization"
-            />
-            {profileForm.errors.school_origin && (
-              <p className="text-xs font-semibold text-red-600">{profileForm.errors.school_origin}</p>
-            )}
-          </label>
-
-          <div className="flex flex-col-reverse gap-3 border-t border-[#F7F2E7] pt-4 sm:flex-row sm:justify-end md:col-span-2">
-            <button
-              type="button"
-              onClick={closeProfileEditor}
-              disabled={profileForm.processing}
-              className="min-h-11 rounded-xl border border-[#D8D7BE] px-4 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:bg-[#F7F2E7] disabled:opacity-60"
-            >
-              Batal
-            </button>
-
-            <button
-              type="submit"
-              disabled={profileForm.processing}
-              className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-[#4A1412] disabled:opacity-70"
-              style={{ background: '#691D1B' }}
-            >
-              <StagedLoadingContent loading={profileForm.processing} loadingLabel="Menyimpan..." longLoadingLabel="Masih menyimpan profil...">
-                Simpan Profil
-              </StagedLoadingContent>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
   );
 
   return (
@@ -1913,7 +1909,6 @@ export default function StudentDashboard({
         </div>
       </div>
 
-      {profileEditorOpen && renderProfileEditorModal()}
     </div>
   );
 }
