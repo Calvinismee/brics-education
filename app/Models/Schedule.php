@@ -7,10 +7,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Schedule extends Model
 {
+    public const TYPES = ['live', 'deadline', 'review', 'consultation'];
+
+    public const MEETING_TYPES = ['live', 'consultation'];
+
     protected $fillable = [
         'course_id',
         'mentor_id',
         'title',
+        'type',
         'start_time',
         'end_time',
         'meeting_link',

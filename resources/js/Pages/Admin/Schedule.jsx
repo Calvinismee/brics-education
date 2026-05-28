@@ -8,6 +8,22 @@ import { showSuccessToast } from '@/utils/toast';
 
 const daysOfWeek = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
+const scheduleTypes = {
+    live: { label: 'Live Class', color: '#691D1B', bg: '#691D1B15', needsMeeting: true },
+    consultation: { label: 'Konsultasi', color: '#7c3aed', bg: '#7c3aed15', needsMeeting: true },
+    deadline: { label: 'Deadline', color: '#d4183d', bg: '#d4183d15', needsMeeting: false },
+    review: { label: 'Review', color: '#1a6b3c', bg: '#1a6b3c15', needsMeeting: false },
+};
+
+const scheduleTypeOptions = [
+    ['live', 'Live Class'],
+    ['consultation', 'Konsultasi'],
+    ['deadline', 'Deadline'],
+    ['review', 'Review'],
+];
+
+const scheduleTypeConfig = (type) => scheduleTypes[type] || scheduleTypes.live;
+
 const formatMonthLabel = (date) => new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(date);
 
 const formatDateKey = (value) => {
@@ -52,11 +68,13 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
     const form = useForm({
         course_id: '',
         tutor_id: '',
+        type: 'live',
         schedule_date: '',
         start_time: '08:00',
         end_time: '10:00',
         meeting_link: '',
     });
+    const selectedType = scheduleTypeConfig(form.data.type);
     const tutorCanTeachCourse = (tutor, courseId) => {
         if (!courseId) {
             return true;
@@ -80,6 +98,16 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
         });
     };
 
+    const handleTypeChange = (event) => {
+        const nextType = event.target.value;
+
+        form.setData({
+            ...form.data,
+            type: nextType,
+            meeting_link: scheduleTypeConfig(nextType).needsMeeting ? form.data.meeting_link : '',
+        });
+    };
+
     const closeForm = () => {
         setShowForm(false);
         setEditingScheduleId(null);
@@ -92,6 +120,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
         form.setData({
             course_id: '',
             tutor_id: '',
+            type: 'live',
             schedule_date: '',
             start_time: '08:00',
             end_time: '10:00',
@@ -106,6 +135,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
         form.setData({
             course_id: schedule.course_id ? String(schedule.course_id) : '',
             tutor_id: schedule.tutor_id || '',
+            type: schedule.type || 'live',
             schedule_date: formatDateKey(schedule.schedule_date),
             start_time: schedule.start_time || '08:00',
             end_time: schedule.end_time || '10:00',
@@ -187,7 +217,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                         style={{ background: '#691D1B', fontWeight: 600 }}
                     >
                         <Plus className="h-4 w-4" />
-                        Tambah Kelas
+                        Tambah Jadwal
                     </button>
                 </div>
 
@@ -238,7 +268,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-[#D8D7BE] bg-[#F7F2E7]">
-                                        {['Mata Pelajaran', 'Tutor', 'Jadwal', 'Waktu', 'Link', 'Aksi'].map((heading) => (
+                                        {['Mata Pelajaran', 'Tipe', 'Tutor', 'Jadwal', 'Waktu', 'Link', 'Aksi'].map((heading) => (
                                             <th
                                                 key={heading}
                                                 className="px-5 py-3 text-left text-xs uppercase tracking-wide text-gray-500"
@@ -256,6 +286,17 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                                 <p className="text-sm font-semibold text-gray-800">{schedule.course}</p>
                                             </td>
                                             <td className="px-5 py-4">
+                                                <span
+                                                    className="inline-flex rounded-full px-3 py-1 text-xs font-semibold"
+                                                    style={{
+                                                        background: scheduleTypeConfig(schedule.type).bg,
+                                                        color: scheduleTypeConfig(schedule.type).color,
+                                                    }}
+                                                >
+                                                    {scheduleTypeConfig(schedule.type).label}
+                                                </span>
+                                            </td>
+                                            <td className="px-5 py-4">
                                                 <span className="text-sm text-gray-700">{schedule.tutor}</span>
                                             </td>
                                             <td className="px-5 py-4">
@@ -271,9 +312,15 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                                 </div>
                                             </td>
                                             <td className="px-5 py-4">
-                                                <a href={schedule.meeting_link || '#'} target="_blank" rel="noreferrer" className="text-sm text-blue-600 underline">
-                                                    {schedule.meeting_link ? (schedule.meeting_link.length > 40 ? `${schedule.meeting_link.slice(0, 36)}...` : schedule.meeting_link) : '-'}
-                                                </a>
+                                                {schedule.meeting_link ? (
+                                                    <a href={schedule.meeting_link} target="_blank" rel="noreferrer" className="text-sm text-blue-600 underline">
+                                                        {schedule.meeting_link.length > 40 ? `${schedule.meeting_link.slice(0, 36)}...` : schedule.meeting_link}
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-sm text-gray-400">
+                                                        {scheduleTypeConfig(schedule.type).needsMeeting ? 'Belum ada link' : 'Tidak perlu link'}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="px-5 py-4">
                                                 <div className="flex items-center gap-2">
@@ -339,14 +386,18 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                             <span>{scheduleItems.length}</span>
                                         </div>
                                         <div className="space-y-1.5">
-                                            {scheduleItems.slice(0, 2).map((schedule) => (
-                                                <div key={schedule.id} className="rounded-lg px-2 py-1" style={{ background: '#691D1B10', color: '#691D1B' }}>
-                                                    <p className="truncate font-semibold">{schedule.course}</p>
-                                                    <p className="truncate text-[11px] opacity-75">
-                                                        {schedule.start_time} - {schedule.end_time}
-                                                    </p>
-                                                </div>
-                                            ))}
+                                            {scheduleItems.slice(0, 2).map((schedule) => {
+                                                const type = scheduleTypeConfig(schedule.type);
+
+                                                return (
+                                                    <div key={schedule.id} className="rounded-lg px-2 py-1" style={{ background: type.bg, color: type.color }}>
+                                                        <p className="truncate font-semibold">{schedule.course}</p>
+                                                        <p className="truncate text-[11px] opacity-75">
+                                                            {type.label} • {schedule.start_time} - {schedule.end_time}
+                                                        </p>
+                                                    </div>
+                                                );
+                                            })}
                                             {scheduleItems.length > 2 && <p className="text-[11px] text-gray-400">+{scheduleItems.length - 2} jadwal lagi</p>}
                                         </div>
                                     </div>
@@ -361,7 +412,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                         <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
                             <div className="border-b border-[#F7F2E7] p-5" style={{ background: '#691D1B' }}>
                                 <h3 className="font-bold text-white">{editingScheduleId ? 'Edit Jadwal Kelas' : 'Tambah Jadwal Kelas'}</h3>
-                                <p className="mt-1 text-xs text-white/70">Isi kelas, tutor, tanggal, jam, dan link pertemuan jika sudah tersedia.</p>
+                                <p className="mt-1 text-xs text-white/70">Isi kelas, tutor, tipe jadwal, tanggal, jam, dan link pertemuan jika diperlukan.</p>
                             </div>
 
                             <form onSubmit={handleSubmit} className="flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
@@ -424,22 +475,27 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
 
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div>
+                                        <label className="mb-2 block text-sm font-semibold text-gray-700">Tipe Jadwal</label>
+                                        <select
+                                            value={form.data.type}
+                                            onChange={handleTypeChange}
+                                            className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
+                                        >
+                                            {scheduleTypeOptions.map(([value, label]) => (
+                                                <option key={value} value={value}>
+                                                    {label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
                                         <label className="mb-2 block text-sm font-semibold text-gray-700">Tanggal</label>
                                         <input
                                             value={form.data.schedule_date}
                                             onChange={(event) => form.setData('schedule_date', event.target.value)}
                                             type="date"
                                             className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-gray-700">Link Pertemuan (Zoom, opsional)</label>
-                                        <input
-                                            value={form.data.meeting_link}
-                                            onChange={(event) => form.setData('meeting_link', event.target.value)}
-                                            type="url"
-                                            className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
-                                            placeholder="https://zoom.us/j/123..."
                                         />
                                     </div>
                                 </div>
@@ -465,6 +521,19 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                         />
                                     </div>
                                 </div>
+
+                                {selectedType.needsMeeting && (
+                                    <div>
+                                        <label className="mb-2 block text-sm font-semibold text-gray-700">Link Pertemuan (Zoom, opsional)</label>
+                                        <input
+                                            value={form.data.meeting_link}
+                                            onChange={(event) => form.setData('meeting_link', event.target.value)}
+                                            type="url"
+                                            className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
+                                            placeholder="https://zoom.us/j/123..."
+                                        />
+                                    </div>
+                                )}
 
                                 {Object.keys(form.errors || {}).length > 0 && (
                                     <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{Object.values(form.errors)[0]}</div>

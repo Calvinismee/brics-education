@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 
@@ -21,17 +22,30 @@ export function TutorMobileDrawer({
   tutorClasses = [],
   active = "dashboard",
   selectedClassId = null,
-  onEditProfile,
 }) {
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose?.();
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open, onClose]);
+
   if (!open) return null;
 
-  const openProfile = () => {
-    onClose?.();
-    onEditProfile?.();
-  };
-
   return (
-    <div className="fixed inset-0 z-50 lg:hidden">
+    <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
       <button
         type="button"
         className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
@@ -39,11 +53,11 @@ export function TutorMobileDrawer({
         aria-label="Tutup menu tutor"
       />
 
-      <div className="relative h-full w-[min(20rem,88vw)]">
+      <div className="relative h-dvh w-[min(21rem,92vw)] max-w-[calc(100vw-0.75rem)]">
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#691D1B] shadow-sm"
+          className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#691D1B] shadow-sm transition-colors hover:bg-[#FFE882]"
           aria-label="Tutup menu"
         >
           <X className="h-5 w-5" />
@@ -55,7 +69,7 @@ export function TutorMobileDrawer({
           active={active}
           selectedClassId={selectedClassId}
           drawer
-          onEditProfile={openProfile}
+          onNavigate={onClose}
         />
       </div>
     </div>

@@ -254,6 +254,7 @@ class TutorDemoDataSeeder extends Seeder
                     ['mentor_id' => $tutorId, 'course_id' => $courseIds[$row['course']] ?? null, 'start_time' => $start],
                     [
                         'title' => $row['title'],
+                        'type' => 'live',
                         'meeting_link' => null,
                         'started_at' => null,
                         'end_time' => $end,
@@ -286,6 +287,7 @@ class TutorDemoDataSeeder extends Seeder
                     ['mentor_id' => $tutorId, 'course_id' => $courseIds[$row['course']] ?? null, 'start_time' => $start],
                     [
                         'title' => $row['title'],
+                        'type' => 'live',
                         'meeting_link' => $row['link'],
                         'started_at' => $start->copy()->addMinutes(5),
                         'end_time' => $end,

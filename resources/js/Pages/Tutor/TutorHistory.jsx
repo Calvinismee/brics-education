@@ -12,7 +12,6 @@ import {
   Users,
 } from "lucide-react";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
-import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
 
@@ -36,7 +35,6 @@ export default function TutorHistory({
   history = { data: [] },
   stats = {},
 }) {
-  const [showProfileModal, setShowProfileModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const classes = asArray(tutorClasses);
   const historyItems = Array.isArray(history?.data) ? history.data : asArray(history);
@@ -53,14 +51,13 @@ export default function TutorHistory({
 
   return (
     <div className="min-h-screen flex" style={{ background: "#F7F2E7", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      <TutorSidebar user={user} tutorClasses={classes} active="history" onEditProfile={() => setShowProfileModal(true)} />
+      <TutorSidebar user={user} tutorClasses={classes} active="history" />
       <TutorMobileDrawer
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         user={user}
         tutorClasses={classes}
         active="history"
-        onEditProfile={() => setShowProfileModal(true)}
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
@@ -195,7 +192,6 @@ export default function TutorHistory({
         </main>
       </div>
 
-      <TutorProfileModal user={user} open={showProfileModal} onClose={() => setShowProfileModal(false)} />
     </div>
   );
 }

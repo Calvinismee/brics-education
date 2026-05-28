@@ -3,11 +3,10 @@ import { useEffect, useState } from "react";
 import {
   Home, Upload, Users, LogOut, Calendar, Bell, ArrowLeft,
   Clock, MapPin, BookOpen, ChevronDown, ChevronRight,
-  Video, FileText, CheckSquare, MessageSquare, Star, Pencil, Settings as SettingsIcon,
+  Video, FileText, CheckSquare, MessageSquare, Star,
   Link2, ExternalLink, X, Plus,
 } from "lucide-react";
 import { BricsLogo } from "@/Components/BricsLogo";
-import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
 import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
@@ -93,7 +92,6 @@ export function TutorSchedule({
   const [selectedDay, setSelectedDay] = useState(defaultSelectedDay);
   const [classDropdownOpen, setClassDropdownOpen] = useState(false);
   const [selectedClass] = useState(tutorClasses[0]?.id ?? 0);
-  const [showProfileModal, setShowProfileModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [meetingLinkEvent, setMeetingLinkEvent] = useState(null);
   const [meetingLinkValue, setMeetingLinkValue] = useState("");
@@ -121,6 +119,7 @@ export function TutorSchedule({
   const totalLive       = serverStats.totalLive ?? displayScheduleData.reduce((a, d) => a + d.events.filter(e => e.type === "live").length, 0);
   const totalDeadlines  = serverStats.totalDeadlines ?? displayScheduleData.reduce((a, d) => a + d.events.filter(e => e.type === "deadline").length, 0);
   const totalReviews    = serverStats.totalReviews ?? displayScheduleData.reduce((a, d) => a + d.events.filter(e => e.type === "review").length, 0);
+  const totalConsultations = serverStats.totalConsultations ?? displayScheduleData.reduce((a, d) => a + d.events.filter(e => e.type === "consultation").length, 0);
   const classDetailHref = (courseName, courseId = null) => {
     const id = courseId ?? tutorClasses.find((cls) => cls.name === courseName)?.id;
     return id ? `/tutor/classes?course_id=${id}` : "/tutor/classes";
@@ -195,7 +194,7 @@ export function TutorSchedule({
     <div className="min-h-screen flex" style={{ background: "#F7F2E7", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
 
       {/* ── Sidebar ─────────────────────────────────────────────── */}
-      <TutorSidebar user={user} tutorClasses={tutorClasses} active="schedule" selectedClassId={selectedClass} onEditProfile={() => setShowProfileModal(true)} />
+      <TutorSidebar user={user} tutorClasses={tutorClasses} active="schedule" selectedClassId={selectedClass} />
       <TutorMobileDrawer
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -203,7 +202,6 @@ export function TutorSchedule({
         tutorClasses={tutorClasses}
         active="schedule"
         selectedClassId={selectedClass}
-        onEditProfile={() => setShowProfileModal(true)}
       />
 
       {/* ── Main ────────────────────────────────────────────────── */}
@@ -304,9 +302,10 @@ export function TutorSchedule({
             ) : (
               <div className="space-y-4">
                 {selectedDayData.events.map((ev) => {
-                  const cfg = eventTypeCfg[ev.type];
-                  const canStartSession = ev.meeting_link && ev.status !== "completed";
-                  const canEditMeetingLink = ev.status !== "completed";
+                  const cfg = eventTypeCfg[ev.type] ?? eventTypeCfg.live;
+                  const supportsMeeting = ev.type === "live" || ev.type === "consultation";
+                  const canStartSession = supportsMeeting && ev.meeting_link && ev.status !== "completed";
+                  const canEditMeetingLink = supportsMeeting && ev.status !== "completed";
                   return (
                     <div key={ev.id} className="bg-white rounded-2xl border border-[#D8D7BE] overflow-hidden shadow-sm hover:shadow-md transition-all">
                       <div className="flex">
@@ -330,21 +329,28 @@ export function TutorSchedule({
                                   <div className="flex items-center gap-1 text-xs text-gray-400">
                                     <Clock className="w-3.5 h-3.5" />{ev.time}
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => canEditMeetingLink && openMeetingLinkEditor(ev)}
-                                    disabled={!canEditMeetingLink}
-                                    className={`flex items-center gap-1 text-xs text-gray-400 transition-colors ${canEditMeetingLink ? "hover:text-[#691D1B]" : "cursor-not-allowed opacity-60"}`}
-                                    title={canEditMeetingLink ? (ev.meeting_link ? "Edit link meeting" : "Tambah link meeting") : "Sesi sudah berakhir"}
-                                  >
-                                    <MapPin className="w-3.5 h-3.5" />
-                                    {ev.meeting_link ? "Online Meeting" : "Tambah link meeting"}
-                                    <Link2 className="w-3.5 h-3.5" />
-                                  </button>
+                                  {supportsMeeting ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => canEditMeetingLink && openMeetingLinkEditor(ev)}
+                                      disabled={!canEditMeetingLink}
+                                      className={`flex items-center gap-1 text-xs text-gray-400 transition-colors ${canEditMeetingLink ? "hover:text-[#691D1B]" : "cursor-not-allowed opacity-60"}`}
+                                      title={canEditMeetingLink ? (ev.meeting_link ? "Edit link meeting" : "Tambah link meeting") : "Sesi sudah berakhir"}
+                                    >
+                                      <MapPin className="w-3.5 h-3.5" />
+                                      {ev.meeting_link ? "Online Meeting" : "Tambah link meeting"}
+                                      <Link2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  ) : (
+                                    <span className="flex items-center gap-1 text-xs text-gray-400">
+                                      <MapPin className="w-3.5 h-3.5" />
+                                      Pengingat tutor
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>
-                            {ev.type === "live" || ev.type === "consultation" ? (
+                            {supportsMeeting ? (
                               canStartSession ? (
                                 <a
                                   href={ev.start_session_url || `/tutor/schedule/${ev.id}/start`}
@@ -394,12 +400,13 @@ export function TutorSchedule({
           {/* ── Week Summary ─────────────────────────────────────── */}
           <div className="bg-white rounded-2xl border border-[#D8D7BE] p-5">
             <h3 className="text-sm mb-4" style={{ fontWeight: 700, color: "#691D1B" }}>Ringkasan Minggu Ini</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
               {[
                 { label: "Total Sesi",   value: totalThisWeek,  color: "#691D1B" },
                 { label: "Live Class",   value: totalLive,       color: "#691D1B" },
                 { label: "Deadline",     value: totalDeadlines,  color: "#d4183d" },
                 { label: "Review",       value: totalReviews,    color: "#1a6b3c" },
+                { label: "Konsultasi",   value: totalConsultations, color: "#7c3aed" },
               ].map((s) => (
                 <div key={s.label} className="text-center p-3 rounded-xl" style={{ background: "#F7F2E7" }}>
                   <div className="text-2xl" style={{ fontWeight: 800, color: s.color }}>{s.value}</div>
@@ -447,7 +454,7 @@ export function TutorSchedule({
             <div className="flex items-start justify-between gap-4 border-b border-[#F7F2E7] p-5" style={{ background: "#691D1B" }}>
               <div>
                 <h3 className="text-white" style={{ fontWeight: 800 }}>Tambah Jadwal Mengajar</h3>
-                <p className="mt-1 text-xs text-white/70">Buat jadwal live class, review, deadline, atau konsultasi untuk course yang kamu ampu.</p>
+                <p className="mt-1 text-xs text-white/70">Tutor hanya bisa membuat jadwal live class. Deadline, review, dan konsultasi ditambahkan oleh admin.</p>
               </div>
               <button
                 type="button"
@@ -611,7 +618,6 @@ export function TutorSchedule({
           </div>
         </div>
       )}
-      <TutorProfileModal user={user} open={showProfileModal} onClose={() => setShowProfileModal(false)} />
     </div>
   );
 }

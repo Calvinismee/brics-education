@@ -1,11 +1,9 @@
 import { Link } from "@inertiajs/react";
 import {
-  Home, BookOpen, Upload, Users, Bell, LogOut, Calendar, Clock,
-  AlertCircle, TrendingUp, Star, CheckCircle, ChevronRight, ChevronDown,
-  Pencil, User, Settings as SettingsIcon, Video, ExternalLink,
+  Home, BookOpen, Upload, Users, Bell, Calendar, Clock,
+  TrendingUp, Star, CheckCircle, ChevronRight,
+  Video, ExternalLink,
 } from "lucide-react";
-import { BricsLogo } from "@/Components/BricsLogo";
-import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
 import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
@@ -54,9 +52,6 @@ export function TutorDashboard({
   const tutorClasses = asArray(serverTutorClasses).length > 0 ? asArray(serverTutorClasses) : fallbackTutorClasses;
   const tutorName = user?.name ?? "Tutor UTBK";
   const tutorInitials = initialsFor(tutorName);
-  const shouldOpenProfile = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("edit_profile") === "1";
-  const [showProfileModal, setShowProfileModal] = useState(shouldOpenProfile);
-  const [classDropdownOpen, setClassDropdownOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const todaySchedule = asArray(serverTodaySchedule);
@@ -108,7 +103,7 @@ export function TutorDashboard({
     <div className="min-h-screen flex" style={{ background: "#F7F2E7", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       {/* Sidebar */}
       <div className="hidden flex-shrink-0 lg:block">
-        <TutorSidebar user={user} tutorClasses={tutorClasses} active="dashboard" onEditProfile={() => setShowProfileModal(true)} />
+        <TutorSidebar user={user} tutorClasses={tutorClasses} active="dashboard" />
       </div>
 
       <TutorMobileDrawer
@@ -117,7 +112,6 @@ export function TutorDashboard({
         user={user}
         tutorClasses={tutorClasses}
         active="dashboard"
-        onEditProfile={() => setShowProfileModal(true)}
       />
 
       {/* Main Content */}
@@ -177,6 +171,8 @@ export function TutorDashboard({
                   </div>
                 ) : todaySchedule.map((s) => {
                   const style = statusStyle(s.status);
+                  const supportsMeeting = s.type === "live" || s.type === "consultation";
+                  const typeLabel = s.type === "consultation" ? "Konsultasi" : s.type === "deadline" ? "Deadline" : s.type === "review" ? "Review" : "Live Class";
                   return (
                     <div key={s.id} className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                       <div
@@ -188,7 +184,7 @@ export function TutorDashboard({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="break-words text-sm text-gray-800" style={{ fontWeight: 600 }}>{s.course}</p>
-                        <p className="text-xs text-gray-400">{s.students} siswa</p>
+                        <p className="text-xs text-gray-400">{typeLabel} • {s.students} siswa</p>
                       </div>
                       <span
                         className="self-start text-xs px-3 py-1 rounded-full flex-shrink-0 sm:self-auto"
@@ -196,7 +192,7 @@ export function TutorDashboard({
                       >
                         {style.label}
                       </span>
-                      {s.meeting_link && s.status !== "completed" ? (
+                      {supportsMeeting && s.meeting_link && s.status !== "completed" ? (
                         <a
                           href={s.start_session_url || `/tutor/schedule/${s.id}/start`}
                           target="_blank"
@@ -208,7 +204,7 @@ export function TutorDashboard({
                           Mulai
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
-                      ) : (
+                      ) : supportsMeeting ? (
                         <Link
                           href="/tutor/schedule"
                           className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-500 transition hover:bg-[#F7F2E7] hover:text-[#691D1B] sm:w-auto"
@@ -216,6 +212,14 @@ export function TutorDashboard({
                         >
                           <Video className="w-3.5 h-3.5" />
                           {s.status === "completed" ? "Selesai" : "Tambah Link"}
+                        </Link>
+                      ) : (
+                        <Link
+                          href="/tutor/schedule"
+                          className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-500 transition hover:bg-[#F7F2E7] hover:text-[#691D1B] sm:w-auto"
+                        >
+                          <Calendar className="w-3.5 h-3.5" />
+                          Pengingat
                         </Link>
                       )}
                     </div>
@@ -332,8 +336,6 @@ export function TutorDashboard({
         </div>
       </div>
 
-      {/* ── Profile Modal ─────────────────────────────────────────── */}
-      <TutorProfileModal user={user} open={showProfileModal} onClose={() => setShowProfileModal(false)} />
     </div>
   );
 }

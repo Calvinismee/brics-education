@@ -1,7 +1,6 @@
 import { Link, router } from "@inertiajs/react";
 import { useState } from "react";
 import { ArrowLeft, Bell, CheckCircle, Circle, Clock } from "lucide-react";
-import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
 import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
@@ -29,7 +28,6 @@ export function TutorNotifications({
   notifications = {},
   stats = {},
 }) {
-  const [showProfileModal, setShowProfileModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const rows = asArray(notifications.data ?? notifications);
   const links = asArray(notifications.links);
@@ -44,14 +42,13 @@ export function TutorNotifications({
 
   return (
     <div className="min-h-screen flex" style={{ background: "#F7F2E7", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      <TutorSidebar user={user} tutorClasses={tutorClasses} active="notifications" onEditProfile={() => setShowProfileModal(true)} />
+      <TutorSidebar user={user} tutorClasses={tutorClasses} active="notifications" />
       <TutorMobileDrawer
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         user={user}
         tutorClasses={tutorClasses}
         active="notifications"
-        onEditProfile={() => setShowProfileModal(true)}
       />
 
       <main className="flex-1 min-w-0 overflow-x-hidden">
@@ -160,7 +157,6 @@ export function TutorNotifications({
         </div>
       </main>
 
-      <TutorProfileModal user={user} open={showProfileModal} onClose={() => setShowProfileModal(false)} />
     </div>
   );
 }

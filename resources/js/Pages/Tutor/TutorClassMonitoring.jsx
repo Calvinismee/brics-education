@@ -4,11 +4,10 @@ import {
   Home, BookOpen, Upload, Users, LogOut, Calendar, Video, FileText,
   Bell, ArrowLeft, Search, Filter, TrendingUp, Star, Clock,
   CheckCircle, AlertCircle, MoreVertical, ChevronDown, ChevronRight,
-  Paperclip, Eye, Download, Pencil, Settings as SettingsIcon,
+  Paperclip, Eye, Download,
   Trash2,
 } from "lucide-react";
 import { BricsLogo } from "@/Components/BricsLogo";
-import { TutorProfileModal } from "@/Components/TutorProfileModal";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
 import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
@@ -43,7 +42,6 @@ export function TutorClassMonitoring({
   const [sortOpen, setSortOpen] = useState(false);
   const [studentMenuOpen, setStudentMenuOpen] = useState(null);
   const [materialFilter, setMaterialFilter] = useState("all");
-  const [showProfileModal, setShowProfileModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const tutorName = user?.name ?? "Tutor UTBK";
   const tutorInitials = initialsFor(tutorName);
@@ -108,7 +106,7 @@ export function TutorClassMonitoring({
     <div className="min-h-screen flex" style={{ background: "#F7F2E7", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
 
       {/* ── Sidebar ─────────────────────────────────────────────── */}
-      <TutorSidebar user={user} tutorClasses={displayClasses} active="classes" selectedClassId={selectedClass} onEditProfile={() => setShowProfileModal(true)} />
+      <TutorSidebar user={user} tutorClasses={displayClasses} active="classes" selectedClassId={selectedClass} />
       <TutorMobileDrawer
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -116,7 +114,6 @@ export function TutorClassMonitoring({
         tutorClasses={displayClasses}
         active="classes"
         selectedClassId={selectedClass}
-        onEditProfile={() => setShowProfileModal(true)}
       />
 
       {/* ── Main ────────────────────────────────────────────────── */}
@@ -528,7 +525,6 @@ export function TutorClassMonitoring({
           </div>
         </div>
       </div>
-      <TutorProfileModal user={user} open={showProfileModal} onClose={() => setShowProfileModal(false)} />
     </div>
   );
 }

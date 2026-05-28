@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
@@ -24,13 +25,12 @@ class ScheduleController extends Controller
             ->get();
         $courseTitles = $courses->pluck('title', 'id');
         $schedules = Schedule::query()
-            ->select('id', 'course_id', 'mentor_id', 'title', 'meeting_link', 'start_time', 'end_time')
+            ->select('id', 'course_id', 'mentor_id', 'title', 'type', 'meeting_link', 'start_time', 'end_time')
             ->with(['course:id,title', 'mentor:id,name'])
             ->orderBy('start_time')
-            ->paginate(20)
-            ->withQueryString();
+            ->get();
 
-        $schedules->getCollection()->transform(function (Schedule $schedule) use ($courseTitles) {
+        $schedules = $schedules->map(function (Schedule $schedule) use ($courseTitles) {
             $startTime = $schedule->start_time instanceof \DateTimeInterface
                 ? $schedule->start_time->format('H:i')
                 : (is_string($schedule->start_time) && $schedule->start_time !== ''
@@ -60,6 +60,7 @@ class ScheduleController extends Controller
                 'class_title' => $schedule->title,
                 'tutor_id' => $schedule->mentor_id,
                 'tutor' => $schedule->mentor?->name ?? 'Tutor',
+                'type' => $this->scheduleType($schedule),
                 'day' => $dayName,
                 'schedule_date' => $scheduleDate,
                 'start_time' => $startTime,
@@ -115,7 +116,8 @@ class ScheduleController extends Controller
         $validated = $request->validate([
             'course_id' => ['nullable', 'integer', 'exists:courses,id'],
             'course' => ['nullable', 'string', 'max:255'],
-            'tutor_id' => ['nullable', 'integer', 'exists:users,id'],
+            'tutor_id' => ['required', 'integer', 'exists:users,id'],
+            'type' => ['required', Rule::in(Schedule::TYPES)],
             'schedule_date' => ['required', 'date'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
@@ -140,6 +142,7 @@ class ScheduleController extends Controller
             'course_id' => ['nullable', 'integer', 'exists:courses,id'],
             'course' => ['nullable', 'string', 'max:255'],
             'tutor_id' => ['nullable', 'integer', 'exists:users,id'],
+            'type' => ['required', Rule::in(Schedule::TYPES)],
             'schedule_date' => ['required', 'date'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
@@ -190,7 +193,10 @@ class ScheduleController extends Controller
             'course_id' => $courseId,
             'mentor_id' => $mentorId,
             'title' => $courseTitle,
-            'meeting_link' => filled($validated['meeting_link'] ?? null) ? $validated['meeting_link'] : null,
+            'type' => $validated['type'] ?? 'live',
+            'meeting_link' => in_array($validated['type'] ?? 'live', Schedule::MEETING_TYPES, true) && filled($validated['meeting_link'] ?? null)
+                ? $validated['meeting_link']
+                : null,
             'start_time' => $startTime,
             'end_time' => $endTime,
         ];
@@ -250,5 +256,21 @@ class ScheduleController extends Controller
                 'tutor_id' => 'Tutor belum ditugaskan untuk course ini. Assign course tutor dari menu Users terlebih dahulu.',
             ]);
         }
+    }
+
+    private function scheduleType(Schedule $schedule): string
+    {
+        if (in_array($schedule->type, Schedule::TYPES, true)) {
+            return $schedule->type;
+        }
+
+        $title = strtolower($schedule->title);
+
+        return match (true) {
+            str_contains($title, 'deadline') => 'deadline',
+            str_contains($title, 'review') => 'review',
+            str_contains($title, 'konsultasi') || str_contains($title, 'consult') => 'consultation',
+            default => 'live',
+        };
     }
 }
