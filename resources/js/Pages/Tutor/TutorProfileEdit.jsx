@@ -38,10 +38,14 @@ const initialsFor = (name) => String(name || "Tutor UTBK")
   .slice(0, 2)
   .toUpperCase();
 
+const EDUCATION_OPTIONS = ["SMA", "S1", "S2", "S3"];
+const normalizedEducation = (value) => EDUCATION_OPTIONS.includes(value) ? value : "";
+
 export function TutorProfileEdit({ user = null, tutorClasses: serverTutorClasses = [] }) {
   const tutorName = user?.name ?? "Tutor UTBK";
   const tutorEmail = user?.email ?? "tutor@bricsedu.id";
   const tutorProfile = user?.tutor_profile ?? {};
+  const initialPhoto = tutorProfile.photo_url ?? user?.google_avatar ?? "";
   const tutorClasses = Array.isArray(serverTutorClasses) && serverTutorClasses.length > 0 ? serverTutorClasses : fallbackTutorClasses;
   const [classDropdownOpen, setClassDropdownOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -51,9 +55,11 @@ export function TutorProfileEdit({ user = null, tutorClasses: serverTutorClasses
     email: tutorEmail,
     phone: tutorProfile.phone ?? "",
     expertise: tutorProfile.expertise ?? "",
-    education: tutorProfile.education ?? "",
+    education: normalizedEducation(tutorProfile.education ?? ""),
     bio: tutorProfile.bio ?? "",
+    profile_photo: null,
   });
+  const [photoPreview, setPhotoPreview] = useState(initialPhoto);
 
   useEffect(() => {
     setProfileForm({
@@ -61,23 +67,43 @@ export function TutorProfileEdit({ user = null, tutorClasses: serverTutorClasses
       email: tutorEmail,
       phone: tutorProfile.phone ?? "",
       expertise: tutorProfile.expertise ?? "",
-      education: tutorProfile.education ?? "",
+      education: normalizedEducation(tutorProfile.education ?? ""),
       bio: tutorProfile.bio ?? "",
+      profile_photo: null,
     });
-  }, [tutorName, tutorEmail, tutorProfile.phone, tutorProfile.expertise, tutorProfile.education, tutorProfile.bio]);
+    setPhotoPreview(initialPhoto);
+  }, [tutorName, tutorEmail, tutorProfile.phone, tutorProfile.expertise, tutorProfile.education, tutorProfile.bio, initialPhoto]);
+
+  useEffect(() => () => {
+    if (photoPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(photoPreview);
+    }
+  }, [photoPreview]);
+
+  const handlePhotoChange = (event) => {
+    const file = event.target.files?.[0] ?? null;
+
+    if (photoPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(photoPreview);
+    }
+
+    setProfileForm((current) => ({ ...current, profile_photo: file }));
+    setPhotoPreview(file ? URL.createObjectURL(file) : initialPhoto);
+  };
 
   const handleSave = () => {
-    router.patch(
+    router.post(
       "/tutor/profile",
       {
+        _method: "patch",
         name: profileForm.name,
-        email: profileForm.email,
         phone: profileForm.phone,
         expertise: profileForm.expertise,
         education: profileForm.education,
         bio: profileForm.bio,
+        profile_photo: profileForm.profile_photo,
       },
-      { preserveScroll: true, preserveState: false }
+      { forceFormData: true, preserveScroll: true, preserveState: false }
     );
   };
 
@@ -116,12 +142,23 @@ export function TutorProfileEdit({ user = null, tutorClasses: serverTutorClasses
             <div className="grid grid-cols-1 gap-6 p-4 sm:p-6 lg:grid-cols-3">
               <div className="flex flex-col items-center justify-start gap-3">
                 <div className="relative">
-                  <div className="w-24 h-24 rounded-full flex items-center justify-center text-2xl" style={{ background: "#691D1B", color: "#FFE882", fontWeight: 800 }}>
-                    {initialsFor(profileForm.name)}
-                  </div>
-                  <button type="button" className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center border-2 border-white" style={{ background: "#691D1B" }}>
+                  {photoPreview ? (
+                    <img src={photoPreview} alt={profileForm.name} className="h-24 w-24 rounded-full object-cover" />
+                  ) : (
+                    <div className="flex h-24 w-24 items-center justify-center rounded-full text-2xl" style={{ background: "#691D1B", color: "#FFE882", fontWeight: 800 }}>
+                      {initialsFor(profileForm.name)}
+                    </div>
+                  )}
+                  <label htmlFor="tutor-profile-photo" className="absolute -bottom-1 -right-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-2 border-white" style={{ background: "#691D1B" }}>
                     <Camera className="w-4 h-4 text-white" />
-                  </button>
+                  </label>
+                  <input
+                    id="tutor-profile-photo"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={handlePhotoChange}
+                  />
                 </div>
                 <div className="text-center">
                   <p className="text-sm text-gray-900" style={{ fontWeight: 700 }}>{profileForm.name}</p>
@@ -132,21 +169,35 @@ export function TutorProfileEdit({ user = null, tutorClasses: serverTutorClasses
               <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[
                   { label: "Nama Lengkap", field: "name", icon: <User className="w-4 h-4 text-gray-400" />, type: "text" },
-                  { label: "Email", field: "email", icon: <Mail className="w-4 h-4 text-gray-400" />, type: "email" },
+                  { label: "Email", field: "email", icon: <Mail className="w-4 h-4 text-gray-400" />, type: "email", disabled: true },
                   { label: "No. Handphone", field: "phone", icon: <Phone className="w-4 h-4 text-gray-400" />, type: "tel" },
                   { label: "Bidang Keahlian", field: "expertise", icon: <BookMarked className="w-4 h-4 text-gray-400" />, type: "text" },
-                  { label: "Pendidikan Terakhir", field: "education", icon: <GraduationCap className="w-4 h-4 text-gray-400" />, type: "text" },
+                  { label: "Pendidikan Terakhir", field: "education", icon: <GraduationCap className="w-4 h-4 text-gray-400" />, type: "select" },
                 ].map((item) => (
                   <label key={item.field} className="block">
                     <span className="block text-xs text-gray-500 mb-1.5" style={{ fontWeight: 600 }}>{item.label}</span>
-                    <span className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-[#D8D7BE] focus-within:border-[#691D1B] transition-colors">
+                    <span className={`flex items-center gap-2 rounded-xl border border-[#D8D7BE] px-3 py-2.5 transition-colors focus-within:border-[#691D1B] ${item.disabled ? "bg-[#F7F2E7]" : ""}`}>
                       {item.icon}
-                      <input
-                        type={item.type}
-                        value={profileForm[item.field]}
-                        onChange={(e) => setProfileForm({ ...profileForm, [item.field]: e.target.value })}
-                        className="flex-1 text-sm text-gray-800 outline-none bg-transparent"
-                      />
+                      {item.type === "select" ? (
+                        <select
+                          value={profileForm[item.field]}
+                          onChange={(e) => setProfileForm({ ...profileForm, [item.field]: e.target.value })}
+                          className="flex-1 bg-transparent text-sm text-gray-800 outline-none"
+                        >
+                          <option value="">Pilih pendidikan</option>
+                          {EDUCATION_OPTIONS.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type={item.type}
+                          value={profileForm[item.field]}
+                          onChange={(e) => setProfileForm({ ...profileForm, [item.field]: e.target.value })}
+                          disabled={item.disabled}
+                          className={`flex-1 bg-transparent text-sm outline-none ${item.disabled ? "text-gray-500" : "text-gray-800"}`}
+                        />
+                      )}
                     </span>
                   </label>
                 ))}

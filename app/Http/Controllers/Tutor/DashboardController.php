@@ -14,8 +14,11 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
@@ -143,18 +146,32 @@ class DashboardController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$request->user()->id],
             'phone' => ['nullable', 'string', 'max:50'],
             'expertise' => ['nullable', 'string', 'max:255'],
-            'education' => ['nullable', 'string', 'max:255'],
+            'education' => ['nullable', Rule::in(['SMA', 'S1', 'S2', 'S3'])],
             'bio' => ['nullable', 'string', 'max:1000'],
+            'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
-        $profile = $request->user()->tutor_profile ?? [];
+        $user = $request->user();
+        $profile = $user->tutor_profile ?? [];
 
-        $request->user()->update([
+        if ($request->hasFile('profile_photo')) {
+            $photo = $this->storeTutorProfilePhoto($request);
+
+            if (! empty($profile['photo_disk']) && ! empty($profile['photo_path'])) {
+                Storage::disk($profile['photo_disk'])->delete($profile['photo_path']);
+            }
+
+            $profile = array_merge($profile, [
+                'photo_url' => $photo['url'],
+                'photo_disk' => $photo['disk'],
+                'photo_path' => $photo['path'],
+            ]);
+        }
+
+        $user->update([
             'name' => $validated['name'],
-            'email' => $validated['email'],
             'tutor_profile' => array_merge($profile, [
                 'phone' => $request->has('phone') ? ($validated['phone'] ?? null) : ($profile['phone'] ?? null),
                 'expertise' => $request->has('expertise') ? ($validated['expertise'] ?? null) : ($profile['expertise'] ?? null),
@@ -164,6 +181,27 @@ class DashboardController extends Controller
         ]);
 
         return back()->with('success', 'Profil tutor berhasil diperbarui.');
+    }
+
+    private function storeTutorProfilePhoto(Request $request): array
+    {
+        $disk = config('filesystems.materials_disk', 'public');
+        $file = $request->file('profile_photo');
+        $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'jpg');
+        $filename = Str::uuid().'-profil-tutor.'.$extension;
+        $path = $file->storeAs('profiles/tutors/'.$request->user()->id, $filename, $disk);
+
+        if (! $path) {
+            throw ValidationException::withMessages([
+                'profile_photo' => 'Foto profil gagal disimpan. Periksa konfigurasi storage.',
+            ]);
+        }
+
+        return [
+            'disk' => $disk,
+            'path' => $path,
+            'url' => Material::publicUrlFor($disk, $path),
+        ];
     }
 
     public function profile(Request $request)
