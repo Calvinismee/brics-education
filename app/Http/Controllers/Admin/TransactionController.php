@@ -39,6 +39,7 @@ class TransactionController extends Controller
             ->when($status === 'success', fn ($query) => $query->whereIn('transactions.payment_status', ['paid', 'success']))
             ->when($status === 'pending', fn ($query) => $query->where('transactions.payment_status', 'pending'))
             ->when($status === 'failed', fn ($query) => $query->where('transactions.payment_status', 'failed'))
+            ->when($status === 'expired', fn ($query) => $query->where('transactions.payment_status', 'expired'))
             ->when($dateFrom, fn ($query) => $query->where('transactions.created_at', '>=', $dateFrom->startOfDay()))
             ->when($dateTo, fn ($query) => $query->where('transactions.created_at', '<=', $dateTo->endOfDay()))
             ->when($search !== '', fn ($query) => $query->where('users.name', 'like', "%{$search}%"))
@@ -48,7 +49,12 @@ class TransactionController extends Controller
 
         $transactions->getCollection()->transform(function ($t) {
             $status = $t->payment_status;
-            $mapped = in_array($status, ['paid', 'success'], true) ? 'success' : ($status === 'failed' ? 'failed' : 'pending');
+            $mapped = match (true) {
+                in_array($status, ['paid', 'success'], true) => 'success',
+                $status === 'failed' => 'failed',
+                $status === 'expired' => 'expired',
+                default => 'pending',
+            };
 
             return [
                 'id' => $t->invoice_number ?? (string) $t->id,
@@ -76,6 +82,9 @@ class TransactionController extends Controller
         $failedToday = DB::table('transactions')
             ->where('payment_status', 'failed')
             ->count();
+        $expiredToday = DB::table('transactions')
+            ->where('payment_status', 'expired')
+            ->count();
         $pendingPayments = DB::table('transactions')->where('payment_status', 'pending')->count();
 
         return Inertia::render('Admin/Transactions', [
@@ -87,9 +96,10 @@ class TransactionController extends Controller
                 'successToday' => $successToday,
                 'pendingToday' => $pendingToday,
                 'failedToday' => $failedToday,
+                'expiredToday' => $expiredToday,
             ],
             'filters' => [
-                'status' => in_array($status, ['success', 'pending', 'failed'], true) ? $status : 'all',
+                'status' => in_array($status, ['success', 'pending', 'failed', 'expired'], true) ? $status : 'all',
                 'search' => $search,
                 'dateFrom' => $dateFrom?->toDateString() ?? '',
                 'dateTo' => $dateTo?->toDateString() ?? '',
@@ -129,7 +139,12 @@ class TransactionController extends Controller
         abort_if(! $record, 404);
 
         $status = $record->payment_status;
-        $mapped = in_array($status, ['paid', 'success'], true) ? 'success' : ($status === 'failed' ? 'failed' : 'pending');
+        $mapped = match (true) {
+            in_array($status, ['paid', 'success'], true) => 'success',
+            $status === 'failed' => 'failed',
+            $status === 'expired' => 'expired',
+            default => 'pending',
+        };
 
         return Inertia::render('Admin/TransactionDetail', [
             'transaction' => [
@@ -246,7 +261,12 @@ class TransactionController extends Controller
 
         $recentTransactions = $recentTx->map(function ($t) {
             $status = $t->payment_status;
-            $mapped = in_array($status, ['paid', 'success'], true) ? 'success' : ($status === 'failed' ? 'failed' : 'pending');
+            $mapped = match (true) {
+                in_array($status, ['paid', 'success'], true) => 'success',
+                $status === 'failed' => 'failed',
+                $status === 'expired' => 'expired',
+                default => 'pending',
+            };
 
             return [
                 'id' => $t->invoice_number ?? (string) $t->id,
@@ -299,6 +319,7 @@ class TransactionController extends Controller
             ->when($status === 'success', fn ($query) => $query->whereIn('transactions.payment_status', ['paid', 'success']))
             ->when($status === 'pending', fn ($query) => $query->where('transactions.payment_status', 'pending'))
             ->when($status === 'failed', fn ($query) => $query->where('transactions.payment_status', 'failed'))
+            ->when($status === 'expired', fn ($query) => $query->where('transactions.payment_status', 'expired'))
             ->when($dateFrom, fn ($query) => $query->where('transactions.created_at', '>=', $dateFrom->startOfDay()))
             ->when($dateTo, fn ($query) => $query->where('transactions.created_at', '<=', $dateTo->endOfDay()))
             ->when($search !== '', fn ($query) => $query->where('users.name', 'like', "%{$search}%"))

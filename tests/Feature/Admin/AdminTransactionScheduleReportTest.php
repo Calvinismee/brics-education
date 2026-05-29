@@ -186,6 +186,7 @@ test('TC_ADMIN_JADWAL_001 admin berhasil membuat jadwal bimbingan', function () 
     $response = $this->actingAs($admin)->post(route('admin.schedule.store'), [
         'course' => $course['title'],
         'tutor_id' => $tutor->id,
+        'type' => 'live',
         'schedule_date' => '2026-05-20',
         'start_time' => '19:00',
         'end_time' => '20:30',
@@ -213,6 +214,7 @@ test('TC_ADMIN_JADWAL_002 jadwal gagal dibuat jika waktu kosong', function () {
     $response = $this->actingAs($admin)->from(route('admin.schedule'))->post(route('admin.schedule.store'), [
         'course' => $course['title'],
         'tutor_id' => $tutor->id,
+        'type' => 'live',
         'schedule_date' => '',
         'start_time' => '',
         'end_time' => '',

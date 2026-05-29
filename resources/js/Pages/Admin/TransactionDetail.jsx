@@ -7,6 +7,7 @@ export default function TransactionDetail({ transaction }) {
         success: { label: 'Berhasil', className: 'bg-green-50 text-green-700 border-green-200' },
         pending: { label: 'Pending', className: 'bg-amber-50 text-amber-700 border-amber-200' },
         failed: { label: 'Gagal', className: 'bg-red-50 text-red-700 border-red-200' },
+        expired: { label: 'Kedaluwarsa', className: 'bg-slate-50 text-slate-700 border-slate-200' },
     };
     const status = statusConfig[transaction.status] ?? statusConfig.pending;
 

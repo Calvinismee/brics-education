@@ -127,7 +127,8 @@ class PaymentController extends Controller
             'capture' => $fraudStatus === 'challenge' ? 'pending' : 'success',
             'settlement' => 'success',
             'pending' => 'pending',
-            'deny', 'cancel', 'expire', 'failure' => 'failed',
+            'expire' => 'expired',
+            'deny', 'cancel', 'failure' => 'failed',
             default => $transaction->payment_status,
         };
 
@@ -180,6 +181,19 @@ class PaymentController extends Controller
 
             if ($student) {
                 AdminNotifier::transactionFailed(
+                    $student,
+                    $transaction->package ? 'Paket: '.$transaction->package->name : ($transaction->course?->title ?? 'course terkait'),
+                    $transaction->invoice_number
+                );
+            }
+        }
+
+        if ($newStatus === 'expired' && $previousStatus !== 'expired') {
+            $transaction->loadMissing(['course', 'package', 'user']);
+            $student = $transaction->user ?? User::find($transaction->user_id);
+
+            if ($student) {
+                AdminNotifier::transactionExpired(
                     $student,
                     $transaction->package ? 'Paket: '.$transaction->package->name : ($transaction->course?->title ?? 'course terkait'),
                     $transaction->invoice_number

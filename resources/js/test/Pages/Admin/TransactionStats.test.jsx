@@ -59,13 +59,13 @@ describe('Admin TransactionStats page', () => {
         expect(screen.getAllByText('QRIS').length).toBeGreaterThan(0);
     });
 
-    it('renders recent transactions and falls back unknown statuses to pending', () => {
+    it('renders recent transactions and labels expired statuses', () => {
         render(<TransactionStats summary={summary} paymentMethods={paymentMethods} successRate={87} recentTransactions={recentTransactions} />);
 
         expect(screen.getByText('TRX-001')).toBeInTheDocument();
         expect(screen.getByText('Alya Putri')).toBeInTheDocument();
         expect(screen.getByText('Berhasil')).toBeInTheDocument();
         expect(screen.getByText('TRX-002')).toBeInTheDocument();
-        expect(screen.getByText('Pending')).toBeInTheDocument();
+        expect(screen.getByText('Kedaluwarsa')).toBeInTheDocument();
     });
 });

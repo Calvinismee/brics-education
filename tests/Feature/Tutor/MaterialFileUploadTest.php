@@ -4,6 +4,10 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
+beforeEach(function () {
+    config(['filesystems.materials_disk' => 'public']);
+});
+
 test('tutor dapat upload module_file dengan format valid', function (string $extension, string $mimeType) {
     Storage::fake('public');
 

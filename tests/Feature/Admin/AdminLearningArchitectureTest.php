@@ -111,6 +111,7 @@ test('satu mentor hanya dapat dijadwalkan untuk satu course yang ditugaskan', fu
     $this->actingAs($admin)->post(route('admin.schedule.store'), [
         'course' => $math['title'],
         'tutor_id' => $mentor->id,
+        'type' => 'live',
         'schedule_date' => '2026-05-20',
         'start_time' => '08:00',
         'end_time' => '09:30',
@@ -125,6 +126,7 @@ test('satu mentor hanya dapat dijadwalkan untuk satu course yang ditugaskan', fu
     $this->actingAs($admin)->from(route('admin.schedule'))->post(route('admin.schedule.store'), [
         'course' => $science['title'],
         'tutor_id' => $mentor->id,
+        'type' => 'live',
         'schedule_date' => '2026-05-21',
         'start_time' => '10:00',
         'end_time' => '11:30',

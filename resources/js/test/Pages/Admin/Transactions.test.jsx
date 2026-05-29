@@ -66,6 +66,7 @@ describe('Admin Transactions page', () => {
                     successToday: 10,
                     pendingToday: 5,
                     failedToday: 2,
+                    expiredToday: 1,
                 }}
             />,
         );
@@ -73,6 +74,7 @@ describe('Admin Transactions page', () => {
         expectStat('Transaksi Berhasil', 10);
         expectStat('Menunggu Konfirmasi', 5);
         expectStat('Transaksi Gagal', 2);
+        expectStat('Kedaluwarsa', 1);
     });
 
     it('falls back to counting statuses from the transaction list', () => {
@@ -123,7 +125,7 @@ describe('Admin Transactions page', () => {
         expect(screen.queryByText('TRX-002')).not.toBeInTheDocument();
     });
 
-    it('renders unknown transaction statuses without crashing', () => {
+    it('renders expired transaction statuses', () => {
         render(
             <Transactions
                 transactions={[
@@ -137,7 +139,7 @@ describe('Admin Transactions page', () => {
             />,
         );
 
-        expect(screen.getByText('expired')).toBeInTheDocument();
+        expect(screen.getByText('Kedaluwarsa')).toBeInTheDocument();
     });
 
     it('shows an empty state when no transaction matches the filters', async () => {

@@ -229,6 +229,7 @@ export default function StudentDashboard({
   const activeEnrollments = enrollments.filter((item) => item.status === 'active');
   const activePackageEnrollments = activeEnrollments.filter((item) => item.package_id || item.package?.id);
   const hasActivePackage = activePackageEnrollments.length > 0;
+  const showStudentSidebar = hasActivePackage;
   const latestEnrollment = activePackageEnrollments[0];
   const activeCourse = latestEnrollment?.course;
 
@@ -782,14 +783,16 @@ export default function StudentDashboard({
     <header className="bg-white border-b border-[#D8D7BE] sticky top-0 z-40 shadow-sm">
       <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5 lg:px-6 lg:py-3.5">
         <div className="flex min-w-0 items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[#D8D7BE] text-[#691D1B] lg:hidden"
-            aria-label="Buka menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+          {showStudentSidebar && (
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[#D8D7BE] text-[#691D1B] lg:hidden"
+              aria-label="Buka menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          )}
 
           <div className="min-w-0">
             <p className="mb-1 truncate text-[10px] tracking-[0.22em] text-[#A56D6B] sm:tracking-[0.32em]">
@@ -1965,13 +1968,15 @@ export default function StudentDashboard({
       </style>
 
       <div className="flex min-h-screen">
-        <aside className="hidden w-64 flex-shrink-0 lg:block">
-          <div className="sticky top-0 h-screen">
-            {renderSidebarContent()}
-          </div>
-        </aside>
+        {showStudentSidebar && (
+          <aside className="hidden w-64 flex-shrink-0 lg:block">
+            <div className="sticky top-0 h-screen">
+              {renderSidebarContent()}
+            </div>
+          </aside>
+        )}
 
-        {sidebarOpen && (
+        {showStudentSidebar && sidebarOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <button
               type="button"

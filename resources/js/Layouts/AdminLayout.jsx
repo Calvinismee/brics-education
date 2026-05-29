@@ -1,5 +1,5 @@
 import { Link, usePage, router } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
     Bell,
     BookOpen,
@@ -46,6 +46,8 @@ const navigationGroups = [
     },
 ];
 
+const adminSidebarScrollKey = 'brics-admin-sidebar-scroll-top';
+
 const initialsFor = (name) => String(name || 'Admin')
     .split(' ')
     .map((part) => part[0])
@@ -57,6 +59,7 @@ export default function AdminLayout({ children, title, subtitle, notifications =
     const page = usePage();
     const user = page.props.auth?.user;
     const currentPath = page.url.split('?')[0];
+    const sidebarRef = useRef(null);
     const [showNotifications, setShowNotifications] = useState(false);
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     const sharedNotifications = page.props?.notifications ?? notifications;
@@ -69,6 +72,49 @@ export default function AdminLayout({ children, title, subtitle, notifications =
         const path = new URL(href, window.location.origin).pathname;
         return currentPath === path || currentPath.startsWith(`${path}/`);
     };
+
+    const storedSidebarScrollTop = () => {
+        if (typeof window === 'undefined') return 0;
+
+        return Number(sessionStorage.getItem(adminSidebarScrollKey) ?? 0);
+    };
+
+    const restoreSidebarScroll = (sidebar) => {
+        const scrollTop = storedSidebarScrollTop();
+
+        if (Number.isFinite(scrollTop) && scrollTop > 0) {
+            sidebar.scrollTop = scrollTop;
+        }
+    };
+
+    const saveSidebarScroll = () => {
+        if (typeof window === 'undefined' || !sidebarRef.current) return;
+
+        sessionStorage.setItem(adminSidebarScrollKey, String(sidebarRef.current.scrollTop));
+    };
+
+    const setSidebarElement = (element) => {
+        sidebarRef.current = element;
+
+        if (element) {
+            restoreSidebarScroll(element);
+        }
+    };
+
+    useLayoutEffect(() => {
+        const sidebar = sidebarRef.current;
+
+        if (!sidebar) return undefined;
+
+        restoreSidebarScroll(sidebar);
+
+        sidebar.addEventListener('scroll', saveSidebarScroll, { passive: true });
+
+        return () => {
+            saveSidebarScroll();
+            sidebar.removeEventListener('scroll', saveSidebarScroll);
+        };
+    }, []);
 
     const scrollToNavigationTarget = (href, behavior = 'smooth') => {
         const url = new URL(href, window.location.origin);
@@ -87,6 +133,8 @@ export default function AdminLayout({ children, title, subtitle, notifications =
         if (closeOnNavigate) {
             setShowMobileSidebar(false);
         }
+
+        saveSidebarScroll();
 
         const url = new URL(href, window.location.origin);
         const isSamePageHash = url.hash && url.pathname === window.location.pathname;
@@ -115,6 +163,7 @@ export default function AdminLayout({ children, title, subtitle, notifications =
 
     const renderSidebarContent = (closeOnNavigate = false) => (
         <div
+            ref={closeOnNavigate ? undefined : setSidebarElement}
             className="flex h-full min-h-0 flex-col overflow-y-auto overflow-x-hidden text-white"
             style={{ scrollbarGutter: 'stable' }}
         >
@@ -178,6 +227,7 @@ export default function AdminLayout({ children, title, subtitle, notifications =
                                         key={item.label}
                                         href={item.href}
                                         preserveScroll={false}
+                                        onPointerDown={saveSidebarScroll}
                                         onClick={(event) => handleNavigationClick(event, item.href, closeOnNavigate)}
                                         onSuccess={() => scrollToNavigationTarget(item.href)}
                                         className={`flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-sm transition-all hover:translate-x-0.5 hover:brightness-105 ${active

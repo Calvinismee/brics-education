@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
-import { TrendingUp, DollarSign, CreditCard, AlertCircle, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { TrendingUp, DollarSign, CreditCard, AlertCircle, CheckCircle, XCircle, Clock, TimerOff } from 'lucide-react';
 
 export default function TransactionStats({ stats = [], summary = {}, paymentMethods = [], successRate = 0, recentTransactions = [] }) {
     const { monthlyRevenue = [], averageTransaction = 0, transactionGrowth = 0, totalRevenue = 0 } = summary;
@@ -12,6 +12,7 @@ export default function TransactionStats({ stats = [], summary = {}, paymentMeth
         success: { label: 'Berhasil', bg: '#22c55e15', color: '#16a34a', icon: <CheckCircle className="h-4 w-4" /> },
         pending: { label: 'Pending', bg: '#f59e0b15', color: '#d97706', icon: <Clock className="h-4 w-4" /> },
         failed: { label: 'Gagal', bg: '#ef444415', color: '#ef4444', icon: <XCircle className="h-4 w-4" /> },
+        expired: { label: 'Kedaluwarsa', bg: '#64748b15', color: '#64748b', icon: <TimerOff className="h-4 w-4" /> },
     };
 
     const formatCurrency = (value) => {

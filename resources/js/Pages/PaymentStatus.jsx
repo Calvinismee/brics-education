@@ -83,6 +83,7 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
   const isSuccess = transaction.payment_status === 'success';
   const isPending = transaction.payment_status === 'pending';
   const isFailed = transaction.payment_status === 'failed';
+  const isExpired = transaction.payment_status === 'expired';
   const canPayWithMidtrans = isPending && midtrans.snapToken && midtrans.clientKey;
 
   useEffect(() => {
@@ -266,13 +267,15 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
                 className="text-3xl lg:text-4xl text-white mb-3"
                 style={{ fontWeight: 900, lineHeight: 1.2 }}
               >
-                {isSuccess ? 'Pembayaran Berhasil' : isFailed ? 'Pembayaran Gagal' : 'Menunggu Pembayaran'}
+                {isSuccess ? 'Pembayaran Berhasil' : isExpired ? 'Pembayaran Kedaluwarsa' : isFailed ? 'Pembayaran Gagal' : 'Menunggu Pembayaran'}
               </h1>
 
               <p className="text-[#D8D7BE] text-sm lg:text-base leading-relaxed">
                 {isPending
                   ? 'Transaksi kamu sudah tercatat. Selesaikan pembayaran melalui Midtrans agar paket aktif otomatis.'
-                  : isFailed
+                  : isExpired
+                    ? 'Waktu pembayaran sudah habis. Silakan buat transaksi baru dari halaman checkout.'
+                    : isFailed
                     ? 'Pembayaran tidak berhasil. Silakan buat transaksi baru dari halaman checkout.'
                     : 'Status pembayaran sudah berhasil. Paket dapat diakses melalui dashboard siswa.'}
               </p>
@@ -405,7 +408,7 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
                         className={isSuccess ? 'text-green-600' : 'text-yellow-600'}
                         style={{ fontWeight: 900 }}
                       >
-                        {transaction.payment_status}
+                        {isExpired ? 'expired' : transaction.payment_status}
                       </span>
                     </div>
                   </div>
@@ -431,7 +434,7 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
                       className={isSuccess ? 'text-green-800' : 'text-yellow-800'}
                       style={{ fontWeight: 900 }}
                     >
-                      {isSuccess ? 'Paket sudah aktif' : isFailed ? 'Pembayaran gagal' : 'Menunggu pembayaran'}
+                      {isSuccess ? 'Paket sudah aktif' : isExpired ? 'Pembayaran kedaluwarsa' : isFailed ? 'Pembayaran gagal' : 'Menunggu pembayaran'}
                     </p>
 
                     <p
@@ -441,7 +444,9 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
                     >
                       {isSuccess
                         ? 'Pembayaran sudah berhasil. Kamu dapat membuka dashboard siswa untuk mengakses semua course dalam paket, materi, dan jadwal pembelajaran.'
-                        : isFailed
+                        : isExpired
+                          ? 'Transaksi ini melewati batas waktu pembayaran.'
+                          : isFailed
                           ? 'Transaksi ini gagal.'
                           : 'Setelah pembayaran berhasil, paket akan aktif otomatis.'}
                     </p>
@@ -482,7 +487,7 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
                     className={isSuccess ? 'text-green-800' : 'text-yellow-800'}
                     style={{ fontWeight: 900 }}
                   >
-                    {isSuccess ? 'Success' : isFailed ? 'Failed' : 'Pending'}
+                    {isSuccess ? 'Success' : isExpired ? 'Expired' : isFailed ? 'Failed' : 'Pending'}
                   </p>
 
                   <p className="text-xs text-gray-500 mt-2">

@@ -1,7 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Download, CheckCircle, XCircle, Clock, ArrowUpDown, Eye } from 'lucide-react';
+import { Search, Download, CheckCircle, XCircle, Clock, ArrowUpDown, Eye, TimerOff } from 'lucide-react';
 
 export default function Transactions({ transactions = [], stats = {}, filters = {} }) {
     const transactionList = Array.isArray(transactions?.data) ? transactions.data : transactions;
@@ -56,6 +56,7 @@ export default function Transactions({ transactions = [], stats = {}, filters = 
         success: { label: 'Berhasil', bg: '#22c55e15', color: '#16a34a', icon: <CheckCircle className="h-4 w-4" /> },
         pending: { label: 'Pending', bg: '#f59e0b15', color: '#d97706', icon: <Clock className="h-4 w-4" /> },
         failed: { label: 'Gagal', bg: '#ef444415', color: '#ef4444', icon: <XCircle className="h-4 w-4" /> },
+        expired: { label: 'Kedaluwarsa', bg: '#64748b15', color: '#64748b', icon: <TimerOff className="h-4 w-4" /> },
     };
 
     const filtered = useMemo(() => {
@@ -117,11 +118,12 @@ export default function Transactions({ transactions = [], stats = {}, filters = 
             <Head title="Monitoring Transaksi" />
 
             <div className="p-4 lg:p-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                <div className="mb-6 grid gap-4 md:grid-cols-3">
+                <div className="mb-6 grid gap-4 md:grid-cols-4">
                     {[
                         { label: 'Transaksi Berhasil', value: `${stats.successToday ?? transactionList.filter((transaction) => transaction.status === 'success').length}`, color: '#16a34a', bg: '#22c55e15' },
                         { label: 'Menunggu Konfirmasi', value: `${stats.pendingToday ?? transactionList.filter((transaction) => transaction.status === 'pending').length}`, color: '#d97706', bg: '#f59e0b15' },
                         { label: 'Transaksi Gagal', value: `${stats.failedToday ?? transactionList.filter((transaction) => transaction.status === 'failed').length}`, color: '#ef4444', bg: '#ef444415' },
+                        { label: 'Kedaluwarsa', value: `${stats.expiredToday ?? transactionList.filter((transaction) => transaction.status === 'expired').length}`, color: '#64748b', bg: '#64748b15' },
                     ].map((stat) => (
                         <div key={stat.label} className="rounded-2xl border border-[#D8D7BE] bg-white p-5 shadow-sm">
                             <div className="mb-1 text-2xl font-extrabold" style={{ color: stat.color }}>{stat.value}</div>
@@ -149,8 +151,8 @@ export default function Transactions({ transactions = [], stats = {}, filters = 
                             <div className="flex flex-col gap-3 xl:items-end">
                                 <div className="flex flex-wrap items-center gap-2 xl:justify-end">
                                     <div className="flex min-h-11 items-center gap-1 rounded-lg border border-[#D8D7BE] bg-white p-1">
-                                        {['all', 'success', 'pending', 'failed'].map((key) => {
-                                            const labels = { all: 'Semua', success: 'Berhasil', pending: 'Pending', failed: 'Gagal' };
+                                        {['all', 'success', 'pending', 'failed', 'expired'].map((key) => {
+                                            const labels = { all: 'Semua', success: 'Berhasil', pending: 'Pending', failed: 'Gagal', expired: 'Kedaluwarsa' };
                                             const active = statusFilter === key;
 
                                             return (

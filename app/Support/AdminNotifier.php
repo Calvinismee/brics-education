@@ -74,6 +74,14 @@ class AdminNotifier
         );
     }
 
+    public static function transactionExpired(User $student, string $productName, ?string $invoiceNumber = null): void
+    {
+        self::notifyAdmins(
+            'Pembayaran Kedaluwarsa',
+            self::transactionMessage($student, $productName, $invoiceNumber, 'melewati batas waktu pembayaran untuk')
+        );
+    }
+
     public static function scheduleCreated(Schedule $schedule): void
     {
         self::notifyAdmins('Jadwal Kelas Ditambahkan', self::scheduleMessage($schedule, 'ditambahkan'));
