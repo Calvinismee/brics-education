@@ -15,9 +15,11 @@ The system is currently organized around three authenticated roles:
 ## 2. Technology Stack
 
 - Backend: PHP 8.3, Laravel 13, Laravel Breeze, Inertia Laravel 2, Laravel Sanctum, Ziggy.
-- Database: PostgreSQL in development and test environments.
+- Database: PostgreSQL in development, test, and production-style environments. Local development can use PostgreSQL directly; hosted deployments commonly use Supabase PostgreSQL.
 - Frontend: React, Inertia React, Tailwind CSS, Vite, lucide-react, sonner.
 - External identity: Google Identity Services for student Google sign-in, with the legacy OAuth authorization-code redirect kept as a fallback path.
+- Payment gateway: Midtrans Snap for package checkout and asynchronous payment status notifications.
+- Object storage: local `public` disk for development/testing and S3-compatible storage such as Cloudflare R2 for production material uploads.
 - Testing: Pest for PHP feature tests, Vitest and Testing Library for React tests.
 - Styling: Tailwind with reusable React page/layout components.
 
@@ -36,6 +38,7 @@ The application follows a conventional Laravel monolith structure with an Inerti
 Important shared helpers and services:
 
 - `PackageEnrollmentService`: creates package enrollments after successful package purchase.
+- `MidtransService`: creates Snap transactions, verifies Midtrans signatures, and fetches transaction status.
 - `AdminNotifier`: creates admin-facing notifications for operational events.
 - `AdminNotificationCache`: caches notification dropdown and stat payloads per admin.
 - `TutorCourseResolver`: resolves tutor-course assignments across the legacy single-course column and the newer pivot table.
@@ -45,7 +48,8 @@ Important shared helpers and services:
 
 Authentication uses Laravel session auth. Role-specific login routes exist so users can intentionally switch between tutor and admin sessions.
 
-- Public pages include the landing page, course detail, registration, login pages, checkout, and payment flows.
+- Public pages include the landing page, course detail, registration, and login pages.
+- Checkout and payment status pages require an authenticated user. The Midtrans notification endpoint is intentionally public but protected by signature verification and CSRF exemption.
 - Student pages require `auth` and include dashboard, course learning, schedules, and profile flows.
 - Admin pages require `web`, `auth`, `verified`, and `admin` middleware.
 - Tutor pages require `web`, `auth`, `verified`, and tutor/mentor middleware.
@@ -80,27 +84,46 @@ The `User` model exposes a computed role accessor derived from `role_id`. Code t
 
 ### Purchases and Enrollment
 
-- `transactions`: package purchase records with pending, paid, failed, and cancelled style states.
+- `transactions`: package purchase records. Current normalized payment states are `pending`, `success`, `failed`, and `expired`. Older rows may still contain `paid`.
 - `enrollments`: student access to a course. Package purchases create one enrollment per course in the purchased package.
 
 Package purchases should go through `PackageEnrollmentService` so transaction, package, and enrollment behavior stays consistent.
 
+Midtrans status mapping is centralized in `PaymentController::applyMidtransStatus`:
+
+- `settlement` -> `success`
+- `capture` with fraud challenge -> `pending`
+- `capture` without fraud challenge -> `success`
+- `pending` -> `pending`
+- `deny`, `cancel`, `failure` -> `failed`
+- `expire` -> `expired`
+
+Only `success` activates enrollments. `failed` and `expired` keep access inactive and notify admins.
+
 ### Materials and Content Review
 
-- `materials`: tutor-uploaded learning materials. Key fields include `title`, `type`, `course_id`, `uploaded_by`, `file_url`, `content`, `approval_status`, `approved_by`, `approved_at`, and `rejection_comment`.
+- `materials`: tutor-uploaded learning materials. Key fields include `title`, `type`, `course_id`, `uploaded_by`, `file_url`, `storage_disk`, `file_path`, `content`, `approval_status`, `approved_by`, `approved_at`, and `rejection_comment`.
 - Approval statuses are normalized to `pending`, `approved`, and `rejected`.
 
 Tutors upload material from the tutor workspace. Admins review content from the admin content module. Admins can approve or reject material, but admin content create/update/delete endpoints intentionally abort because admins are reviewers, not content authors.
 
-The admin content preview supports rich text content, linked files, PDF and office-style file links, video files, and YouTube links detected from material content or file URL.
+Material uploads use `config('filesystems.materials_disk')`. In tests this should normally be forced to `public` with `Storage::fake('public')`; production can point the same abstraction to `s3` for R2. `Material::publicUrlFor` resolves local `/storage/...` URLs and S3/R2 public URLs from `storage_disk` and `file_path`.
+
+The admin content preview supports rich text content, linked files, PDF and office-style file links, video files, and YouTube links detected from material content or file URL. Tutor-facing material lists intentionally show user-friendly file metadata such as `File PDF terlampir` instead of raw storage URLs.
 
 ### Schedules
 
-- `schedules`: course sessions with `course_id`, `mentor_id`, `title`, `meeting_link`, `start_time`, `end_time`, and `started_at`.
+- `schedules`: course sessions with `course_id`, `mentor_id`, `title`, `type`, `meeting_link`, `start_time`, `end_time`, and `started_at`.
 
-Admin schedules select a course and an optional tutor. The backend validates that the tutor can teach the selected course through `TutorCourseResolver`; if the tutor has no assignment yet, the selected course can be synced as the initial assignment. Meeting links are optional but must be valid URLs when provided.
+Admin schedules select a course, a schedule type, and an optional tutor. The backend validates that the tutor can teach the selected course through `TutorCourseResolver`; if the tutor has no assignment yet, the selected course can be synced as the initial assignment. Meeting links are optional but must be valid URLs when provided.
 
 Tutor schedule routes allow tutors to view classes, create class sessions in their assigned courses, start sessions, and update meeting links.
+
+### Progress
+
+- `progress_records`: per-student course progress data used by `/student/progress`.
+
+The student dashboard fetches progress asynchronously and maps it by `course_id`. Progress is an auxiliary learning signal; access control still comes from active enrollments.
 
 ### Notifications
 
@@ -122,7 +145,7 @@ users
   -> materials.uploaded_by
   -> schedules.mentor_id
   -> notifications.user_id
-  -> report_exports.generated_by
+  -> report_exports.user_id
   -> course_tutor.tutor_id
 
 courses
@@ -137,7 +160,12 @@ packages
   -> transactions.package_id
 
 transactions
-  -> enrollments.transaction_id
+  -> enrollments.id through transactions.enrollment_id
+
+progress_records
+  -> users.id through progress_records.user_id
+  -> courses.course_id
+  -> materials.id through progress_records.material_id when present
 ```
 
 ## 7. Primary Workflows
@@ -161,7 +189,7 @@ Both paths end in `GoogleAuthController::authenticateGoogleUser`. Existing users
 
 ### Package Purchase
 
-Students choose a package, create a transaction, and complete payment. When payment is accepted, package courses are converted into enrollments through `PackageEnrollmentService`. Admin transaction pages expose operational views and report exports.
+Students choose a package, create a pending transaction, and complete payment through Midtrans Snap. Checkout redirects to `PaymentStatus` with the Snap token and `pay=1`, so the Snap UI opens before the user is redirected to the dashboard. The Midtrans notification endpoint validates `signature_key` before applying payment state changes. Successful payments activate package courses through `PackageEnrollmentService`; failed or expired payments do not activate access. Admin transaction pages expose status filters, details, reports, and CSV exports.
 
 ### Student Dashboard, Catalog, and Profile
 
@@ -174,6 +202,8 @@ Students choose a package, create a transaction, and complete payment. When paym
 - `profil`: profile summary view.
 
 The `?tab=` query parameter can deep-link to a dashboard tab, especially `/dashboard?tab=katalog`. Student catalog navigation should use this in-dashboard catalog tab instead of sending authenticated students back to the public landing page catalog.
+
+When a student has no active package, the dashboard focuses on `PackagePurchasePanel` and hides the student side panel/navigation. The side panel appears only after a package enrollment is active, so unpaid students are not shown inaccessible subtest navigation.
 
 Student profile editing is available inline from the dashboard and course learning side panels. The inline modal submits `PATCH /profile` with name, gender, phone/WhatsApp, and school origin through `ProfileController::update` and `ProfileUpdateRequest`. When the update request has a referer, the controller redirects back so the modal workflow stays on the current Inertia page.
 
@@ -191,6 +221,12 @@ Admins can manage schedules globally. Tutors can manage their own classes within
 
 Authenticated users receive notification data through shared Inertia props. Admin notification dropdown data is cached per user and cleared after new admin notifications are inserted. Tutor pages receive a compact `tutorNotifications` payload with latest items and unread count.
 
+### Error Handling and Loading Feedback
+
+Non-JSON 404 responses render `resources/js/Pages/Errors/NotFound.jsx` through the exception handler in `bootstrap/app.php`.
+
+Inertia navigation progress is handled by the app-level loader in `resources/js/app.jsx` and `resources/js/Components/ui/LoadingStates.jsx`. Loading feedback is staged: no visible loader for very short requests, spinner-style feedback for normal waits, and progress-bar style feedback after longer waits.
+
 ## 8. Backend Modules
 
 Admin controllers:
@@ -204,6 +240,8 @@ Admin controllers:
 - `TransactionController`: transaction operations.
 - `ReportController`: report export history and generation.
 - `NotificationController`: admin notification list, mark read, and stats.
+- `SettingController`: admin settings entry points.
+- `TutorHistoryController`: tutor teaching history and session summaries.
 
 Tutor controllers:
 
@@ -221,6 +259,11 @@ Auth controllers:
 - `ProfileController`: authenticated user profile display, inline student profile updates, and account deletion.
 - Standard Breeze password, verification, and reset controllers.
 
+Other controllers:
+
+- `PaymentController`: payment status, status refresh, and Midtrans callback handling.
+- `Student\ProgressController`: student course progress read/write endpoint.
+
 ## 9. Frontend Architecture
 
 The frontend is an Inertia React app. Server controllers return page components and serialized props rather than JSON API resources for most page loads.
@@ -228,9 +271,8 @@ The frontend is an Inertia React app. Server controllers return page components 
 Main layout shells:
 
 - `AdminLayout`: admin navigation, notification dropdown, and admin page chrome.
-- `AuthenticatedLayout`: authenticated student-facing layout.
-- `GuestLayout`: auth and public form layout.
 - `TutorSidebar`: tutor workspace navigation component.
+- Auth and public pages are mostly self-contained page components, supported by shared components such as `LoginPanel` and `BricsLogo`.
 
 Main page groups:
 
@@ -240,9 +282,9 @@ Main page groups:
 - `resources/js/Pages/Profile`: shared authenticated profile edit page and profile partials.
 - `resources/js/Pages/Auth`: login, register, password reset, verification.
 
-Admin and tutor pages are mostly form-driven Inertia views. They rely on Ziggy route names, Inertia form helpers, and server-side validation errors.
+Admin and tutor pages are mostly form-driven Inertia views. They rely on Ziggy route names, Inertia form helpers, and server-side validation errors. `AdminLayout` preserves the sidebar's own scroll position across Inertia page changes so clicking lower navigation items such as `Jadwal` or `Riwayat Tutor` does not reset the side panel to the top.
 
-Student pages are more self-contained. `StudentDashboard.jsx` includes the dashboard tab shell, package catalog panel, profile summary, notification dropdown, and inline profile editor. `CourseLearn.jsx` includes the course learning surface and the same inline profile editor pattern for purchased-package students. `Auth/LoginSiswa.jsx` is responsible for loading the Google Identity Services script and submitting Google credentials through Inertia.
+Student pages are more self-contained. `StudentDashboard.jsx` includes the dashboard tab shell, package catalog panel, profile summary, notification dropdown, and inline profile editor. The student sidebar is conditional and only shown for active-package users. `CourseLearn.jsx` includes the course learning surface and the same inline profile editor pattern for purchased-package students. `Auth/LoginSiswa.jsx` is responsible for loading the Google Identity Services script and submitting Google credentials through Inertia.
 
 ## 10. Database Snapshot
 
@@ -255,11 +297,13 @@ Core identity tables:
 
 Learning and commerce tables:
 
+- `categories`
 - `courses`
 - `packages`
 - `package_course`
 - `transactions`
 - `enrollments`
+- `progress_records`
 
 Tutor and learning operations:
 
@@ -283,6 +327,7 @@ Important compatibility notes:
 - `users.role` can exist in older schemas but should not drive authorization.
 - `users.google_id`, `users.google_avatar`, `users.gender`, `users.phone`, and `users.school_origin` are additive user columns. Their migrations guard with `Schema::hasColumn` checks so older or partially migrated databases can be upgraded safely.
 - `transactions.course_id` can exist for legacy single-course purchase assumptions, but package-course enrollment is handled through package relationships.
+- `materials.storage_disk` and `materials.file_path` are the durable storage metadata. `materials.file_url` is retained for compatibility and public presentation.
 
 ## 11. Caching and Shared Props
 
@@ -291,6 +336,7 @@ Important compatibility notes:
 - New admin notifications clear the affected admin users' notification cache entries.
 - `ShareNotifications` shares general notification data for authenticated users.
 - `HandleInertiaRequests` shares `auth.user` globally and shares compact tutor notification data only for tutor/mentor users.
+- Inertia's default progress indicator is disabled in favor of the app-level staged loader.
 
 ## 12. Architectural Rules
 
@@ -302,10 +348,13 @@ Important compatibility notes:
 - Use `TutorCourseResolver` for tutor-course assignment checks and syncs.
 - Do not eager-load tutor `assignedCourses` in code paths that must work before the `course_tutor` migration has run.
 - Use `PackageEnrollmentService` for package purchase enrollment writes.
+- Keep Midtrans status mapping centralized. Store `expire` callbacks as `expired`, not as generic `failed`.
 - Use `AdminNotifier` for admin-facing notification creation so cache invalidation stays centralized.
 - Keep material review status changes explicit: `pending`, `approved`, or `rejected`.
 - Admins review tutor content; they do not author learning material through the admin content controller.
+- Store material files through `config('filesystems.materials_disk')` and keep `storage_disk` plus `file_path` populated for delete and public URL resolution.
 - Keep meeting links nullable, but validate them as URLs when provided.
+- New admin schedule tests and request payloads should include `type`; schedule types are required.
 - Prefer Inertia page props and server validation for admin and tutor forms unless an interaction genuinely needs an API endpoint.
 
 ## 13. Known Constraints
@@ -315,6 +364,8 @@ Important compatibility notes:
 - Dashboard statistics are operational summaries and may mix live aggregate queries with cached payloads.
 - Notification data is stored in a generic table, so title/message conventions matter for consistent UI behavior.
 - The tutor role is named `mentor` in the database and `tutor` in much of the product UI.
+- Production storage may produce fully qualified R2/S3 URLs, while local tests usually expect `/storage/...`; tests should explicitly configure `filesystems.materials_disk` when storage behavior matters.
+- Midtrans callbacks are asynchronous. The UI supports manual refresh and redirects to the dashboard after successful payment, but payment activation still depends on callback or status refresh reaching the backend.
 
 ## 14. Practical File Map
 
@@ -327,7 +378,9 @@ app/Http/Controllers/Admin/
   PackageController.php
   ReportController.php
   ScheduleController.php
+  SettingController.php
   TransactionController.php
+  TutorHistoryController.php
   UserController.php
 
 app/Http/Controllers/Tutor/
@@ -343,9 +396,14 @@ app/Http/Controllers/Auth/
   RegisteredUserController.php
 
 app/Http/Controllers/
+  PaymentController.php
   ProfileController.php
 
+app/Http/Controllers/Student/
+  ProgressController.php
+
 app/Services/
+  MidtransService.php
   PackageEnrollmentService.php
 
 app/Support/
@@ -356,11 +414,15 @@ app/Support/
 
 resources/js/Layouts/
   AdminLayout.jsx
-  AuthenticatedLayout.jsx
-  GuestLayout.jsx
 
 resources/js/Components/
+  BricsLogo.jsx
+  LoginPanel.jsx
   TutorSidebar.jsx
+  TutorMobileNavigation.jsx
+  TutorNotificationBell.jsx
+resources/js/Components/ui/
+  LoadingStates.jsx
 
 resources/js/Pages/Admin/
 resources/js/Pages/Tutor/
@@ -371,6 +433,8 @@ resources/js/Pages/
   Checkout.jsx
   PaymentStatus.jsx
 resources/js/Pages/Auth/
+resources/js/Pages/Errors/
+  NotFound.jsx
 resources/js/Pages/Profile/
 
 routes/
