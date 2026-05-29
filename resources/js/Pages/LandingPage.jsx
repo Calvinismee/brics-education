@@ -13,8 +13,10 @@ import {
   CreditCard,
   Layers,
   Package as PackageIcon,
+  Menu,
+  X,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const HERO_IMAGE =
   "/images/landing/brics-on-abts-2025.jpg";
@@ -65,6 +67,13 @@ const benefits = [
   },
 ];
 
+const navItems = [
+  { label: "Beranda", to: "/" },
+  { label: "Katalog", to: "/#katalog" },
+  { label: "Tentang Kami", to: "#tentang" },
+  { label: "Tutor Kami", to: "/tutors" },
+];
+
 function asArray(value) {
   if (Array.isArray(value)) return value;
   return Object.values(value ?? {});
@@ -108,6 +117,7 @@ function formatPrice(price) {
 export default function LandingPage({ packages = [] }) {
   const { auth } = usePage().props;
   const user = auth?.user;
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const packageList = asArray(packages);
 
@@ -158,7 +168,7 @@ export default function LandingPage({ packages = [] }) {
       return;
     }
 
-    const stickyOffset = targetId === "landing-page-top" ? 0 : 84;
+    const stickyOffset = targetId === "landing-page-top" ? 0 : window.innerWidth < 768 ? 120 : 84;
     const targetTop = target.getBoundingClientRect().top + window.scrollY - stickyOffset;
 
     window.scrollTo({ top: Math.max(targetTop, 0), behavior });
@@ -171,7 +181,13 @@ export default function LandingPage({ packages = [] }) {
     if (isSamePage) {
       event.preventDefault();
       scrollToTarget(href);
+      setIsMobileMenuOpen(false);
     }
+  };
+
+  const handleMobileLinkSuccess = (href) => {
+    setIsMobileMenuOpen(false);
+    scrollToTarget(href);
   };
 
   return (
@@ -288,18 +304,13 @@ export default function LandingPage({ packages = [] }) {
 
       {/* Navbar */}
       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-[#D8D7BE]">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <Link href="/">
             <BricsLogo size="lg" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
-            {[
-              { label: "Beranda", to: "/" },
-              { label: "Katalog", to: "/#katalog" },
-              { label: "Tentang Kami", to: "#tentang" },
-              { label: "Tutor Kami", to: "/tutors" },
-            ].map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.label}
                 href={item.to}
@@ -313,12 +324,12 @@ export default function LandingPage({ packages = [] }) {
             ))}
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {user ? (
               <>
                 <Link
                   href="/dashboard"
-                  className="px-5 py-2 text-sm text-[#691D1B] border border-[#691D1B] rounded-md hover:bg-[#F7F2E7] transition-colors"
+                  className="hidden md:inline-flex px-5 py-2 text-sm text-[#691D1B] border border-[#691D1B] rounded-md hover:bg-[#F7F2E7] transition-colors"
                   style={{ fontWeight: 600 }}
                 >
                   Dashboard
@@ -327,7 +338,7 @@ export default function LandingPage({ packages = [] }) {
                 <button
                   type="button"
                   onClick={logout}
-                  className="px-5 py-2 text-sm text-white bg-[#691D1B] rounded-md hover:bg-[#4A1412] transition-colors"
+                  className="hidden md:inline-flex px-5 py-2 text-sm text-white bg-[#691D1B] rounded-md hover:bg-[#4A1412] transition-colors"
                   style={{ fontWeight: 600 }}
                 >
                   Keluar
@@ -337,7 +348,7 @@ export default function LandingPage({ packages = [] }) {
               <>
                 <Link
                   href={route("register")}
-                  className="hidden sm:inline-flex px-5 py-2 text-sm text-[#691D1B] border border-[#691D1B] rounded-md hover:bg-[#F7F2E7] transition-colors"
+                  className="hidden md:inline-flex px-5 py-2 text-sm text-[#691D1B] border border-[#691D1B] rounded-md hover:bg-[#F7F2E7] transition-colors"
                   style={{ fontWeight: 600 }}
                 >
                   Daftar
@@ -345,13 +356,105 @@ export default function LandingPage({ packages = [] }) {
 
                 <Link
                   href={route("login")}
-                  className="px-5 py-2 text-sm text-white bg-[#691D1B] rounded-md hover:bg-[#4A1412] transition-colors"
+                  className="hidden md:inline-flex px-5 py-2 text-sm text-white bg-[#691D1B] rounded-md hover:bg-[#4A1412] transition-colors"
                   style={{ fontWeight: 600 }}
                 >
                   Masuk
                 </Link>
               </>
             )}
+
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-[#D8D7BE] text-[#691D1B] transition-colors hover:bg-[#F7F2E7] md:hidden"
+              aria-label="Buka menu"
+              aria-expanded={isMobileMenuOpen}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        <div
+          className={`fixed inset-0 z-50 md:hidden ${isMobileMenuOpen ? "pointer-events-auto" : "pointer-events-none"}`}
+          aria-hidden={!isMobileMenuOpen}
+        >
+          <button
+            type="button"
+            className={`absolute inset-0 bg-black/35 transition-opacity ${isMobileMenuOpen ? "opacity-100" : "opacity-0"}`}
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-label="Tutup menu"
+          />
+
+          <div
+            className={`absolute right-0 top-0 flex h-full w-[min(82vw,320px)] flex-col bg-white shadow-2xl transition-transform duration-200 ease-out ${
+              isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
+            }`}
+          >
+            <div className="flex items-center justify-between border-b border-[#E7DFC9] px-5 py-4">
+              <BricsLogo size="md" />
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-md text-[#691D1B] transition-colors hover:bg-[#F7F2E7]"
+                aria-label="Tutup menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <nav className="flex-1 space-y-1 overflow-y-auto px-4 py-4">
+              {navItems.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.to}
+                  onClick={(event) => handleAnchorNavigation(event, item.to)}
+                  onSuccess={() => handleMobileLinkSuccess(item.to)}
+                  className="block rounded-md px-4 py-3 text-base font-semibold text-gray-800 transition-colors hover:bg-[#F7F2E7] hover:text-[#691D1B]"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+
+            <div className="border-t border-[#E7DFC9] p-4">
+              {user ? (
+                <div className="grid gap-3">
+                  <Link
+                    href="/dashboard"
+                    onSuccess={() => setIsMobileMenuOpen(false)}
+                    className="rounded-md border border-[#691D1B] px-4 py-3 text-center text-sm font-semibold text-[#691D1B] transition-colors hover:bg-[#F7F2E7]"
+                  >
+                    Dashboard
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={logout}
+                    className="w-full rounded-md bg-[#691D1B] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#4A1412]"
+                  >
+                    Keluar
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <Link
+                    href={route("register")}
+                    onSuccess={() => setIsMobileMenuOpen(false)}
+                    className="rounded-md border border-[#691D1B] px-4 py-3 text-center text-sm font-semibold text-[#691D1B] transition-colors hover:bg-[#F7F2E7]"
+                  >
+                    Daftar
+                  </Link>
+                  <Link
+                    href={route("login")}
+                    onSuccess={() => setIsMobileMenuOpen(false)}
+                    className="rounded-md bg-[#691D1B] px-4 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-[#4A1412]"
+                  >
+                    Masuk
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
