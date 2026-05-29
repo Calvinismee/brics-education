@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Package;
+use App\Support\DatabaseBoolean;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +23,7 @@ class PackageController extends Controller
             ->withQueryString();
 
         $totalPackages = Package::count();
-        $popularPackages = Package::where('popular', true)->count();
+        $popularPackages = Package::where('popular', DatabaseBoolean::value(true))->count();
         $revenue = (float) Package::query()->selectRaw('COALESCE(SUM(price::numeric), 0) as revenue')->value('revenue');
 
         return Inertia::render('Admin/Packages', [
@@ -57,7 +58,7 @@ class PackageController extends Controller
             'price' => $validated['price'],
             'description' => $validated['description'] ?? null,
             'features' => $validated['features'] ?? [],
-            'popular' => (bool) ($validated['popular'] ?? false),
+            'popular' => DatabaseBoolean::value((bool) ($validated['popular'] ?? false)),
         ]);
 
         $package->courses()->sync($validated['course_ids'] ?? []);
@@ -83,7 +84,7 @@ class PackageController extends Controller
             'price' => $validated['price'],
             'description' => $validated['description'] ?? null,
             'features' => $validated['features'] ?? [],
-            'popular' => (bool) ($validated['popular'] ?? false),
+            'popular' => DatabaseBoolean::value((bool) ($validated['popular'] ?? false)),
         ]);
 
         $package->courses()->sync($validated['course_ids'] ?? []);

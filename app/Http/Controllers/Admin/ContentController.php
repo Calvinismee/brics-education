@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Material;
 use App\Support\AdminNotifier;
+use App\Support\DatabaseBoolean;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -174,7 +175,7 @@ class ContentController extends Controller
                 'message' => $status === 'approved'
                     ? 'Materi "'.$material->title.'" untuk '.$courseTitle.' sudah disetujui admin.'
                     : 'Materi "'.$material->title.'" untuk '.$courseTitle.' ditolak admin.'.($comment ? ' Catatan: '.$comment : ''),
-                'is_read' => false,
+                'is_read' => DatabaseBoolean::value(false),
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
@@ -192,7 +193,7 @@ class ContentController extends Controller
                     'user_id' => $studentId,
                     'title' => 'Materi baru tersedia',
                     'message' => 'Materi "'.$material->title.'" sudah tersedia di '.$courseTitle.'.',
-                    'is_read' => false,
+                    'is_read' => DatabaseBoolean::value(false),
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];

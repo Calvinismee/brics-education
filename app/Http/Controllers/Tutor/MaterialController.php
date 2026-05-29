@@ -8,6 +8,7 @@ use App\Models\Enrollment;
 use App\Models\Material;
 use App\Models\Notification;
 use App\Support\AdminNotifier;
+use App\Support\DatabaseBoolean;
 use App\Support\TutorCourseResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -191,7 +192,7 @@ class MaterialController extends Controller
                 'user_id' => $studentId,
                 'title' => 'Pengumuman '.$request->user()->name.': '.$validated['title'],
                 'message' => ($course?->title ? $course->title.' - ' : '').$validated['message'],
-                'is_read' => false,
+                'is_read' => DatabaseBoolean::value(false),
             ]);
         }
 

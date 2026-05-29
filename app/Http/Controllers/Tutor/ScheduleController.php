@@ -8,6 +8,7 @@ use App\Models\Enrollment;
 use App\Models\Material;
 use App\Models\Notification;
 use App\Models\Schedule;
+use App\Support\DatabaseBoolean;
 use App\Support\TutorCourseResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -305,7 +306,7 @@ class ScheduleController extends Controller
                 'user_id' => $studentId,
                 'title' => 'Link live class tersedia',
                 'message' => ($schedule->course?->title ?? 'Course UTBK').' - '.$request->user()->name.' sudah menambahkan link meeting untuk '.$schedule->title.'.',
-                'is_read' => false,
+                'is_read' => DatabaseBoolean::value(false),
             ]);
         }
     }

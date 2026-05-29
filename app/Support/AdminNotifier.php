@@ -33,7 +33,7 @@ class AdminNotifier
                 'user_id' => $adminId,
                 'title' => $title,
                 'message' => $message,
-                'is_read' => false,
+                'is_read' => DatabaseBoolean::value(false),
                 'created_at' => $now,
                 'updated_at' => $now,
             ])->all()

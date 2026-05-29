@@ -48,7 +48,7 @@ class AdminNotificationCache
             $stats = DB::table('notifications')
                 ->where('user_id', $userId)
                 ->selectRaw('COUNT(*) as total_notifications')
-                ->selectRaw('COALESCE(SUM(CASE WHEN is_read = ? THEN 1 ELSE 0 END), 0) as unread_count', [false])
+                ->selectRaw('COALESCE(SUM(CASE WHEN is_read = ? THEN 1 ELSE 0 END), 0) as unread_count', [DatabaseBoolean::value(false)])
                 ->first();
 
             return [

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use App\Support\AdminNotificationCache;
+use App\Support\DatabaseBoolean;
 use Inertia\Inertia;
 
 class NotificationController extends Controller
@@ -32,7 +33,7 @@ class NotificationController extends Controller
             abort(403);
         }
 
-        $notification->update(['is_read' => true]);
+        $notification->update(['is_read' => DatabaseBoolean::value(true)]);
         AdminNotificationCache::forgetForUser((int) $userId);
 
         return back();
@@ -43,8 +44,8 @@ class NotificationController extends Controller
         $userId = auth()->id();
 
         Notification::where('user_id', $userId)
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
+            ->where('is_read', DatabaseBoolean::value(false))
+            ->update(['is_read' => DatabaseBoolean::value(true)]);
 
         AdminNotificationCache::forgetForUser((int) $userId);
 

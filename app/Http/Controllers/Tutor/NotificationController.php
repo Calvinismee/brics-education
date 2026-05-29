@@ -8,6 +8,7 @@ use App\Models\Enrollment;
 use App\Models\Material;
 use App\Models\Notification;
 use App\Models\Schedule;
+use App\Support\DatabaseBoolean;
 use App\Support\TutorCourseResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,7 +32,7 @@ class NotificationController extends Controller
             'notifications' => $notifications,
             'stats' => [
                 'total' => Notification::query()->where('user_id', $user->id)->count(),
-                'unread' => Notification::query()->where('user_id', $user->id)->where('is_read', false)->count(),
+                'unread' => Notification::query()->where('user_id', $user->id)->where('is_read', DatabaseBoolean::value(false))->count(),
             ],
         ]);
     }
@@ -40,7 +41,7 @@ class NotificationController extends Controller
     {
         abort_unless((int) $notification->user_id === (int) $request->user()->id, 403);
 
-        $notification->update(['is_read' => true]);
+        $notification->update(['is_read' => DatabaseBoolean::value(true)]);
 
         return back();
     }
@@ -49,8 +50,8 @@ class NotificationController extends Controller
     {
         Notification::query()
             ->where('user_id', $request->user()->id)
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
+            ->where('is_read', DatabaseBoolean::value(false))
+            ->update(['is_read' => DatabaseBoolean::value(true)]);
 
         return back();
     }

@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Notification;
 use App\Models\User;
+use App\Support\DatabaseBoolean;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -49,7 +50,7 @@ class HandleInertiaRequests extends Middleware
                         ->get(['id', 'title', 'message', 'is_read', 'created_at']),
                     'unreadCount' => Notification::query()
                         ->where('user_id', $user->id)
-                        ->where('is_read', false)
+                        ->where('is_read', DatabaseBoolean::value(false))
                         ->count(),
                 ]
                 : null,
