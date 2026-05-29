@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Package;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class PackageSeeder extends Seeder
 {
@@ -95,22 +96,37 @@ class PackageSeeder extends Seeder
             ->pluck('id')
             ->all();
 
-        $package = Package::updateOrCreate(
+        $features = [
+            'Akses semua course TPS dan Literasi',
+            'Materi konsep dan strategi pengerjaan soal',
+            'Bank soal bertahap dengan pembahasan',
+            'Jadwal live class bersama tutor',
+            'Simulasi dan evaluasi progres belajar',
+        ];
+
+        DB::table('packages')->updateOrInsert(
             ['name' => 'Paket Persiapan SNBT'],
             [
                 'price' => '499000',
                 'description' => 'Paket lengkap persiapan SNBT yang mencakup seluruh subtes TPS dan Literasi.',
-                'features' => [
-                    'Akses semua course TPS dan Literasi',
-                    'Materi konsep dan strategi pengerjaan soal',
-                    'Bank soal bertahap dengan pembahasan',
-                    'Jadwal live class bersama tutor',
-                    'Simulasi dan evaluasi progres belajar',
-                ],
-                'popular' => true,
+                'features' => json_encode($features),
+                'popular' => DB::raw($this->booleanLiteral(true)),
+                'created_at' => now(),
+                'updated_at' => now(),
             ]
         );
 
+        $package = Package::where('name', 'Paket Persiapan SNBT')->firstOrFail();
+
         $package->courses()->sync($courseIds);
+    }
+
+    private function booleanLiteral(bool $value): string
+    {
+        if (Schema::getConnection()->getDriverName() === 'pgsql') {
+            return $value ? 'true' : 'false';
+        }
+
+        return $value ? '1' : '0';
     }
 }
