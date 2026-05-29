@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class NotificationSeeder extends Seeder
 {
@@ -62,11 +63,20 @@ class NotificationSeeder extends Seeder
                     'user_id' => $adminId,
                     'title' => $notification['title'],
                     'message' => $notification['message'],
-                    'is_read' => false,
+                    'is_read' => DB::raw($this->booleanLiteral(false)),
                     'created_at' => $notification['created_at'],
                     'updated_at' => $notification['created_at'],
                 ]
             );
         }
+    }
+
+    private function booleanLiteral(bool $value): string
+    {
+        if (Schema::getConnection()->getDriverName() === 'pgsql') {
+            return $value ? 'true' : 'false';
+        }
+
+        return $value ? '1' : '0';
     }
 }
