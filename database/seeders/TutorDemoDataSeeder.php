@@ -72,21 +72,14 @@ class TutorDemoDataSeeder extends Seeder
 
     private function ensureUsersAndEnrollments($courseIds, $now): void
     {
-        $tutorRoleId = User::roleIdFor('mentor') ?? User::roleIdFor('tutor') ?? 2;
+        $this->call(TutorSeeder::class);
 
-        foreach ([
-            ['name' => 'Tutor Dev', 'email' => 'tutor@bricsedu.id'],
-            ['name' => 'Tutor Dev Alias', 'email' => 'tutor@brics.com'],
-        ] as $tutor) {
-            $tutorUser = User::updateOrCreate(
-                ['email' => $tutor['email']],
-                [
-                    'name' => $tutor['name'],
-                    'password' => bcrypt('password123'),
-                    'role_id' => $tutorRoleId,
-                    'mentor_course_id' => $courseIds['Penalaran Umum'] ?? null,
-                ]
-            );
+        foreach (TutorSeeder::devTutorEmails() as $email) {
+            $tutorUser = User::where('email', $email)->first();
+
+            if (! $tutorUser) {
+                continue;
+            }
 
             if (! $tutorUser->tutor_profile) {
                 $tutorUser->update([
@@ -99,8 +92,8 @@ class TutorDemoDataSeeder extends Seeder
                 ]);
             }
 
-            DB::table('users')->where('email', $tutor['email'])->update(['role' => 'mentor', 'updated_at' => $now]);
-            $this->syncTutorCourses($tutor['email'], $courseIds->values()->all(), $now);
+            DB::table('users')->where('email', $email)->update(['role' => 'mentor', 'updated_at' => $now]);
+            $this->syncTutorCourses($email, $courseIds->values()->all(), $now);
         }
 
         $this->call(UserSeeder::class);
@@ -226,7 +219,7 @@ class TutorDemoDataSeeder extends Seeder
             ['course' => 'Pemahaman Bacaan dan Menulis', 'title' => 'Live Class: Pemahaman Bacaan dan Menulis', 'day' => 4, 'start' => '13:00', 'end' => '14:30'],
         ];
 
-        $tutorIds = DB::table('users')->whereIn('email', ['tutor@bricsedu.id', 'tutor@brics.com'])->pluck('id');
+        $tutorIds = DB::table('users')->whereIn('email', TutorSeeder::devTutorEmails())->pluck('id');
 
         foreach ($tutorIds as $tutorId) {
             foreach ($rows as $row) {
@@ -259,7 +252,7 @@ class TutorDemoDataSeeder extends Seeder
             ['course' => 'Pengetahuan dan Pemahaman Umum', 'title' => 'Latihan PPU: Pemahaman Informasi', 'day' => 2, 'week' => 1, 'start' => '10:00', 'end' => '11:30', 'link' => 'https://zoom.us/j/2234567105'],
         ];
 
-        $tutorIds = DB::table('users')->whereIn('email', ['tutor@bricsedu.id', 'tutor@brics.com'])->pluck('id');
+        $tutorIds = DB::table('users')->whereIn('email', TutorSeeder::devTutorEmails())->pluck('id');
 
         foreach ($tutorIds as $tutorId) {
             foreach ($rows as $row) {
