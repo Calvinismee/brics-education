@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Transaction;
+use App\Support\DatabaseBoolean;
 use Illuminate\Support\Facades\DB;
 
 function signedMidtransPayloadForAdminTest(array $overrides = []): array
@@ -72,7 +73,7 @@ test('TC_ADMIN_CALLBACK_001 callback pembayaran success mengubah transaksi dan m
         'user_id' => $admin->id,
         'title' => 'Pembayaran Berhasil',
         'message' => 'Siswa Callback berhasil membayar Penalaran Umum. Invoice: INV-CALLBACK-001.',
-        'is_read' => false,
+        'is_read' => DatabaseBoolean::value(false),
     ]);
 });
 
@@ -152,7 +153,7 @@ test('TC_ADMIN_CALLBACK_003 callback pembayaran gagal mengubah transaksi tanpa a
         'user_id' => $admin->id,
         'title' => 'Pembayaran Gagal',
         'message' => 'Siswa Gagal mengalami kegagalan pembayaran untuk Literasi Bahasa Inggris. Invoice: INV-CALLBACK-FAILED.',
-        'is_read' => false,
+        'is_read' => DatabaseBoolean::value(false),
     ]);
 })->with(['deny', 'cancel', 'failure']);
 
@@ -197,7 +198,7 @@ test('TC_ADMIN_CALLBACK_004 callback pembayaran expire dicatat sebagai kedaluwar
         'user_id' => $admin->id,
         'title' => 'Pembayaran Kedaluwarsa',
         'message' => 'Siswa Expired melewati batas waktu pembayaran untuk Pengetahuan Kuantitatif. Invoice: INV-CALLBACK-EXPIRED.',
-        'is_read' => false,
+        'is_read' => DatabaseBoolean::value(false),
     ]);
 });
 

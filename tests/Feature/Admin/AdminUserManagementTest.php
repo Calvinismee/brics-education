@@ -15,7 +15,7 @@ test('TC_ADMIN_USER_001 admin berhasil menambah user', function () {
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('admin.users', absolute: false));
+        ->assertRedirect(route('admin.users', ['role' => 'tutor'], false));
 
     $this->assertDatabaseHas('users', [
         'name' => 'Fajar',
@@ -40,7 +40,7 @@ test('TC_ADMIN_TUTOR_001 admin berhasil menambah data tutor dengan assignment co
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('admin.users', absolute: false));
+        ->assertRedirect(route('admin.users', ['role' => 'tutor'], false));
 
     $tutorId = DB::table('users')->where('email', 'tutor-baru@example.com')->value('id');
 
@@ -97,7 +97,7 @@ test('TC_ADMIN_USER_003 admin berhasil mengubah role user', function () {
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('admin.users', absolute: false));
+        ->assertRedirect(route('admin.users', ['role' => 'tutor'], false));
 
     $this->assertDatabaseHas('users', [
         'id' => $user->id,
@@ -114,7 +114,7 @@ test('TC_ADMIN_USER_004 admin berhasil menghapus user', function () {
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('admin.users', absolute: false));
+        ->assertRedirect(route('admin.users', ['role' => 'student'], false));
 
     $this->assertDatabaseMissing('users', [
         'id' => $user->id,

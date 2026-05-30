@@ -2,6 +2,7 @@
 
 use App\Models\Package;
 use App\Models\User;
+use App\Support\DatabaseBoolean;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -127,12 +128,16 @@ function packageRecord(array $overrides = []): Package
 
     unset($overrides['courses']);
 
+    if (array_key_exists('popular', $overrides)) {
+        $overrides['popular'] = DatabaseBoolean::value((bool) $overrides['popular']);
+    }
+
     $package = Package::create(array_merge([
         'name' => 'Paket SNBT',
         'price' => '15000',
         'description' => 'Paket belajar untuk persiapan SNBT.',
         'features' => ['Tryout', 'Pembahasan'],
-        'popular' => false,
+        'popular' => DatabaseBoolean::value(false),
     ], $overrides));
 
     if ($courses !== []) {
@@ -197,11 +202,15 @@ function transactionRecord(array $overrides = []): array
 
 function notificationRecord(User $user, array $overrides = []): array
 {
+    if (array_key_exists('is_read', $overrides)) {
+        $overrides['is_read'] = DatabaseBoolean::value((bool) $overrides['is_read']);
+    }
+
     $payload = array_merge([
         'user_id' => $user->id,
         'title' => 'Transaksi Baru',
         'message' => 'Ada transaksi baru yang perlu dicek.',
-        'is_read' => false,
+        'is_read' => DatabaseBoolean::value(false),
         'created_at' => now(),
         'updated_at' => now(),
     ], $overrides);

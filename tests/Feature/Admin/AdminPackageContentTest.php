@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\DatabaseBoolean;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -23,7 +24,7 @@ test('TC_ADMIN_COURSE_001 admin berhasil menambah course atau paket', function (
     $this->assertDatabaseHas('packages', [
         'name' => 'Paket SNBT',
         'price' => '15000',
-        'popular' => true,
+        'popular' => DatabaseBoolean::value(true),
     ]);
 });
 
