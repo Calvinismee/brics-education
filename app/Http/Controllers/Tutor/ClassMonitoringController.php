@@ -106,6 +106,7 @@ class ClassMonitoringController extends Controller
             ->with('course:id,title')
             ->whereIn('course_id', $enrolledCourseIds)
             ->where('mentor_id', $user->id)
+            ->visibleToTutor()
             ->orderByDesc('start_time')
             ->take(6)
             ->get()
@@ -152,6 +153,7 @@ class ClassMonitoringController extends Controller
                     'sessions' => Schedule::query()
                         ->where('course_id', $enrollment->course_id)
                         ->where('mentor_id', $user->id)
+                        ->visibleToTutor()
                         ->count(),
                 ];
             }),
@@ -171,7 +173,9 @@ class ClassMonitoringController extends Controller
             ->withCount([
                 'materials',
                 'materials as approved_materials_count' => fn ($query) => $query->where('approval_status', 'approved'),
-                'schedules',
+                'schedules as tutor_schedules_count' => fn ($query) => $query
+                    ->where('mentor_id', $user->id)
+                    ->visibleToTutor(),
             ])
             ->whereIn('id', TutorCourseResolver::ids($user))
             ->orderBy('title')
@@ -195,6 +199,8 @@ class ClassMonitoringController extends Controller
             'weeklySchedule' => TutorCourseResolver::currentWeekScheduleLabel($user, $course->id),
             'nextSession' => Schedule::query()
                 ->where('course_id', $course->id)
+                ->where('mentor_id', $user->id)
+                ->visibleToTutor()
                 ->where('start_time', '>=', now())
                 ->orderBy('start_time')
                 ->value('start_time'),

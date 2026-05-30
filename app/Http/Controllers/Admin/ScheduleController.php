@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Enrollment;
+use App\Models\Notification;
 use App\Models\Schedule;
 use App\Models\User;
 use App\Support\AdminNotifier;
+use App\Support\DatabaseBoolean;
 use App\Support\TutorCourseResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,7 +28,7 @@ class ScheduleController extends Controller
             ->get();
         $courseTitles = $courses->pluck('title', 'id');
         $schedules = Schedule::query()
-            ->select('id', 'course_id', 'mentor_id', 'title', 'type', 'meeting_link', 'start_time', 'end_time')
+            ->select('id', 'course_id', 'mentor_id', 'title', 'type', 'audience', 'meeting_link', 'action_link', 'start_time', 'end_time')
             ->with(['course:id,title', 'mentor:id,name'])
             ->orderBy('start_time')
             ->get();
@@ -52,6 +55,7 @@ class ScheduleController extends Controller
             $dayName = $schedule->start_time instanceof \DateTimeInterface
                 ? $schedule->start_time->locale('id')->translatedFormat('l')
                 : ($scheduleDate ? Carbon::parse($scheduleDate)->locale('id')->translatedFormat('l') : '');
+            $type = $this->scheduleType($schedule);
 
             return [
                 'id' => $schedule->id,
@@ -59,14 +63,17 @@ class ScheduleController extends Controller
                 'course_id' => $schedule->course_id,
                 'class_title' => $schedule->title,
                 'tutor_id' => $schedule->mentor_id,
-                'tutor' => $schedule->mentor?->name ?? 'Tutor',
-                'type' => $this->scheduleType($schedule),
+                'tutor' => $schedule->mentor?->name ?? '-',
+                'type' => $type,
+                'audience' => $schedule->audience ?: Schedule::audienceForType($schedule->type),
                 'day' => $dayName,
                 'schedule_date' => $scheduleDate,
                 'start_time' => $startTime,
                 'end_time' => $endTime,
-                'time' => trim($startTime.' - '.$endTime),
+                'deadline_time' => $endTime,
+                'time' => $type === Schedule::TYPE_STUDENT_DEADLINE ? 'Deadline '.$endTime : trim($startTime.' - '.$endTime),
                 'meeting_link' => $schedule->meeting_link,
+                'action_link' => $schedule->action_link,
                 'status' => 'scheduled',
             ];
         });
@@ -116,12 +123,14 @@ class ScheduleController extends Controller
         $validated = $request->validate([
             'course_id' => ['nullable', 'integer', 'exists:courses,id'],
             'course' => ['nullable', 'string', 'max:255'],
-            'tutor_id' => ['required', 'integer', 'exists:users,id'],
-            'type' => ['required', Rule::in(Schedule::TYPES)],
+            'tutor_id' => ['nullable', 'integer', 'exists:users,id'],
+            'type' => ['required', Rule::in(Schedule::ADMIN_CREATABLE_TYPES)],
             'schedule_date' => ['required', 'date'],
-            'start_time' => ['required', 'date_format:H:i'],
-            'end_time' => ['required', 'date_format:H:i'],
+            'start_time' => ['nullable', 'required_unless:type,'.Schedule::TYPE_STUDENT_DEADLINE, 'date_format:H:i'],
+            'end_time' => ['nullable', 'required_unless:type,'.Schedule::TYPE_STUDENT_DEADLINE, 'date_format:H:i'],
+            'deadline_time' => ['nullable', 'required_if:type,'.Schedule::TYPE_STUDENT_DEADLINE, 'date_format:H:i'],
             'meeting_link' => ['nullable', 'url', 'max:1024'],
+            'action_link' => ['nullable', 'url', 'max:1024', 'required_if:type,'.Schedule::TYPE_TRYOUT],
         ]);
 
         $courseId = $this->resolveCourseId($validated);
@@ -132,6 +141,7 @@ class ScheduleController extends Controller
             $validated['tutor_id'] ?? null
         ));
         AdminNotifier::scheduleCreated($schedule);
+        $this->notifyStudentsAboutSchedule($schedule, 'created');
 
         return redirect()->route('admin.schedule')->with('success', 'Jadwal kelas berhasil ditambahkan.');
     }
@@ -144,9 +154,11 @@ class ScheduleController extends Controller
             'tutor_id' => ['nullable', 'integer', 'exists:users,id'],
             'type' => ['required', Rule::in(Schedule::TYPES)],
             'schedule_date' => ['required', 'date'],
-            'start_time' => ['required', 'date_format:H:i'],
-            'end_time' => ['required', 'date_format:H:i'],
+            'start_time' => ['nullable', 'required_unless:type,'.Schedule::TYPE_STUDENT_DEADLINE, 'date_format:H:i'],
+            'end_time' => ['nullable', 'required_unless:type,'.Schedule::TYPE_STUDENT_DEADLINE, 'date_format:H:i'],
+            'deadline_time' => ['nullable', 'required_if:type,'.Schedule::TYPE_STUDENT_DEADLINE, 'date_format:H:i'],
             'meeting_link' => ['nullable', 'url', 'max:1024'],
+            'action_link' => ['nullable', 'url', 'max:1024', 'required_if:type,'.Schedule::TYPE_TRYOUT, 'required_if:type,'.Schedule::TYPE_STUDENT_DEADLINE],
         ]);
 
         $courseId = $this->resolveCourseId($validated, $schedule->course_id ? (int) $schedule->course_id : null);
@@ -158,12 +170,14 @@ class ScheduleController extends Controller
             $mentorId
         ));
         AdminNotifier::scheduleUpdated($schedule->refresh());
+        $this->notifyStudentsAboutSchedule($schedule, 'updated');
 
         return redirect()->route('admin.schedule')->with('success', 'Jadwal kelas berhasil diperbarui.');
     }
 
     public function destroy(Schedule $schedule): RedirectResponse
     {
+        $this->notifyStudentsAboutSchedule($schedule, 'deleted');
         $schedule->delete();
 
         return redirect()->route('admin.schedule')->with('success', 'Jadwal kelas berhasil dihapus.');
@@ -171,8 +185,16 @@ class ScheduleController extends Controller
 
     private function buildPayload(array $validated, int $courseId, ?int $mentorId): array
     {
-        $startTime = Carbon::createFromFormat('Y-m-d H:i', $validated['schedule_date'].' '.$validated['start_time']);
-        $endTime = Carbon::createFromFormat('Y-m-d H:i', $validated['schedule_date'].' '.$validated['end_time']);
+        $type = $validated['type'] ?? Schedule::TYPE_LIVE;
+        $isStudentDeadline = $type === Schedule::TYPE_STUDENT_DEADLINE;
+        $startTime = Carbon::createFromFormat(
+            'Y-m-d H:i',
+            $validated['schedule_date'].' '.($isStudentDeadline ? '00:00' : $validated['start_time'])
+        );
+        $endTime = Carbon::createFromFormat(
+            'Y-m-d H:i',
+            $validated['schedule_date'].' '.($isStudentDeadline ? $validated['deadline_time'] : $validated['end_time'])
+        );
         $courseTitle = DB::table('courses')->where('id', $courseId)->value('title');
 
         if (! $courseTitle) {
@@ -181,9 +203,15 @@ class ScheduleController extends Controller
             ]);
         }
 
-        if ($endTime->lessThanOrEqualTo($startTime)) {
+        if (! $isStudentDeadline && $endTime->lessThanOrEqualTo($startTime)) {
             throw ValidationException::withMessages([
                 'end_time' => 'Jam selesai harus setelah jam mulai.',
+            ]);
+        }
+
+        if ($type !== Schedule::TYPE_TRYOUT && ! $mentorId) {
+            throw ValidationException::withMessages([
+                'tutor_id' => 'Tutor wajib dipilih untuk tipe jadwal ini.',
             ]);
         }
 
@@ -193,9 +221,13 @@ class ScheduleController extends Controller
             'course_id' => $courseId,
             'mentor_id' => $mentorId,
             'title' => $courseTitle,
-            'type' => $validated['type'] ?? 'live',
-            'meeting_link' => in_array($validated['type'] ?? 'live', Schedule::MEETING_TYPES, true) && filled($validated['meeting_link'] ?? null)
+            'type' => $type,
+            'audience' => Schedule::audienceForType($type),
+            'meeting_link' => Schedule::needsMeetingLink($type) && filled($validated['meeting_link'] ?? null)
                 ? $validated['meeting_link']
+                : null,
+            'action_link' => Schedule::needsActionLink($type) && filled($validated['action_link'] ?? null)
+                ? $validated['action_link']
                 : null,
             'start_time' => $startTime,
             'end_time' => $endTime,
@@ -267,10 +299,46 @@ class ScheduleController extends Controller
         $title = strtolower($schedule->title);
 
         return match (true) {
+            str_contains($title, 'tryout') => Schedule::TYPE_TRYOUT,
+            str_contains($title, 'tugas') => Schedule::TYPE_STUDENT_DEADLINE,
             str_contains($title, 'deadline') => 'deadline',
             str_contains($title, 'review') => 'review',
             str_contains($title, 'konsultasi') || str_contains($title, 'consult') => 'consultation',
             default => 'live',
         };
+    }
+
+    private function notifyStudentsAboutSchedule(Schedule $schedule, string $event): void
+    {
+        if (($schedule->audience ?: Schedule::audienceForType($schedule->type)) === Schedule::AUDIENCE_TUTOR) {
+            return;
+        }
+
+        $schedule->loadMissing('course:id,title');
+        $studentIds = Enrollment::query()
+            ->where('course_id', $schedule->course_id)
+            ->where('status', 'active')
+            ->pluck('user_id')
+            ->unique();
+        $typeLabel = match ($schedule->type) {
+            Schedule::TYPE_CONSULTATION => 'konsultasi',
+            Schedule::TYPE_STUDENT_DEADLINE => 'deadline tugas',
+            Schedule::TYPE_TRYOUT => 'tryout',
+            default => 'live class',
+        };
+        [$title, $verb] = match ($event) {
+            'updated' => ['Jadwal diperbarui', 'diperbarui'],
+            'deleted' => ['Jadwal dibatalkan', 'dibatalkan'],
+            default => ['Jadwal baru', 'ditambahkan'],
+        };
+
+        foreach ($studentIds as $studentId) {
+            Notification::create([
+                'user_id' => $studentId,
+                'title' => $title,
+                'message' => ucfirst($typeLabel).' '.$schedule->title.' untuk '.($schedule->course?->title ?? 'course UTBK').' telah '.$verb.'.',
+                'is_read' => DatabaseBoolean::value(false),
+            ]);
+        }
     }
 }

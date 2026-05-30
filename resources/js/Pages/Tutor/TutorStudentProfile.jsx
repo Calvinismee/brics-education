@@ -6,7 +6,6 @@ import {
   Calendar,
   CheckCircle,
   Clock,
-  ExternalLink,
   Mail,
   TrendingUp,
   User,
@@ -188,18 +187,6 @@ export default function TutorStudentProfile({
                       <Clock className="h-3.5 w-3.5" />
                       {schedule.date} - {schedule.time}
                     </p>
-                    {schedule.meeting_link && (
-                      <a
-                        href={schedule.meeting_link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white"
-                        style={{ background: "#691D1B", fontWeight: 800 }}
-                      >
-                        Link meeting
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    )}
                   </div>
                 ))}
 

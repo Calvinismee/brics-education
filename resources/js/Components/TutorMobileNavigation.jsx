@@ -45,7 +45,7 @@ export function TutorMobileDrawer({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 overflow-hidden lg:hidden" role="dialog" aria-modal="true">
       <button
         type="button"
         className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
@@ -53,7 +53,7 @@ export function TutorMobileDrawer({
         aria-label="Tutup menu tutor"
       />
 
-      <div className="relative h-dvh w-[min(21rem,92vw)] max-w-[calc(100vw-0.75rem)]">
+      <div className="relative h-dvh w-[min(21rem,92vw)] max-w-[calc(100vw-0.75rem)] shadow-2xl">
         <button
           type="button"
           onClick={onClose}

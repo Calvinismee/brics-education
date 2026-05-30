@@ -44,6 +44,7 @@ if (! function_exists('studentScheduleWeekPayload')) {
 
         $scheduleEvents = Schedule::with(['course.category', 'mentor'])
             ->whereIn('course_id', $courseIds)
+            ->visibleToStudent()
             ->whereBetween('start_time', [$weekStart, $weekEnd])
             ->orderBy('start_time')
             ->get()
@@ -51,6 +52,8 @@ if (! function_exists('studentScheduleWeekPayload')) {
                 $type = in_array($schedule->type, Schedule::TYPES, true)
                     ? $schedule->type
                     : match (true) {
+                        str_contains(strtolower($schedule->title), 'tryout') => Schedule::TYPE_TRYOUT,
+                        str_contains(strtolower($schedule->title), 'tugas') => Schedule::TYPE_STUDENT_DEADLINE,
                         str_contains(strtolower($schedule->title), 'deadline') => 'deadline',
                         str_contains(strtolower($schedule->title), 'review') => 'review',
                         str_contains(strtolower($schedule->title), 'konsultasi') || str_contains(strtolower($schedule->title), 'consult') => 'consultation',
@@ -62,14 +65,18 @@ if (! function_exists('studentScheduleWeekPayload')) {
                     'date' => $schedule->start_time?->locale('id')->translatedFormat('l, j F Y'),
                     'dateShort' => $schedule->start_time?->locale('id')->translatedFormat('D, j M'),
                     'dayKey' => $schedule->start_time?->toDateString(),
-                    'time' => $schedule->start_time?->format('H:i').' - '.$schedule->end_time?->format('H:i'),
+                    'time' => $type === Schedule::TYPE_STUDENT_DEADLINE
+                        ? 'Deadline '.$schedule->end_time?->format('H:i')
+                        : $schedule->start_time?->format('H:i').' - '.$schedule->end_time?->format('H:i'),
                     'title' => $schedule->title,
                     'course' => $schedule->course,
                     'course_id' => $schedule->course_id,
                     'mentor' => $schedule->mentor,
                     'mentor_name' => $schedule->mentor?->name,
                     'type' => $type,
+                    'audience' => $schedule->audience ?: Schedule::audienceForType($type),
                     'meeting_link' => $schedule->meeting_link,
+                    'action_link' => $schedule->action_link,
                     'start_time' => $schedule->start_time,
                     'end_time' => $schedule->end_time,
                     'status' => $schedule->end_time < now()
@@ -103,8 +110,8 @@ if (! function_exists('studentScheduleWeekPayload')) {
             'stats' => [
                 'totalThisWeek' => $scheduleEvents->count(),
                 'totalLive' => $scheduleEvents->where('type', 'live')->count(),
-                'totalDeadlines' => $scheduleEvents->where('type', 'deadline')->count(),
-                'totalReviews' => $scheduleEvents->where('type', 'review')->count(),
+                'totalDeadlines' => $scheduleEvents->where('type', Schedule::TYPE_STUDENT_DEADLINE)->count(),
+                'totalTryouts' => $scheduleEvents->where('type', Schedule::TYPE_TRYOUT)->count(),
                 'totalConsultations' => $scheduleEvents->where('type', 'consultation')->count(),
             ],
         ];
@@ -276,7 +283,6 @@ Route::get('/dashboard', function () {
 
     $activeCourseIds = $enrollments
         ->where('status', 'active')
-        ->whereNotNull('package_id')
         ->pluck('course_id');
 
     $schedulePayload = studentScheduleWeekPayload($activeCourseIds);

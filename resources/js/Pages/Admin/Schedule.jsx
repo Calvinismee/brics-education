@@ -9,20 +9,24 @@ import { showSuccessToast } from '@/utils/toast';
 const daysOfWeek = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
 const scheduleTypes = {
-    live: { label: 'Live Class', color: '#691D1B', bg: '#691D1B15', needsMeeting: true },
-    consultation: { label: 'Konsultasi', color: '#7c3aed', bg: '#7c3aed15', needsMeeting: true },
-    deadline: { label: 'Deadline', color: '#d4183d', bg: '#d4183d15', needsMeeting: false },
-    review: { label: 'Review', color: '#1a6b3c', bg: '#1a6b3c15', needsMeeting: false },
+    live: { label: 'Live Class', color: '#691D1B', bg: '#691D1B15', needsMeeting: true, needsActionLink: false },
+    consultation: { label: 'Konsultasi', color: '#7c3aed', bg: '#7c3aed15', needsMeeting: true, needsActionLink: false },
+    deadline: { label: 'Deadline Upload Tutor', color: '#d4183d', bg: '#d4183d15', needsMeeting: false, needsActionLink: false },
+    review: { label: 'Review Materi Tutor', color: '#1a6b3c', bg: '#1a6b3c15', needsMeeting: false, needsActionLink: false },
+    student_deadline: { label: 'Deadline Tugas Siswa', color: '#db2777', bg: '#db277715', needsMeeting: false, needsActionLink: true },
+    tryout: { label: 'Tryout Siswa', color: '#2563eb', bg: '#2563eb15', needsMeeting: false, needsActionLink: true },
 };
 
 const scheduleTypeOptions = [
     ['live', 'Live Class'],
     ['consultation', 'Konsultasi'],
-    ['deadline', 'Deadline'],
-    ['review', 'Review'],
+    ['deadline', 'Deadline Upload Materi Tutor'],
+    ['review', 'Review Materi Tutor'],
+    ['tryout', 'Tryout Siswa'],
 ];
 
 const scheduleTypeConfig = (type) => scheduleTypes[type] || scheduleTypes.live;
+const audienceLabel = (audience) => audience === 'student' ? 'Siswa' : audience === 'tutor' ? 'Tutor' : 'Tutor & Siswa';
 
 const formatMonthLabel = (date) => new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(date);
 
@@ -72,7 +76,9 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
         schedule_date: '',
         start_time: '08:00',
         end_time: '10:00',
+        deadline_time: '23:59',
         meeting_link: '',
+        action_link: '',
     });
     const selectedType = scheduleTypeConfig(form.data.type);
     const tutorCanTeachCourse = (tutor, courseId) => {
@@ -105,6 +111,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
             ...form.data,
             type: nextType,
             meeting_link: scheduleTypeConfig(nextType).needsMeeting ? form.data.meeting_link : '',
+            action_link: scheduleTypeConfig(nextType).needsActionLink ? form.data.action_link : '',
         });
     };
 
@@ -124,7 +131,9 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
             schedule_date: '',
             start_time: '08:00',
             end_time: '10:00',
+            deadline_time: '23:59',
             meeting_link: '',
+            action_link: '',
         });
         form.clearErrors();
         setShowForm(true);
@@ -139,7 +148,9 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
             schedule_date: formatDateKey(schedule.schedule_date),
             start_time: schedule.start_time || '08:00',
             end_time: schedule.end_time || '10:00',
+            deadline_time: schedule.deadline_time || schedule.end_time || '23:59',
             meeting_link: schedule.meeting_link || '',
+            action_link: schedule.action_link || '',
         });
         form.clearErrors();
         setShowForm(true);
@@ -268,7 +279,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-[#D8D7BE] bg-[#F7F2E7]">
-                                        {['Mata Pelajaran', 'Tipe', 'Tutor', 'Jadwal', 'Waktu', 'Link', 'Aksi'].map((heading) => (
+                                        {['Mata Pelajaran', 'Tipe', 'Target', 'Tutor', 'Jadwal', 'Waktu', 'Link', 'Aksi'].map((heading) => (
                                             <th
                                                 key={heading}
                                                 className="px-5 py-3 text-left text-xs uppercase tracking-wide text-gray-500"
@@ -297,6 +308,11 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                                 </span>
                                             </td>
                                             <td className="px-5 py-4">
+                                                <span className="inline-flex rounded-full bg-[#F7F2E7] px-3 py-1 text-xs font-semibold text-gray-600">
+                                                    {audienceLabel(schedule.audience)}
+                                                </span>
+                                            </td>
+                                            <td className="px-5 py-4">
                                                 <span className="text-sm text-gray-700">{schedule.tutor}</span>
                                             </td>
                                             <td className="px-5 py-4">
@@ -312,13 +328,13 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                                 </div>
                                             </td>
                                             <td className="px-5 py-4">
-                                                {schedule.meeting_link ? (
-                                                    <a href={schedule.meeting_link} target="_blank" rel="noreferrer" className="text-sm text-blue-600 underline">
-                                                        {schedule.meeting_link.length > 40 ? `${schedule.meeting_link.slice(0, 36)}...` : schedule.meeting_link}
+                                                {schedule.meeting_link || schedule.action_link ? (
+                                                    <a href={schedule.meeting_link || schedule.action_link} target="_blank" rel="noreferrer" className="text-sm text-blue-600 underline">
+                                                        {(schedule.meeting_link || schedule.action_link).length > 40 ? `${(schedule.meeting_link || schedule.action_link).slice(0, 36)}...` : (schedule.meeting_link || schedule.action_link)}
                                                     </a>
                                                 ) : (
                                                     <span className="text-sm text-gray-400">
-                                                        {scheduleTypeConfig(schedule.type).needsMeeting ? 'Belum ada link' : 'Tidak perlu link'}
+                                                        {scheduleTypeConfig(schedule.type).needsMeeting || scheduleTypeConfig(schedule.type).needsActionLink ? 'Belum ada link' : 'Tidak perlu link'}
                                                     </span>
                                                 )}
                                             </td>
@@ -412,7 +428,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                         <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
                             <div className="border-b border-[#F7F2E7] p-5" style={{ background: '#691D1B' }}>
                                 <h3 className="font-bold text-white">{editingScheduleId ? 'Edit Jadwal Kelas' : 'Tambah Jadwal Kelas'}</h3>
-                                <p className="mt-1 text-xs text-white/70">Isi kelas, tutor, tipe jadwal, tanggal, jam, dan link pertemuan jika diperlukan.</p>
+                                <p className="mt-1 text-xs text-white/70">Isi course, target jadwal, tanggal, jam, serta link meeting atau tautan aksi jika diperlukan.</p>
                             </div>
 
                             <form onSubmit={handleSubmit} className="flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
@@ -445,7 +461,11 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                     <div>
                                         <label className="mb-2 block text-sm font-semibold text-gray-700">Tutor</label>
                                         <p className="mb-2 text-xs text-gray-500">
-                                            {editingScheduleId ? 'Tutor dikunci saat edit jadwal.' : 'Pilih tutor pengampu untuk jadwal ini.'}
+                                            {editingScheduleId
+                                                ? 'Tutor dikunci saat edit jadwal.'
+                                                : form.data.type === 'tryout'
+                                                    ? 'Tutor tidak wajib dipilih untuk tryout siswa.'
+                                                    : 'Pilih tutor pengampu untuk jadwal ini.'}
                                         </p>
                                         {editingScheduleId ? (
                                             <div className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm text-gray-700">
@@ -458,7 +478,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                                     onChange={(event) => form.setData('tutor_id', event.target.value)}
                                                     className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
                                                 >
-                                                    <option value="">Pilih tutor</option>
+                                                    <option value="">{form.data.type === 'tryout' ? 'Tanpa tutor' : 'Pilih tutor'}</option>
                                                     {availableTutors.map((tutor) => (
                                                         <option key={tutor.id} value={tutor.id}>
                                                             {tutor.name}
@@ -481,7 +501,10 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                             onChange={handleTypeChange}
                                             className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
                                         >
-                                            {scheduleTypeOptions.map(([value, label]) => (
+                                            {(editingScheduleId && form.data.type === 'student_deadline'
+                                                ? [...scheduleTypeOptions, ['student_deadline', 'Deadline Tugas Siswa']]
+                                                : scheduleTypeOptions
+                                            ).map(([value, label]) => (
                                                 <option key={value} value={value}>
                                                     {label}
                                                 </option>
@@ -500,27 +523,39 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                {form.data.type === 'student_deadline' ? (
                                     <div>
-                                        <label className="mb-2 block text-sm font-semibold text-gray-700">Jam Mulai</label>
+                                        <label className="mb-2 block text-sm font-semibold text-gray-700">Jam Deadline</label>
                                         <input
-                                            value={form.data.start_time}
-                                            onChange={(event) => form.setData('start_time', event.target.value)}
+                                            value={form.data.deadline_time}
+                                            onChange={(event) => form.setData('deadline_time', event.target.value)}
                                             type="time"
                                             className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-gray-700">Jam Selesai</label>
-                                        <input
-                                            value={form.data.end_time}
-                                            onChange={(event) => form.setData('end_time', event.target.value)}
-                                            type="time"
-                                            min={form.data.start_time || undefined}
-                                            className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
-                                        />
+                                ) : (
+                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                        <div>
+                                            <label className="mb-2 block text-sm font-semibold text-gray-700">Jam Mulai</label>
+                                            <input
+                                                value={form.data.start_time}
+                                                onChange={(event) => form.setData('start_time', event.target.value)}
+                                                type="time"
+                                                className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="mb-2 block text-sm font-semibold text-gray-700">Jam Selesai</label>
+                                            <input
+                                                value={form.data.end_time}
+                                                onChange={(event) => form.setData('end_time', event.target.value)}
+                                                type="time"
+                                                min={form.data.start_time || undefined}
+                                                className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
+                                            />
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
                                 {selectedType.needsMeeting && (
                                     <div>
@@ -531,6 +566,21 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                             type="url"
                                             className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
                                             placeholder="https://zoom.us/j/123..."
+                                        />
+                                    </div>
+                                )}
+
+                                {selectedType.needsActionLink && (
+                                    <div>
+                                        <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                            {form.data.type === 'tryout' ? 'Link Platform Tryout' : 'Link Pengumpulan Tugas'}
+                                        </label>
+                                        <input
+                                            value={form.data.action_link}
+                                            onChange={(event) => form.setData('action_link', event.target.value)}
+                                            type="url"
+                                            className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
+                                            placeholder={form.data.type === 'tryout' ? 'https://platform-tryout.example/...' : 'https://forms.gle/...'}
                                         />
                                     </div>
                                 )}
