@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { Toaster } from './Components/ui/sonner.tsx';
 import { IndeterminateProgressBar, Spinner, useStagedLoading } from './Components/ui/LoadingStates.jsx';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'BRICS Education';
 
 const bricsRuntime = (globalThis.__bricsRuntime ??= {
     appRoot: null,
