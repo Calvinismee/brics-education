@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Package;
+use App\Models\Schedule;
 use App\Models\User;
 use App\Support\DatabaseBoolean;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -104,6 +105,56 @@ function studentUser(array $attributes = []): User
 function tutorUser(array $attributes = []): User
 {
     return userWithRoleForTest('tutor', $attributes);
+}
+
+function tutorCourseScenario(array $courseOverrides = [], array $tutorOverrides = []): array
+{
+    $course = courseRecord(array_merge([
+        'title' => 'Penalaran Umum',
+        'status' => 'active',
+    ], $courseOverrides));
+
+    $tutor = tutorUser(array_merge([
+        'name' => 'Fajar Tutor',
+        'email' => 'tutor@gmail.com',
+        'password' => Hash::make('password123'),
+        'mentor_course_id' => $course['id'],
+    ], $tutorOverrides));
+
+    return [$course, $tutor];
+}
+
+function activeEnrollmentForTutorTest($student, array $course): int
+{
+    return DB::table('enrollments')->insertGetId([
+        'user_id' => $student->id,
+        'course_id' => $course['id'],
+        'status' => 'active',
+        'enrolled_at' => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+}
+
+function tutorScheduleForTest($tutor, array $course, array $overrides = []): int
+{
+    $start = now('Asia/Jakarta')->startOfWeek()->addDays(2)->setTime(9, 0);
+    $end = $start->copy()->addMinutes(90);
+
+    return DB::table('schedules')->insertGetId(array_merge([
+        'course_id' => $course['id'],
+        'mentor_id' => $tutor->id,
+        'title' => 'Live Class Penalaran Umum',
+        'type' => Schedule::TYPE_LIVE,
+        'audience' => Schedule::AUDIENCE_SHARED,
+        'start_time' => $start->format('Y-m-d H:i:s'),
+        'end_time' => $end->format('Y-m-d H:i:s'),
+        'meeting_link' => 'https://meet.google.com/abc-defg-hij',
+        'action_link' => null,
+        'started_at' => null,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ], $overrides));
 }
 
 function courseRecord(array $overrides = []): array

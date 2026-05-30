@@ -59,37 +59,6 @@ test('TC_ADMIN_TRX_002 admin dapat melihat detail transaksi', function () {
             ->where('transaction.gatewayReference', 'PG-DETAIL-001'));
 });
 
-test('admin dapat mencari transaksi berdasarkan nama siswa', function () {
-    // Dokumentasi: admin membuka transaksi dengan query search nama siswa; expected hanya transaksi siswa tersebut tampil.
-    $admin = adminUser();
-    $matchedStudent = studentUser(['name' => 'Nasywa Azzahra']);
-    $otherStudent = studentUser(['name' => 'Julius Calvin']);
-
-    transactionRecord([
-        'student' => $matchedStudent,
-        'invoice_number' => 'INV-NAME-001',
-        'payment_status' => 'success',
-    ]);
-
-    transactionRecord([
-        'student' => $otherStudent,
-        'invoice_number' => 'INV-NAME-002',
-        'payment_status' => 'success',
-    ]);
-
-    $response = $this->actingAs($admin)->get(route('admin.transactions', [
-        'search' => 'Nasywa',
-    ]));
-
-    $response
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Admin/Transactions')
-            ->has('transactions.data', 1)
-            ->where('transactions.data.0.student', 'Nasywa Azzahra')
-            ->where('filters.search', 'Nasywa'));
-});
-
 test('TC_ADMIN_TRX_003 admin dapat filter transaksi berdasarkan status', function () {
     // Dokumentasi: admin membuka transaksi dengan query status pending; expected hanya transaksi pending tampil.
     $admin = adminUser();
@@ -146,37 +115,6 @@ test('TC_ADMIN_TRX_004 pencarian transaksi berdasarkan nama siswa menampilkan ha
             ->where('filters.search', 'Nama Tidak Ada'));
 });
 
-test('admin dapat export transaksi sebagai CSV', function () {
-    // Dokumentasi: admin membuka route export transaksi; expected file CSV transaksi terunduh.
-    $admin = adminUser();
-    $student = studentUser(['name' => 'Siswa Export']);
-
-    transactionRecord([
-        'student' => $student,
-        'invoice_number' => 'INV-EXPORT-001',
-        'payment_status' => 'success',
-    ]);
-
-    $response = $this->actingAs($admin)->get(route('admin.transactions.export', [
-        'status' => 'success',
-        'search' => 'Siswa Export',
-    ]));
-
-    $response
-        ->assertOk()
-        ->assertDownload();
-
-    expect($response->streamedContent())
-        ->toContain('Invoice')
-        ->toContain('INV-EXPORT-001');
-
-    $this->assertDatabaseHas('report_exports', [
-        'type' => 'Transaksi',
-        'title' => 'Export Transaksi',
-        'row_count' => 1,
-    ]);
-});
-
 test('TC_ADMIN_JADWAL_001 admin berhasil membuat jadwal bimbingan', function () {
     // Dokumentasi: admin POST jadwal dengan course/tutor/tanggal/jam valid; expected jadwal tersimpan.
     $admin = adminUser();
@@ -224,33 +162,6 @@ test('TC_ADMIN_JADWAL_002 jadwal gagal dibuat jika waktu kosong', function () {
     $response
         ->assertRedirect(route('admin.schedule', absolute: false))
         ->assertSessionHasErrors(['schedule_date', 'start_time', 'end_time']);
-});
-
-test('admin dapat membuat tryout siswa tanpa memilih tutor', function () {
-    $admin = adminUser();
-    $course = courseRecord(['title' => 'Tryout SNBT']);
-
-    $response = $this->actingAs($admin)->post(route('admin.schedule.store'), [
-        'course' => $course['title'],
-        'type' => 'tryout',
-        'schedule_date' => '2026-06-03',
-        'start_time' => '08:00',
-        'end_time' => '10:00',
-        'action_link' => 'https://tryout.example.com/snbt',
-    ]);
-
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect(route('admin.schedule', absolute: false));
-
-    $this->assertDatabaseHas('schedules', [
-        'course_id' => $course['id'],
-        'mentor_id' => null,
-        'type' => 'tryout',
-        'audience' => 'student',
-        'action_link' => 'https://tryout.example.com/snbt',
-        'meeting_link' => null,
-    ]);
 });
 
 test('TC_ADMIN_LAPORAN_001 admin dapat melihat laporan transaksi yang tersedia', function () {

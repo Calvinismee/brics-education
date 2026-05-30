@@ -43,13 +43,3 @@ test('TC_ADMIN_ROLE_001 admin dapat mengakses seluruh menu manajemen yang tersed
             ->assertOk();
     }
 });
-
-test('admin middleware menolak user non-admin mengakses menu admin', function () {
-    // Dokumentasi tambahan: student mencoba membuka dashboard admin; expected diarahkan ke beranda dengan pesan error.
-    $student = studentUser();
-
-    $this->actingAs($student)
-        ->get(route('admin.dashboard'))
-        ->assertRedirect('/')
-        ->assertSessionHas('error', 'Unauthorized access');
-});

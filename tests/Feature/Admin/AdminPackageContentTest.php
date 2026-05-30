@@ -76,6 +76,30 @@ test('TC_ADMIN_COURSE_003 admin berhasil mengubah data course atau paket', funct
     ]);
 });
 
+test('TC_ADMIN_COURSE_004 course nonaktif tidak ditampilkan sebagai course yang dapat dibeli', function () {
+    $activeCourse = courseRecord([
+        'title' => 'Course Aktif',
+        'status' => 'active',
+    ]);
+    $inactiveCourse = courseRecord([
+        'title' => 'Course Nonaktif',
+        'status' => 'inactive',
+    ]);
+
+    packageRecord([
+        'name' => 'Paket Campuran',
+        'courses' => [$activeCourse, $inactiveCourse],
+    ]);
+
+    $this->get('/')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('LandingPage')
+            ->has('packages', 1)
+            ->where('packages.0.courses.0.title', 'Course Aktif')
+            ->missing('packages.0.courses.1'));
+});
+
 test('TC_ADMIN_MATERI_001 admin dapat melihat materi yang diunggah tutor', function () {
     // Dokumentasi: admin membuka halaman validasi konten; expected materi pending tampil sebelum materi yang sudah direview.
     $admin = adminUser();
