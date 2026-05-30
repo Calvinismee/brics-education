@@ -6,7 +6,6 @@ import {
   Calendar,
   CheckCircle,
   Clock,
-  ExternalLink,
   History,
   Trash2,
   Users,
@@ -140,17 +139,6 @@ export default function TutorHistory({
                       </div>
 
                       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap lg:justify-end">
-                        {item.meeting_link && (
-                          <a
-                            href={item.meeting_link}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-[#D8D7BE] px-4 py-2 text-sm text-gray-600 hover:bg-[#F7F2E7]"
-                          >
-                            Link sesi
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        )}
                         <Link
                           href={`/tutor/classes?course_id=${item.course_id}`}
                           className="inline-flex min-h-10 items-center justify-center rounded-xl px-4 py-2 text-sm text-white hover:bg-[#4A1412]"

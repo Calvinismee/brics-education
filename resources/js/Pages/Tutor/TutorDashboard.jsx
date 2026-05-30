@@ -7,7 +7,7 @@ import {
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
 import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const fallbackTutorClasses = [
   { id: 0, name: "Penalaran Umum", students: 24, progress: 75, sessions: 8 },
@@ -53,6 +53,12 @@ export function TutorDashboard({
   const tutorName = user?.name ?? "Tutor UTBK";
   const tutorInitials = initialsFor(tutorName);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setCurrentTime(new Date()), 30000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const todaySchedule = asArray(serverTodaySchedule);
   const notifications = asArray(serverNotifications).map((notification) => ({
@@ -170,7 +176,8 @@ export function TutorDashboard({
                     <p className="mt-1 text-xs text-gray-400">Jadwal akan muncul otomatis saat ada sesi pada tanggal hari ini.</p>
                   </div>
                 ) : todaySchedule.map((s) => {
-                  const style = statusStyle(s.status);
+                  const completed = s.status === "completed" || new Date(s.end_time).getTime() <= currentTime.getTime();
+                  const style = statusStyle(completed ? "completed" : s.status);
                   const supportsMeeting = s.type === "live" || s.type === "consultation";
                   const typeLabel = s.type === "consultation" ? "Konsultasi" : s.type === "deadline" ? "Deadline" : s.type === "review" ? "Review" : "Live Class";
                   return (
@@ -192,7 +199,7 @@ export function TutorDashboard({
                       >
                         {style.label}
                       </span>
-                      {supportsMeeting && s.meeting_link && s.status !== "completed" ? (
+                      {supportsMeeting && s.meeting_link && !completed ? (
                         <a
                           href={s.start_session_url || `/tutor/schedule/${s.id}/start`}
                           target="_blank"
@@ -204,14 +211,19 @@ export function TutorDashboard({
                           Mulai
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
+                      ) : completed ? (
+                        <span className="inline-flex min-h-10 w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-500 sm:w-auto">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          Selesai
+                        </span>
                       ) : supportsMeeting ? (
                         <Link
                           href="/tutor/schedule"
                           className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-gray-500 transition hover:bg-[#F7F2E7] hover:text-[#691D1B] sm:w-auto"
-                          title={s.status === "completed" ? "Sesi ini sudah berakhir" : "Tambahkan link meeting dari halaman jadwal"}
+                          title="Tambahkan link meeting dari halaman jadwal"
                         >
                           <Video className="w-3.5 h-3.5" />
-                          {s.status === "completed" ? "Selesai" : "Tambah Link"}
+                          Tambah Link
                         </Link>
                       ) : (
                         <Link
@@ -310,16 +322,6 @@ export function TutorDashboard({
                       </div>
                     </div>
                     <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-                      {h.meeting_link && (
-                        <a
-                          href={h.meeting_link}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[#D8D7BE] px-3 py-2 text-xs text-gray-600 hover:bg-[#F7F2E7]"
-                        >
-                          Link sesi
-                        </a>
-                      )}
                       <Link
                         href={classDetailHref(h.course, h.course_id)}
                         className="inline-flex min-h-10 items-center justify-center rounded-lg px-3 py-2 text-xs text-white hover:bg-[#4A1412]"

@@ -33,7 +33,9 @@ class DashboardController extends Controller
             ->withCount([
                 'materials',
                 'materials as approved_materials_count' => fn ($query) => $query->where('approval_status', 'approved'),
-                'schedules',
+                'schedules as tutor_schedules_count' => fn ($query) => $query
+                    ->where('mentor_id', $user->id)
+                    ->visibleToTutor(),
             ])
             ->whereIn('id', $courseIds)
             ->orderBy('title')
@@ -48,7 +50,7 @@ class DashboardController extends Controller
                     ->where('status', 'active')
                     ->count(),
                 'weeklySchedule' => TutorCourseResolver::currentWeekScheduleLabel($user, $course->id),
-                'sessions' => $course->schedules_count,
+                'sessions' => $course->tutor_schedules_count,
             ]);
 
         $teachingHistory = $this->teachingHistoryQuery($user, $courseIds)
@@ -60,6 +62,7 @@ class DashboardController extends Controller
             ->with('course:id,title')
             ->where('mentor_id', $user->id)
             ->whereIn('course_id', $courseIds)
+            ->visibleToTutor()
             ->whereDate('start_time', Carbon::today('Asia/Jakarta')->toDateString())
             ->orderBy('start_time')
             ->get()
@@ -73,8 +76,10 @@ class DashboardController extends Controller
                     ->count(),
                 'status' => $this->scheduleStatus($schedule),
                 'type' => $this->eventType($schedule),
+                'audience' => $schedule->audience ?: Schedule::audienceForType($schedule->type),
                 'meeting_link' => $schedule->meeting_link,
                 'started_at' => $schedule->started_at,
+                'end_time' => $schedule->end_time,
                 'start_session_url' => route('tutor.schedule.start', $schedule),
             ]);
 
@@ -109,6 +114,7 @@ class DashboardController extends Controller
                 'upcomingSessions' => Schedule::query()
                     ->where('mentor_id', $user->id)
                     ->whereIn('course_id', $courseIds)
+                    ->visibleToTutor()
                     ->where('start_time', '>=', Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'))
                     ->count(),
                 'completedSessions' => $this->teachingHistoryQuery($user, $courseIds)->count(),
@@ -344,6 +350,8 @@ class DashboardController extends Controller
         $title = strtolower($schedule->title);
 
         return match (true) {
+            str_contains($title, 'tryout') => Schedule::TYPE_TRYOUT,
+            str_contains($title, 'tugas') => Schedule::TYPE_STUDENT_DEADLINE,
             str_contains($title, 'deadline') => 'deadline',
             str_contains($title, 'review') => 'review',
             str_contains($title, 'konsultasi') || str_contains($title, 'consult') => 'consultation',

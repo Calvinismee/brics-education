@@ -110,6 +110,7 @@ class TutorCourseResolver
         $labels = Schedule::query()
             ->where('mentor_id', $user->id)
             ->where('course_id', $courseId)
+            ->visibleToTutor()
             ->whereBetween('start_time', [$weekStart, $weekEnd])
             ->orderBy('start_time')
             ->get(['start_time', 'end_time'])

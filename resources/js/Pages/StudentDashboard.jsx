@@ -155,11 +155,32 @@ function scheduleType(schedule) {
   const title = String(schedule?.title || '').toLowerCase();
 
   if (schedule?.type) return schedule.type;
-  if (title.includes('deadline')) return 'deadline';
-  if (title.includes('review')) return 'review';
+  if (title.includes('tryout')) return 'tryout';
+  if (title.includes('deadline') || title.includes('tugas')) return 'student_deadline';
   if (title.includes('konsultasi') || title.includes('consult')) return 'consultation';
   return 'live';
 }
+
+const studentScheduleTypes = {
+  live: { label: 'Live Class', color: '#691D1B', bg: '#F8EDED', icon: Video, linkLabel: 'Bergabung', needsMeeting: true, location: 'Zoom Meeting' },
+  consultation: { label: 'Konsultasi', color: '#0F7A45', bg: '#EAF7F0', icon: FileText, linkLabel: 'Bergabung', needsMeeting: true, location: 'Online Meeting' },
+  student_deadline: { label: 'Deadline Tugas', color: '#DB2777', bg: '#FCE7F3', icon: Clock, linkLabel: 'Kumpulkan Tugas', needsActionLink: true, location: 'Link Pengumpulan' },
+  tryout: { label: 'Tryout', color: '#2563EB', bg: '#DBEAFE', icon: ClipboardList, linkLabel: 'Buka Tryout', needsActionLink: true, location: 'Platform Tryout' },
+};
+
+const studentScheduleConfig = (schedule) => studentScheduleTypes[scheduleType(schedule)] || studentScheduleTypes.live;
+const isScheduleCompleted = (schedule, now = new Date()) => {
+  if (schedule?.status === 'completed') return true;
+
+  const endTime = parseScheduleDate(schedule?.end_time);
+  return endTime ? endTime.getTime() <= now.getTime() : false;
+};
+const studentScheduleLink = (schedule, now = new Date()) => {
+  if (isScheduleCompleted(schedule, now)) return null;
+
+  const config = studentScheduleConfig(schedule);
+  return config.needsMeeting ? schedule.meeting_link : schedule.action_link;
+};
 
 const dashboardTabs = ['beranda', 'katalog', 'subtes', 'jadwal', 'profil'];
 
@@ -196,7 +217,13 @@ export default function StudentDashboard({
   });
   const [progressMap, setProgressMap] = useState({});
   const [calendarNow, setCalendarNow] = useState(() => new Date());
+  const [scheduleNow, setScheduleNow] = useState(() => new Date());
   const [selectedScheduleDateKey, setSelectedScheduleDateKey] = useState(null);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setScheduleNow(new Date()), 30000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     fetch('/student/progress')
@@ -1173,14 +1200,17 @@ export default function StudentDashboard({
           </div>
         ) : (
           <div className="space-y-3 p-4 sm:p-5">
-            {previewSchedules.map((schedule) => (
-              <div
-                key={schedule.id}
-                className="rounded-2xl border border-[#EFE7D3] bg-[#FDFCF8] p-4"
-              >
+            {previewSchedules.map((schedule) => {
+              const config = studentScheduleConfig(schedule);
+              const targetLink = studentScheduleLink(schedule, scheduleNow);
+              const completed = isScheduleCompleted(schedule, scheduleNow);
+              const ScheduleIcon = config.icon;
+
+              return (
+              <div key={schedule.id} className="rounded-2xl border border-[#EFE7D3] bg-[#FDFCF8] p-4">
                 <div className="flex min-w-0 gap-3">
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#F8EDED] text-[#691D1B]">
-                    <Video className="w-5 h-5" />
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: config.bg, color: config.color }}>
+                    <ScheduleIcon className="w-5 h-5" />
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -1188,8 +1218,8 @@ export default function StudentDashboard({
                       <p className="break-words text-sm text-gray-900" style={{ fontWeight: 900 }}>
                         {schedule.title}
                       </p>
-                      <span className="rounded-full bg-[#F8EDED] px-2.5 py-1 text-[11px] font-bold text-[#691D1B]">
-                        Live Class
+                      <span className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: config.bg, color: config.color }}>
+                        {config.label}
                       </span>
                     </div>
                     <p className="break-words text-xs text-gray-500 sm:text-sm">
@@ -1199,24 +1229,25 @@ export default function StudentDashboard({
                   </div>
                 </div>
 
-                {schedule.meeting_link ? (
+                {targetLink ? (
                   <a
-                    href={schedule.meeting_link}
+                    href={targetLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs text-white hover:bg-[#4A1412]"
                     style={{ background: '#691D1B', fontWeight: 900 }}
                   >
-                    Join
+                    {config.linkLabel}
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 ) : (
                   <span className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-gray-100 px-3 py-2 text-xs font-bold text-gray-400">
-                    Belum ada link
+                    {completed ? 'Jadwal sudah berakhir' : 'Belum ada link'}
                   </span>
                 )}
               </div>
-            ))}
+              );
+            })}
 
             <div className="pt-1">
               <button
@@ -1572,34 +1603,24 @@ export default function StudentDashboard({
             </div>
           ) : (
             selectedDaySchedules.map((schedule) => {
-              const type = scheduleType(schedule);
-              const isConsultation = type === 'consultation';
-              const isDeadline = type === 'deadline';
-              const isReview = type === 'review';
-              const scheduleColor = isConsultation
-                ? '#0F7A45'
-                : isDeadline
-                  ? '#DB2777'
-                  : isReview
-                    ? '#7C3AED'
-                    : '#691D1B';
-              const scheduleBg = isConsultation ? '#EAF7F0' : isDeadline ? '#FCE7F3' : isReview ? '#F3E8FF' : '#F8EDED';
-              const ScheduleIcon = isConsultation ? FileText : isDeadline ? Clock : isReview ? ClipboardList : Video;
-              const scheduleLabel = isConsultation ? 'Konsultasi' : isDeadline ? 'Deadline' : isReview ? 'Tryout' : 'Live Class';
+              const config = studentScheduleConfig(schedule);
+              const targetLink = studentScheduleLink(schedule, scheduleNow);
+              const completed = isScheduleCompleted(schedule, scheduleNow);
+              const ScheduleIcon = config.icon;
 
               return (
                 <div
                   key={schedule.id}
                   className="grid grid-cols-[auto_1fr] gap-3 rounded-2xl border border-[#D8D7BE] bg-white p-4 shadow-sm sm:p-5 lg:grid-cols-[auto_1fr_auto] lg:items-center"
                   style={{
-                    borderLeft: `5px solid ${scheduleColor}`,
+                    borderLeft: `5px solid ${config.color}`,
                   }}
                 >
                   <div
                     className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12"
                     style={{
-                      background: scheduleBg,
-                      color: scheduleColor,
+                      background: config.bg,
+                      color: config.color,
                     }}
                   >
                     <ScheduleIcon className="w-5 h-5" />
@@ -1614,17 +1635,17 @@ export default function StudentDashboard({
                       <span
                         className="px-2.5 py-1 rounded-full text-xs"
                         style={{
-                          background: scheduleBg,
-                          color: scheduleColor,
+                          background: config.bg,
+                          color: config.color,
                           fontWeight: 900,
                         }}
                       >
-                        {scheduleLabel}
+                        {config.label}
                       </span>
                     </div>
 
                     <p className="mb-1 break-words text-sm text-gray-500">
-                      {schedule.course?.title || currentPackageName} • {schedule.mentor?.name || 'Tutor Brics'}
+                      {schedule.course?.title || currentPackageName} • {schedule.mentor?.name || (scheduleType(schedule) === 'tryout' ? 'BRICS Education' : 'Tutor Brics')}
                     </p>
 
                     <p className="break-words text-sm text-gray-400">
@@ -1632,26 +1653,26 @@ export default function StudentDashboard({
                       {schedule.time || `${formatTime(schedule.start_time)} - ${formatTime(schedule.end_time)}`}
                       {' '}
                       <span className="mx-1">•</span>
-                      Zoom Meeting
+                      {config.location}
                     </p>
                   </div>
 
-                  {schedule.meeting_link ? (
+                  {targetLink ? (
                     <a
-                      href={schedule.meeting_link}
+                      href={targetLink}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="col-span-2 min-h-11 w-full rounded-xl px-5 py-2.5 text-center text-sm text-white lg:col-span-1 lg:w-auto lg:flex-shrink-0"
                       style={{
-                        background: scheduleColor,
+                        background: config.color,
                         fontWeight: 900,
                       }}
                     >
-                      Bergabung
+                      {config.linkLabel}
                     </a>
                   ) : (
                     <span className="col-span-2 min-h-11 w-full rounded-xl bg-gray-100 px-5 py-2.5 text-center text-sm text-gray-500 lg:col-span-1 lg:w-auto lg:flex-shrink-0">
-                      Link belum tersedia
+                      {completed ? 'Jadwal sudah berakhir' : 'Link belum tersedia'}
                     </span>
                   )}
                 </div>
@@ -1682,14 +1703,14 @@ export default function StudentDashboard({
 
             <div className="rounded-xl p-3 text-center sm:p-4" style={{ background: '#F7F2E7' }}>
               <p className="text-xl text-pink-600 sm:text-2xl" style={{ fontWeight: 900 }}>
-                {scheduleStats.totalDeadlines ?? schedulesThisWeek.filter((schedule) => scheduleType(schedule) === 'deadline').length}
+                {scheduleStats.totalDeadlines ?? schedulesThisWeek.filter((schedule) => scheduleType(schedule) === 'student_deadline').length}
               </p>
               <p className="text-[11px] leading-tight text-gray-500 sm:text-sm">Deadline</p>
             </div>
 
             <div className="rounded-xl p-3 text-center sm:p-4" style={{ background: '#F7F2E7' }}>
               <p className="text-xl text-purple-600 sm:text-2xl" style={{ fontWeight: 900 }}>
-                {scheduleStats.totalReviews ?? schedulesThisWeek.filter((schedule) => scheduleType(schedule) === 'review').length}
+                {scheduleStats.totalTryouts ?? schedulesThisWeek.filter((schedule) => scheduleType(schedule) === 'tryout').length}
               </p>
               <p className="text-[11px] leading-tight text-gray-500 sm:text-sm">Tryout</p>
             </div>

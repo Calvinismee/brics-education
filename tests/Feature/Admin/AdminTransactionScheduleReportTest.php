@@ -226,6 +226,33 @@ test('TC_ADMIN_JADWAL_002 jadwal gagal dibuat jika waktu kosong', function () {
         ->assertSessionHasErrors(['schedule_date', 'start_time', 'end_time']);
 });
 
+test('admin dapat membuat tryout siswa tanpa memilih tutor', function () {
+    $admin = adminUser();
+    $course = courseRecord(['title' => 'Tryout SNBT']);
+
+    $response = $this->actingAs($admin)->post(route('admin.schedule.store'), [
+        'course' => $course['title'],
+        'type' => 'tryout',
+        'schedule_date' => '2026-06-03',
+        'start_time' => '08:00',
+        'end_time' => '10:00',
+        'action_link' => 'https://tryout.example.com/snbt',
+    ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('admin.schedule', absolute: false));
+
+    $this->assertDatabaseHas('schedules', [
+        'course_id' => $course['id'],
+        'mentor_id' => null,
+        'type' => 'tryout',
+        'audience' => 'student',
+        'action_link' => 'https://tryout.example.com/snbt',
+        'meeting_link' => null,
+    ]);
+});
+
 test('TC_ADMIN_LAPORAN_001 admin dapat melihat laporan transaksi yang tersedia', function () {
     // Dokumentasi: admin membuka route laporan/export yang tersedia; expected halaman laporan export ter-render.
     $admin = adminUser();

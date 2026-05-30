@@ -255,6 +255,7 @@ class TutorDemoDataSeeder extends Seeder
                     [
                         'title' => $row['title'],
                         'type' => 'live',
+                        'audience' => 'shared',
                         'meeting_link' => null,
                         'started_at' => null,
                         'end_time' => $end,
@@ -288,6 +289,7 @@ class TutorDemoDataSeeder extends Seeder
                     [
                         'title' => $row['title'],
                         'type' => 'live',
+                        'audience' => 'shared',
                         'meeting_link' => $row['link'],
                         'started_at' => $start->copy()->addMinutes(5),
                         'end_time' => $end,

@@ -1,4 +1,5 @@
 import { Link, router } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 import BricsLogo from '@/Components/BricsLogo';
 import {
   ArrowLeft,
@@ -45,15 +46,28 @@ function formatTime(dateString) {
 }
 
 const scheduleTypes = {
-  live: { label: 'Live Class', color: '#691D1B', bg: '#691D1B15', needsMeeting: true },
-  consultation: { label: 'Konsultasi', color: '#7c3aed', bg: '#7c3aed15', needsMeeting: true },
-  deadline: { label: 'Deadline', color: '#d4183d', bg: '#d4183d15', needsMeeting: false },
-  review: { label: 'Review', color: '#1a6b3c', bg: '#1a6b3c15', needsMeeting: false },
+  live: { label: 'Live Class', color: '#691D1B', bg: '#691D1B15', needsMeeting: true, linkLabel: 'Join Meeting' },
+  consultation: { label: 'Konsultasi', color: '#7c3aed', bg: '#7c3aed15', needsMeeting: true, linkLabel: 'Join Konsultasi' },
+  student_deadline: { label: 'Deadline Tugas', color: '#db2777', bg: '#db277715', needsActionLink: true, linkLabel: 'Kumpulkan Tugas' },
+  tryout: { label: 'Tryout', color: '#2563eb', bg: '#2563eb15', needsActionLink: true, linkLabel: 'Buka Tryout' },
 };
 
 const scheduleTypeConfig = (type) => scheduleTypes[type] || scheduleTypes.live;
+const isScheduleCompleted = (schedule, now = new Date()) => {
+  if (schedule?.status === 'completed') return true;
+
+  const endTime = new Date(schedule?.end_time);
+  return !Number.isNaN(endTime.getTime()) && endTime.getTime() <= now.getTime();
+};
 
 export default function StudentSchedules({ user, schedules = [] }) {
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setCurrentTime(new Date()), 30000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   const logout = () => {
     router.post(route('logout'));
   };
@@ -139,7 +153,7 @@ export default function StudentSchedules({ user, schedules = [] }) {
               Daftar Jadwal
             </h2>
             <p className="text-sm text-gray-500">
-              Jadwal live class atau sesi belajar dari course aktif.
+              Jadwal live class, konsultasi, deadline tugas, dan tryout dari course aktif.
             </p>
           </div>
 
@@ -157,6 +171,10 @@ export default function StudentSchedules({ user, schedules = [] }) {
             <div className="divide-y divide-[#F7F2E7]">
               {schedules.map((schedule) => {
                 const type = scheduleTypeConfig(schedule.type);
+                const completed = isScheduleCompleted(schedule, currentTime);
+                const targetLink = completed
+                  ? null
+                  : (type.needsMeeting ? schedule.meeting_link : schedule.action_link);
 
                 return (
                 <div key={schedule.id} className="p-4 sm:p-6">
@@ -195,33 +213,37 @@ export default function StudentSchedules({ user, schedules = [] }) {
                         <div className="flex flex-col gap-2 text-sm text-gray-600 sm:flex-row sm:flex-wrap sm:gap-4">
                           <span className="inline-flex items-center gap-2">
                             <Clock className="w-4 h-4 text-[#691D1B]" />
-                            {formatDateTime(schedule.start_time)} - {formatTime(schedule.end_time)}
+                            {schedule.type === 'student_deadline'
+                              ? `Deadline ${formatDateTime(schedule.end_time)}`
+                              : `${formatDateTime(schedule.start_time)} - ${formatTime(schedule.end_time)}`}
                           </span>
 
                           <span className="inline-flex items-center gap-2">
                             <User className="w-4 h-4 text-[#691D1B]" />
-                            {schedule.mentor?.name || 'Mentor'}
+                            {schedule.mentor?.name || (schedule.type === 'tryout' ? 'BRICS Education' : 'Tutor')}
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    {type.needsMeeting && schedule.meeting_link ? (
+                    {targetLink ? (
                       <a
-                        href={schedule.meeting_link}
+                        href={targetLink}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex min-h-11 w-full items-center justify-center gap-2 px-5 py-3 rounded-xl text-white hover:bg-[#4A1412] transition-colors text-sm sm:w-auto"
                         style={{ background: '#691D1B', fontWeight: 700 }}
                       >
-                        <Video className="w-4 h-4" />
-                        Join Meeting
+                        {type.needsMeeting ? <Video className="w-4 h-4" /> : <BookOpen className="w-4 h-4" />}
+                        {type.linkLabel}
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     ) : (
                       <span className="inline-flex min-h-11 w-full items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gray-100 text-gray-500 text-sm sm:w-auto">
                         <BookOpen className="w-4 h-4" />
-                        {type.needsMeeting ? 'Link belum tersedia' : 'Pengingat'}
+                        {completed
+                          ? 'Jadwal sudah berakhir'
+                          : (type.needsMeeting || type.needsActionLink ? 'Link belum tersedia' : 'Pengingat')}
                       </span>
                     )}
                   </div>

@@ -116,6 +116,7 @@ class ScheduleSeeder extends Seeder
                     'mentor_id' => $mentorId,
                     'title' => $scheduleData['title'],
                     'type' => 'live',
+                    'audience' => 'shared',
                     'meeting_link' => $scheduleData['meeting_link'] ?? null,
                     'started_at' => null,
                     'start_time' => $start,
