@@ -31,15 +31,15 @@ class DatabaseSeeder extends Seeder
         }
 
         // Get role IDs
-        $studentRole = DB::table('roles')->where('name', 'student')->value('id') ?? 1;
         $tutorRole = DB::table('roles')->where('name', 'mentor')->value('id') ?? 2;
         $adminRole = DB::table('roles')->where('name', 'admin')->value('id') ?? 3;
 
-        // Seed core users for admin, students, and SNBT mentors mapped to courses.
+        $this->call([
+            UserSeeder::class,
+        ]);
+
+        // Seed core users for admin and SNBT mentors mapped to courses.
         foreach ([
-            ['name' => 'Siswa Brics', 'email' => 'siswa@bricsedu.id', 'role_id' => $studentRole, 'role' => 'student'],
-            ['name' => 'Siswa Dua', 'email' => 'siswa2@bricsedu.id', 'role_id' => $studentRole, 'role' => 'student'],
-            ['name' => 'Siswa Tiga', 'email' => 'siswa3@bricsedu.id', 'role_id' => $studentRole, 'role' => 'student'],
             ['name' => 'Tutor Penalaran Umum', 'email' => 'tutor.penalaran.umum@bricsedu.id', 'role_id' => $tutorRole, 'role' => 'mentor'],
             ['name' => 'Tutor Pengetahuan Umum', 'email' => 'tutor.ppu@bricsedu.id', 'role_id' => $tutorRole, 'role' => 'mentor'],
             ['name' => 'Tutor Bacaan dan Menulis', 'email' => 'tutor.pbm@bricsedu.id', 'role_id' => $tutorRole, 'role' => 'mentor'],

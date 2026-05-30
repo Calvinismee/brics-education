@@ -72,7 +72,6 @@ class TutorDemoDataSeeder extends Seeder
 
     private function ensureUsersAndEnrollments($courseIds, $now): void
     {
-        $studentRoleId = User::roleIdFor('student') ?? 1;
         $tutorRoleId = User::roleIdFor('mentor') ?? User::roleIdFor('tutor') ?? 2;
 
         foreach ([
@@ -104,25 +103,10 @@ class TutorDemoDataSeeder extends Seeder
             $this->syncTutorCourses($tutor['email'], $courseIds->values()->all(), $now);
         }
 
-        foreach ([
-            ['name' => 'Siswa Brics', 'email' => 'siswa@bricsedu.id'],
-            ['name' => 'Siswa Dua', 'email' => 'siswa2@bricsedu.id'],
-            ['name' => 'Siswa Tiga', 'email' => 'siswa3@bricsedu.id'],
-        ] as $student) {
-            User::updateOrCreate(
-                ['email' => $student['email']],
-                [
-                    'name' => $student['name'],
-                    'password' => bcrypt('password123'),
-                    'role_id' => $studentRoleId,
-                ]
-            );
-
-            DB::table('users')->where('email', $student['email'])->update(['role' => 'student', 'updated_at' => $now]);
-        }
+        $this->call(UserSeeder::class);
 
         $studentIds = DB::table('users')
-            ->whereIn('email', ['siswa@bricsedu.id', 'siswa2@bricsedu.id', 'siswa3@bricsedu.id'])
+            ->whereIn('email', UserSeeder::studentEmails())
             ->pluck('id');
 
         foreach ($studentIds as $studentId) {
