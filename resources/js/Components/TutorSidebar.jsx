@@ -14,6 +14,7 @@ import {
   User,
   Users,
 } from "lucide-react";
+import { courseClassHref, courseSlug } from "@/utils/slug";
 
 const initialsFor = (name) => String(name || "Tutor UTBK")
   .split(" ")
@@ -25,6 +26,7 @@ const initialsFor = (name) => String(name || "Tutor UTBK")
 const normalizedClasses = (classes) => (Array.isArray(classes) ? classes : Object.values(classes ?? {}))
   .map((item) => ({
     id: item.id,
+    slug: courseSlug(item),
     name: item.name ?? item.title ?? "Kelas UTBK",
     students: item.students ?? 0,
     weeklySchedule: item.weeklySchedule ?? item.schedule ?? "Belum ada jadwal tetap",
@@ -204,7 +206,7 @@ export function TutorSidebar({
                 return (
                   <Link
                     key={cls.id}
-                    href={`/tutor/classes?course_id=${cls.id}`}
+                    href={courseClassHref(cls)}
                     onClick={closeAfterNavigate}
                     className={`w-full text-left px-2.5 py-2 rounded-lg text-xs transition-all block ${
                       isActive ? "text-[#000000]" : "text-white/70 hover:bg-white/10 hover:text-white"

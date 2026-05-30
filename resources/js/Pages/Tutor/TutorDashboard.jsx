@@ -7,6 +7,7 @@ import {
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
 import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
+import { courseClassHref } from "@/utils/slug";
 import { useEffect, useState } from "react";
 
 const fallbackTutorClasses = [
@@ -79,8 +80,7 @@ export function TutorDashboard({
 
   const classDetailHref = (courseName, fallbackId = null) => {
     const found = tutorClasses.find((cls) => cls.name === courseName);
-    const id = found?.id ?? fallbackId;
-    return id === null ? "/tutor/classes" : `/tutor/classes?course_id=${id}`;
+    return courseClassHref(found, courseName || fallbackId);
   };
 
   const completedSessions = Number(serverStats.completedSessions ?? teachingHistory.length);

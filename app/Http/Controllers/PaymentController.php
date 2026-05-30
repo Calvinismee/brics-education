@@ -59,11 +59,15 @@ class PaymentController extends Controller
 
         AdminNotifier::transactionPending($user, $course->title, $transaction->invoice_number);
 
-        return redirect()->route('payment.status', $transaction);
+        return redirect()->route('payment.status', [
+            'transaction' => $transaction->invoice_number,
+        ]);
     }
 
-    public function status(Request $request, Transaction $transaction, MidtransService $midtrans): Response
+    public function status(Request $request, string $transaction, MidtransService $midtrans): Response
     {
+        $transaction = $this->resolveTransactionRouteKey($transaction);
+
         $this->authorizeTransactionAccess($request, $transaction);
 
         $transaction->load([
@@ -100,8 +104,10 @@ class PaymentController extends Controller
         return response()->json(['message' => 'OK']);
     }
 
-    public function refresh(Transaction $transaction, MidtransService $midtrans): RedirectResponse
+    public function refresh(string $transaction, MidtransService $midtrans): RedirectResponse
     {
+        $transaction = $this->resolveTransactionRouteKey($transaction);
+
         $this->authorizeTransactionAccess(request(), $transaction);
 
         try {
@@ -207,5 +213,17 @@ class PaymentController extends Controller
         $user = $request->user();
 
         abort_unless($user && ((int) $transaction->user_id === (int) $user->id || $user->isAdmin()), 403);
+    }
+
+    private function resolveTransactionRouteKey(string $value): Transaction
+    {
+        $transaction = Transaction::query()
+            ->where('invoice_number', $value)
+            ->when(is_numeric($value), fn ($query) => $query->orWhere('id', (int) $value))
+            ->first();
+
+        abort_if(! $transaction, 404);
+
+        return $transaction;
     }
 }

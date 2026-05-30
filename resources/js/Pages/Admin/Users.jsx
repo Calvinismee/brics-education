@@ -1,6 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, UserPlus, Download, CheckSquare, Edit, X, ArrowUpDown, Trash2 } from 'lucide-react';
 import DeleteConfirmModal from '@/Components/DeleteConfirmModal';
 import { StagedLoadingContent } from '@/Components/ui/LoadingStates';
@@ -76,6 +76,11 @@ export default function Users({ users = { data: [] }, courses = [], totalUsers =
     const form = useForm(emptyForm);
 
     const userData = users.data || [];
+
+    useEffect(() => {
+        setSelectedRole(filters.role ?? 'student');
+        setSelectedUsers([]);
+    }, [filters.role]);
 
     const filtered = useMemo(() => {
         let result = userData.filter((user) => {

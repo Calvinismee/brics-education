@@ -117,7 +117,9 @@ class UserController extends Controller
 
         TutorCourseResolver::sync($user, $this->mentorCourseIdsFrom($validated));
 
-        return redirect()->route('admin.users')->with('success', 'Pengguna berhasil ditambahkan.');
+        return redirect()
+            ->route('admin.users', ['role' => $validated['role']])
+            ->with('success', 'Pengguna berhasil ditambahkan.');
     }
 
     public function update(Request $request, User $user): RedirectResponse
@@ -146,7 +148,9 @@ class UserController extends Controller
         $user->save();
         TutorCourseResolver::sync($user, $this->mentorCourseIdsFrom($validated));
 
-        return redirect()->route('admin.users')->with('success', 'Pengguna berhasil diperbarui.');
+        return redirect()
+            ->route('admin.users', ['role' => $validated['role']])
+            ->with('success', 'Pengguna berhasil diperbarui.');
     }
 
     private function mentorCourseIdsFrom(array $validated): array
@@ -169,11 +173,25 @@ class UserController extends Controller
             ->all();
     }
 
-    public function destroy(User $user): RedirectResponse
+    public function destroy(Request $request, User $user): RedirectResponse
     {
+        $role = $request->string('role')->toString();
+        $role = in_array($role, ['student', 'tutor', 'admin'], true)
+            ? $role
+            : $this->adminRoleNameFor($user);
+
         $user->delete();
 
-        return redirect()->route('admin.users')->with('success', 'Pengguna berhasil dihapus.');
+        return redirect()
+            ->route('admin.users', ['role' => $role])
+            ->with('success', 'Pengguna berhasil dihapus.');
+    }
+
+    private function adminRoleNameFor(User $user): string
+    {
+        $role = strtolower((string) User::roleNameFor($user->role_id));
+
+        return $role === 'mentor' ? 'tutor' : ($role ?: 'student');
     }
 
     public function export(Request $request): StreamedResponse

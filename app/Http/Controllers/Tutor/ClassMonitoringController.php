@@ -12,15 +12,22 @@ use App\Support\TutorCourseResolver;
 use App\Support\TutorSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class ClassMonitoringController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, ?string $courseSlug = null)
     {
         $user = $request->user();
         $courses = $this->tutorCourses($user);
-        $selectedCourse = $courses->firstWhere('id', (int) $request->integer('course_id')) ?? $courses->first();
+        $selectedCourse = $this->resolveSelectedCourse($courses, $courseSlug, $request->query('course_id')) ?? $courses->first();
+
+        if (! $courseSlug && $request->filled('course_id') && $selectedCourse) {
+            return redirect()->route('tutor.classes.show', [
+                'courseSlug' => $selectedCourse->slug,
+            ]);
+        }
 
         $students = collect();
         $materials = collect();
@@ -34,6 +41,7 @@ class ClassMonitoringController extends Controller
                 ->get()
                 ->map(fn (Enrollment $enrollment) => [
                     'id' => $enrollment->user?->id,
+                    'slug' => Str::slug($enrollment->user?->name ?? 'siswa'),
                     'name' => $enrollment->user?->name ?? 'Siswa',
                     'email' => $enrollment->user?->email ?? '-',
                     'progress' => 0,
@@ -76,10 +84,13 @@ class ClassMonitoringController extends Controller
         ]);
     }
 
-    public function showStudent(Request $request, User $student)
+    public function showStudent(Request $request, string $studentSlug)
     {
         $user = $request->user();
         $courseIds = TutorCourseResolver::ids($user);
+        $student = $this->resolveStudentSlug($studentSlug, $courseIds);
+
+        abort_if(! $student, 404);
 
         $enrollments = Enrollment::query()
             ->with('course.category')
@@ -175,6 +186,7 @@ class ClassMonitoringController extends Controller
     {
         return [
             'id' => $course->id,
+            'slug' => $course->slug,
             'title' => $course->title,
             'name' => $course->title,
             'students' => Enrollment::query()
@@ -198,5 +210,34 @@ class ClassMonitoringController extends Controller
     private function materialType(?string $type): string
     {
         return $type === 'bank_soal' ? 'quiz' : ($type ?? 'module');
+    }
+
+    private function resolveSelectedCourse($courses, ?string $courseSlug, mixed $legacyCourseId): ?Course
+    {
+        if ($courseSlug) {
+            return $courses->first(fn (Course $course) => $course->slug === $courseSlug || (is_numeric($courseSlug) && (int) $courseSlug === (int) $course->id));
+        }
+
+        if ($legacyCourseId) {
+            return $courses->firstWhere('id', (int) $legacyCourseId);
+        }
+
+        return null;
+    }
+
+    private function resolveStudentSlug(string $studentSlug, $courseIds): ?User
+    {
+        $students = User::query()
+            ->whereIn('id', Enrollment::query()
+                ->select('user_id')
+                ->whereIn('course_id', $courseIds)
+                ->where('status', 'active'))
+            ->get(['id', 'name', 'email', 'created_at']);
+
+        if (is_numeric($studentSlug)) {
+            return $students->firstWhere('id', (int) $studentSlug);
+        }
+
+        return $students->first(fn (User $student) => Str::slug($student->name) === $studentSlug);
     }
 }

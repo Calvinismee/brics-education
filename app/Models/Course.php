@@ -7,10 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Course extends Model
 {
     use HasFactory;
+
+    protected $appends = [
+        'slug',
+    ];
 
     protected $fillable = [
         'category_id',
@@ -19,6 +24,26 @@ class Course extends Model
         'price',
         'status',
     ];
+
+    public function getSlugAttribute(): string
+    {
+        return Str::slug($this->title);
+    }
+
+    public static function resolveRouteSlug(string|int|null $value): ?self
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            return self::query()->find((int) $value);
+        }
+
+        return self::query()
+            ->get()
+            ->first(fn (self $course) => $course->slug === $value);
+    }
 
     public function category(): BelongsTo
     {

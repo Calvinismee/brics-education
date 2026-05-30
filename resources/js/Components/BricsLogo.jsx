@@ -1,16 +1,21 @@
 import React from 'react';
 
 export function BricsLogo({ size = 'md', variant, className = '', ...props }) {
-    const sizes = { sm: 32, md: 48, lg: 72 };
-    const s = sizes[size] || sizes.md;
+    const sizes = {
+        sm: { width: 84, height: 32 },
+        md: { width: 127, height: 48 },
+        lg: { width: 190, height: 72 },
+    };
+    const dimensions = sizes[size] || sizes.md;
 
     return (
         <img
             {...props}
             src="/images/logo.webp"
             alt="BRICS Education"
-            width={s}
-            height={s}
+            width={dimensions.width}
+            height={dimensions.height}
+            decoding="async"
             className={className}
         />
     );

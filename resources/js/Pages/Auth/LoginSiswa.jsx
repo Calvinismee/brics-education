@@ -157,11 +157,11 @@ export default function LoginSiswa({ googleClientId }) {
 
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-sm text-[#691D1B] hover:underline mb-6"
+            className="mb-6 inline-flex items-center gap-2 rounded-xl border border-[#D8D7BE] bg-white px-4 py-2.5 text-sm text-[#691D1B] shadow-sm transition-colors hover:bg-[#F7F2E7]"
             style={{ fontWeight: 700 }}
           >
             <ArrowLeft className="w-4 h-4" />
-            Kembali ke Beranda
+            Kembali ke Landing Page
           </Link>
 
           <div className="bg-white border border-[#D8D7BE] rounded-3xl shadow-sm p-5 sm:p-7">
