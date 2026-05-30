@@ -88,7 +88,10 @@ test('student hanya dapat membuat transaksi checkout paket', function () {
 
     $transaction = Transaction::query()->latest('id')->first();
 
-    $response->assertRedirect('/payment-status/'.$transaction->id.'?pay=1');
+    $response->assertRedirect(route('payment.status', [
+        'transaction' => $transaction->invoice_number,
+        'pay' => 1,
+    ], false));
 
     expect($transaction->user_id)->toBe($student->id);
     expect($transaction->course_id)->toBeNull();
