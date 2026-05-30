@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { packageCheckoutHref } from '@/utils/slug';
 
 const HERO_IMAGE =
   "/images/landing/brics-on-abts-2025.jpg";
@@ -701,7 +702,7 @@ export default function LandingPage({ packages = [] }) {
                         </div>
 
                         <Link
-                          href={`/checkout/package/${pkg.id}`}
+                          href={packageCheckoutHref(pkg)}
                           className="flex items-center gap-1.5 px-4 py-2.5 bg-[#691D1B] text-white text-xs rounded-lg hover:bg-[#4A1412] transition-colors"
                           style={{ fontWeight: 800 }}
                         >

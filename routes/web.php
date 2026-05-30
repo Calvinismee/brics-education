@@ -136,7 +136,8 @@ Route::get('/tutors', function () {
     return Inertia::render('Tutors');
 })->name('tutors');
 
-Route::get('/course/{course}', function (Course $course) {
+Route::get('/course/{courseSlug}', function (string $courseSlug) {
+    $course = Course::resolveRouteSlug($courseSlug) ?? abort(404);
     $course->load('category');
 
     return Inertia::render('CourseDetail', [
@@ -144,7 +145,9 @@ Route::get('/course/{course}', function (Course $course) {
     ]);
 })->name('course.detail');
 
-Route::get('/checkout/package/{package}', function (Package $package) {
+Route::get('/checkout/package/{packageSlug}', function (string $packageSlug) {
+    $package = Package::resolveRouteSlug($packageSlug) ?? abort(404);
+
     $package->load([
         'courses' => fn ($query) => $query
             ->with('category')
@@ -209,7 +212,7 @@ Route::post('/checkout', function (Request $request, MidtransService $midtrans) 
     AdminNotifier::transactionPending($user, 'Paket: '.$package->name, $transaction->invoice_number);
 
     return redirect()->route('payment.status', [
-        'transaction' => $transaction,
+        'transaction' => $transaction->invoice_number,
         'pay' => 1,
     ]);
 })->middleware('auth')->name('checkout');
@@ -303,7 +306,9 @@ Route::get('/dashboard', function () {
     ]);
 })->name('dashboard');
 
-Route::get('/course/{course}/learn', function (Course $course) {
+Route::get('/course/{courseSlug}/learn', function (string $courseSlug) {
+    $course = Course::resolveRouteSlug($courseSlug) ?? abort(404);
+
     if (! auth()->check()) {
         return redirect()->route('login');
     }
@@ -331,7 +336,7 @@ Route::get('/course/{course}/learn', function (Course $course) {
 
     if (! $enrollment) {
         return redirect()
-            ->to('/course/'.$course->id)
+            ->to('/course/'.$course->slug)
             ->withErrors([
                 'course' => 'Kamu belum memiliki akses aktif ke course ini.',
             ]);
@@ -483,8 +488,9 @@ Route::middleware(['auth', 'verified', 'tutor'])
         Route::delete('/materials/{material}', [TutorMaterialController::class, 'destroy'])->whereNumber('material')->name('materials.destroy');
 
         Route::get('/classes', [TutorClassMonitoringController::class, 'index'])->name('classes');
+        Route::get('/classes/{courseSlug}', [TutorClassMonitoringController::class, 'index'])->name('classes.show');
         Route::get('/class', [TutorClassMonitoringController::class, 'index'])->name('class');
-        Route::get('/students/{student}', [TutorClassMonitoringController::class, 'showStudent'])->whereNumber('student')->name('students.show');
+        Route::get('/students/{studentSlug}', [TutorClassMonitoringController::class, 'showStudent'])->name('students.show');
 
         Route::get('/schedule', [TutorScheduleController::class, 'index'])->name('schedule');
         Route::post('/schedule', [TutorScheduleController::class, 'store'])->name('schedule.store');

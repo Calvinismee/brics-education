@@ -4,22 +4,11 @@ import {
   Home, BookOpen, Upload, Users, LogOut, Calendar, Video, FileText,
   Plus, X, CheckCircle, Clock, AlertCircle, ArrowLeft, Bell,
   Link2, Paperclip, ChevronDown, Star, Info,
-  Megaphone, Send,
 } from "lucide-react";
 import { BricsLogo } from "@/Components/BricsLogo";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
 import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
-
-const fallbackTutorCourses = [
-  { id: 0, title: "Penalaran Umum", students: 24, progress: 75 },
-  { id: 1, title: "Pengetahuan dan Pemahaman Umum", students: 18, progress: 60 },
-  { id: 2, title: "Pemahaman Bacaan dan Menulis", students: 22, progress: 68 },
-  { id: 3, title: "Pengetahuan Kuantitatif", students: 20, progress: 72 },
-  { id: 4, title: "Literasi dalam Bahasa Indonesia", students: 26, progress: 80 },
-  { id: 5, title: "Literasi dalam Bahasa Inggris", students: 19, progress: 64 },
-  { id: 6, title: "Penalaran Matematika", students: 21, progress: 70 },
-];
 
 const asArray = (value) => Array.isArray(value) ? value : Object.values(value ?? {});
 
@@ -41,12 +30,13 @@ export function TutorMaterialUpload({
   uploadedItems: serverUploadedItems = [],
 }) {
   const rawCourses = asArray(courses).length > 0 ? asArray(courses) : asArray(serverTutorClasses);
-  const courseList = (rawCourses.length > 0 ? rawCourses : fallbackTutorCourses).map((course) => ({
+  const courseList = rawCourses.map((course) => ({
     id: course.id,
     title: course.title ?? course.name,
     students: course.students ?? 0,
     progress: course.progress ?? 0,
   }));
+  const hasAssignedCourses = courseList.length > 0;
   const serverItems = asArray(serverUploadedItems);
   const tutorName = user?.name ?? "Tutor UTBK";
   const tutorInitials = initialsFor(tutorName);
@@ -54,7 +44,7 @@ export function TutorMaterialUpload({
 
   // ── Form state ──
   const [judul, setJudul] = useState("");
-  const [kursus, setKursus] = useState(courseList[0]?.title ?? "Penalaran Umum");
+  const [kursus, setKursus] = useState(courseList[0]?.title ?? "");
   const [deskripsi, setDeskripsi] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [modulFile, setModulFile] = useState(null);
@@ -67,9 +57,6 @@ export function TutorMaterialUpload({
   const [contentError, setContentError] = useState(false);
   const [classDropdownOpen, setClassDropdownOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [announcementCourseId, setAnnouncementCourseId] = useState(courseList[0]?.id ?? "");
-  const [announcementTitle, setAnnouncementTitle] = useState("");
-  const [announcementMessage, setAnnouncementMessage] = useState("");
 
   const tutorClasses = courseList.map((course) => ({
     id: course.id,
@@ -90,26 +77,6 @@ export function TutorMaterialUpload({
     { key: "materials",label: "Materi",        icon: <FileText className="w-5 h-5" />, to: "#" },
   ];
 
-  const handleAnnouncementSubmit = (e) => {
-    e.preventDefault();
-
-    router.post(
-      "/tutor/announcements",
-      {
-        course_id: Number(announcementCourseId),
-        title: announcementTitle,
-        message: announcementMessage,
-      },
-      {
-        preserveScroll: true,
-        onSuccess: () => {
-          setAnnouncementTitle("");
-          setAnnouncementMessage("");
-        },
-      }
-    );
-  };
-
   const statusConfig = {
     approved: { label: "Disetujui",       bg: "#22c55e15", color: "#16a34a", icon: <CheckCircle className="w-3.5 h-3.5" /> },
     pending:  { label: "Menunggu Review", bg: "#FFE88230", color: "#d97706", icon: <Clock className="w-3.5 h-3.5" /> },
@@ -125,6 +92,7 @@ export function TutorMaterialUpload({
   const hasAny    = hasVideo || hasModul || hasQuiz;
 
   function handleSubmit() {
+    if (!hasAssignedCourses) return;
     if (!judul.trim()) return;
     if (!hasAny) { setContentError(true); return; }
     setContentError(false);
@@ -287,21 +255,25 @@ export function TutorMaterialUpload({
                         <select
                           value={kursus}
                           onChange={(e) => setKursus(e.target.value)}
+                          disabled={!hasAssignedCourses}
                           className="w-full px-4 py-3 border-2 border-[#D8D7BE] rounded-xl bg-[#F7F2E7] focus:outline-none focus:border-[#691D1B] text-sm transition-colors appearance-none pr-10"
                           style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
                         >
-                          {courseList.length > 0 ? (
+                          {hasAssignedCourses ? (
                             courseList.map((course) => (
                               <option key={course.id}>{course.title}</option>
                             ))
                           ) : (
-                            <>
-                              <option>Penalaran Umum</option>`r`n                              <option>Pengetahuan dan Pemahaman Umum</option>`r`n                              <option>Pemahaman Bacaan dan Menulis</option>`r`n                              <option>Pengetahuan Kuantitatif</option>`r`n                              <option>Literasi dalam Bahasa Indonesia</option>`r`n                              <option>Literasi dalam Bahasa Inggris</option>`r`n                              <option>Penalaran Matematika</option>
-                            </>
+                            <option>Belum ada course yang ditugaskan</option>
                           )}
                         </select>
                         <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                       </div>
+                      {!hasAssignedCourses && (
+                        <p className="mt-2 text-xs font-semibold text-[#691D1B]">
+                          Admin perlu menugaskan course ke akun tutor ini sebelum bisa upload materi.
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1.5" style={{ fontWeight: 600 }}>Deskripsi Materi</label>
@@ -534,7 +506,7 @@ export function TutorMaterialUpload({
                   {/* Submit button */}
                   <button
                     onClick={handleSubmit}
-                    disabled={!judul.trim()}
+                    disabled={!hasAssignedCourses || !judul.trim()}
                     className="w-full py-3.5 flex items-center justify-center gap-2 text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
                     style={{ background: "#691D1B", color: "#FFE882", fontWeight: 700 }}
                   >
@@ -548,73 +520,7 @@ export function TutorMaterialUpload({
 
             {/* ── Uploaded History ───────────────────────────── */}
             <div className="lg:col-span-2 flex flex-col gap-5">
-              <form onSubmit={handleAnnouncementSubmit} className="bg-white rounded-2xl shadow-sm border border-[#D8D7BE] overflow-hidden">
-                <div className="p-5 border-b border-[#F7F2E7] flex items-center gap-3" style={{ background: "#691D1B" }}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,232,130,0.18)", color: "#FFE882" }}>
-                    <Megaphone className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-white" style={{ fontWeight: 700 }}>Pengumuman Singkat</h3>
-                    <p className="text-xs" style={{ color: "#FFE882" }}>Kirim notifikasi ke siswa course terkait</p>
-                  </div>
-                </div>
-
-                <div className="p-5 space-y-3">
-                  <label className="block">
-                    <span className="block text-xs text-gray-500 mb-1.5" style={{ fontWeight: 600 }}>Course tujuan</span>
-                    <div className="relative">
-                      <select
-                        value={announcementCourseId}
-                        onChange={(e) => setAnnouncementCourseId(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] focus:border-[#691D1B] outline-none text-sm appearance-none pr-10"
-                      >
-                        {courseList.map((course) => (
-                          <option key={course.id} value={course.id}>{course.title}</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                    </div>
-                  </label>
-
-                  <label className="block">
-                    <span className="block text-xs text-gray-500 mb-1.5" style={{ fontWeight: 600 }}>Judul</span>
-                    <input
-                      type="text"
-                      value={announcementTitle}
-                      onChange={(e) => setAnnouncementTitle(e.target.value)}
-                      placeholder="Contoh: Kelas hari ini dibatalkan"
-                      className="w-full px-3 py-2.5 rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] focus:border-[#691D1B] outline-none text-sm"
-                      maxLength={120}
-                      required
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="block text-xs text-gray-500 mb-1.5" style={{ fontWeight: 600 }}>Isi pengumuman</span>
-                    <textarea
-                      rows={4}
-                      value={announcementMessage}
-                      onChange={(e) => setAnnouncementMessage(e.target.value)}
-                      placeholder="Tulis pesan singkat untuk siswa..."
-                      className="w-full px-3 py-2.5 rounded-xl border border-[#D8D7BE] bg-[#F7F2E7] focus:border-[#691D1B] outline-none text-sm resize-none"
-                      maxLength={1000}
-                      required
-                    />
-                  </label>
-
-                  <button
-                    type="submit"
-                    disabled={!announcementTitle.trim() || !announcementMessage.trim() || !announcementCourseId}
-                    className="w-full py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all"
-                    style={{ background: "#691D1B", color: "#FFE882", fontWeight: 700 }}
-                  >
-                    <Send className="w-4 h-4" />
-                    Kirim Pengumuman
-                  </button>
-                </div>
-              </form>
-
-              <div className="bg-white rounded-2xl shadow-sm border border-[#D8D7BE] overflow-hidden flex-1">
+              <div className="self-start overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
                 <div className="p-5 border-b border-[#F7F2E7] flex items-center justify-between">
                   <div>
                     <h3 className="text-gray-900" style={{ fontWeight: 700 }}>Materi Terupload</h3>
@@ -630,11 +536,11 @@ export function TutorMaterialUpload({
                   </button>
                 </div>
 
-                <div className="divide-y divide-[#F7F2E7] overflow-y-auto" style={{ maxHeight: 380 }}>
+                <div className="max-h-[360px] divide-y divide-[#F7F2E7] overflow-y-auto overscroll-contain sm:max-h-[420px]">
                   {uploadedItems.map((item) => {
                     const sc = statusConfig[item.status] ?? statusConfig.pending;
                     return (
-                      <div key={item.id} className="p-4 flex items-start gap-3">
+                      <div key={item.id} className="flex min-h-[104px] items-start gap-3 p-4">
                         <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#691D1B15", color: "#691D1B" }}>
                           {typeIcon(item.type)}
                         </div>
@@ -674,7 +580,7 @@ export function TutorMaterialUpload({
                   })}
                 </div>
 
-                <div className="p-4 border-t border-[#D8D7BE]" style={{ background: "#F7F2E7" }}>
+                <div className="shrink-0 border-t border-[#D8D7BE] p-4" style={{ background: "#F7F2E7" }}>
                   <p className="text-xs text-gray-500 mb-2" style={{ fontWeight: 600 }}>Keterangan Status</p>
                   <div className="space-y-1.5">
                     {Object.entries(statusConfig).map(([key, val]) => (

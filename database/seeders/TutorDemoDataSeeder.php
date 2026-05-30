@@ -93,7 +93,7 @@ class TutorDemoDataSeeder extends Seeder
             }
 
             DB::table('users')->where('email', $email)->update(['role' => 'mentor', 'updated_at' => $now]);
-            $this->syncTutorCourses($email, $courseIds->values()->all(), $now);
+            $this->syncTutorCourses($email, [$courseIds['Penalaran Umum'] ?? null], $now);
         }
 
         $this->call(UserSeeder::class);
@@ -281,6 +281,21 @@ class TutorDemoDataSeeder extends Seeder
         if (! $tutorId) {
             return;
         }
+
+        $courseIds = collect($courseIds)
+            ->filter()
+            ->map(fn ($courseId) => (int) $courseId)
+            ->unique()
+            ->values();
+
+        $query = DB::table('course_tutor')->where('tutor_id', $tutorId);
+
+        if ($courseIds->isEmpty()) {
+            $query->delete();
+            return;
+        }
+
+        $query->whereNotIn('course_id', $courseIds)->delete();
 
         foreach ($courseIds as $courseId) {
             DB::table('course_tutor')->updateOrInsert(

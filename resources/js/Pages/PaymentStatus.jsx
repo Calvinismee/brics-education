@@ -16,6 +16,7 @@ import {
   LoaderCircle,
   Package as PackageIcon,
 } from 'lucide-react';
+import { courseDetailHref, transactionStatusHref } from '@/utils/slug';
 
 function formatPrice(price) {
   const numericPrice = Number(price);
@@ -105,10 +106,10 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
   }, [midtrans.clientKey, midtrans.snapJsUrl]);
 
   const refreshPaymentStatus = useCallback(() => {
-    router.post(`/payment-status/${transaction.id}/refresh`, {}, {
+    router.post(`${transactionStatusHref(transaction)}/refresh`, {}, {
       preserveScroll: true,
     });
-  }, [transaction.id]);
+  }, [transaction]);
 
   const closeSnapLoadingState = useCallback(() => {
     isSnapOpeningRef.current = false;
@@ -119,12 +120,12 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
     closeSnapLoadingState();
     setIsRedirectingToDashboard(true);
 
-    router.post(`/payment-status/${transaction.id}/refresh`, {}, {
+    router.post(`${transactionStatusHref(transaction)}/refresh`, {}, {
       preserveScroll: true,
       onSuccess: () => router.visit('/dashboard'),
       onError: () => setIsRedirectingToDashboard(false),
     });
-  }, [closeSnapLoadingState, transaction.id]);
+  }, [closeSnapLoadingState, transaction]);
 
   const openMidtransPayment = useCallback(() => {
     if (!canPayWithMidtrans || !window.snap || isSnapOpeningRef.current) return;
@@ -491,7 +492,7 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
                   </p>
 
                   <p className="text-xs text-gray-500 mt-2">
-                    ID Transaksi #{transaction.id}
+                    Invoice {transaction.invoice_number}
                   </p>
                 </div>
               </div>
@@ -530,7 +531,7 @@ export default function PaymentStatus({ transaction, midtrans = {} }) {
 
                 {course?.id && (
                   <Link
-                    href={`/course/${course.id}`}
+                    href={courseDetailHref(course)}
                     className="w-full flex items-center justify-center gap-1 py-3.5 rounded-xl bg-[#F7F2E7] text-[#691D1B] hover:bg-[#EFE8D8] transition-colors"
                     style={{ fontWeight: 800 }}
                   >

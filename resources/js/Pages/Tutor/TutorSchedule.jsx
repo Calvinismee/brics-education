@@ -11,6 +11,7 @@ import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
 import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
 import { StagedLoadingContent } from "@/Components/ui/LoadingStates";
+import { courseClassHref } from "@/utils/slug";
 
 // ─── Schedule Data ─────────────────────────────────────────────────────────────
 
@@ -121,8 +122,8 @@ export function TutorSchedule({
   const totalReviews    = serverStats.totalReviews ?? displayScheduleData.reduce((a, d) => a + d.events.filter(e => e.type === "review").length, 0);
   const totalConsultations = serverStats.totalConsultations ?? displayScheduleData.reduce((a, d) => a + d.events.filter(e => e.type === "consultation").length, 0);
   const classDetailHref = (courseName, courseId = null) => {
-    const id = courseId ?? tutorClasses.find((cls) => cls.name === courseName)?.id;
-    return id ? `/tutor/classes?course_id=${id}` : "/tutor/classes";
+    const found = tutorClasses.find((cls) => cls.name === courseName || Number(cls.id) === Number(courseId));
+    return courseClassHref(found, courseName || courseId);
   };
   const weeklyScheduleFor = (cls) => {
     const labels = displayScheduleData

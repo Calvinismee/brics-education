@@ -24,6 +24,7 @@ import {
   X,
 } from 'lucide-react';
 import { StagedLoadingContent } from '@/Components/ui/LoadingStates';
+import { courseLearnHref } from '@/utils/slug';
 
 function getInitials(name) {
   if (!name) return 'SI';
@@ -275,7 +276,7 @@ export default function CourseLearn({
         progress: 0,
         color,
         active: Number(item.course_id) === Number(course?.id),
-        href: `/course/${item.course_id}/learn`,
+        href: courseLearnHref(enrolledCourse, item.course_id),
         hasMaterials: materialCount > 0,
         materialCount,
       };
@@ -288,7 +289,7 @@ export default function CourseLearn({
         progress: hasMaterials ? 20 : 0,
         color: '#691D1B',
         active: true,
-        href: course?.id ? `/course/${course.id}/learn` : '/dashboard',
+        href: courseLearnHref(course),
         hasMaterials,
         materialCount: normalizedMaterials.length,
       },

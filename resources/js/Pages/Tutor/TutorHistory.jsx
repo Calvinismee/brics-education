@@ -14,6 +14,7 @@ import {
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
+import { courseClassHref } from "@/utils/slug";
 
 const asArray = (value) => Array.isArray(value) ? value : Object.values(value ?? {});
 
@@ -152,7 +153,7 @@ export default function TutorHistory({
                           </a>
                         )}
                         <Link
-                          href={`/tutor/classes?course_id=${item.course_id}`}
+                          href={courseClassHref({ name: item.course }, item.course_id)}
                           className="inline-flex min-h-10 items-center justify-center rounded-xl px-4 py-2 text-sm text-white hover:bg-[#4A1412]"
                           style={{ background: "#691D1B", fontWeight: 800 }}
                         >

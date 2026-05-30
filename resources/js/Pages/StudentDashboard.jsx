@@ -22,6 +22,7 @@ import {
   X,
 } from 'lucide-react';
 import { StagedLoadingContent } from '@/Components/ui/LoadingStates';
+import { courseLearnHref, packageCheckoutHref, transactionStatusHref } from '@/utils/slug';
 
 function asArray(value) {
   if (Array.isArray(value)) return value;
@@ -361,7 +362,7 @@ export default function StudentDashboard({
         iconBg: '#F8EDED',
         iconColor: color,
         description: course.description || 'Course aktif yang sudah terdaftar di akun siswa.',
-        href: `/course/${enrollment.course_id}/learn`,
+        href: courseLearnHref(course, enrollment.course_id),
         enrolled: true,
         hasMaterials: materialCount > 0,
         materialCount,
@@ -915,7 +916,7 @@ export default function StudentDashboard({
             </div>
 
             <Link
-              href={`/payment-status/${pendingPackageTransactions[0].id}`}
+              href={transactionStatusHref(pendingPackageTransactions[0])}
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#691D1B] px-4 py-2.5 text-sm text-white sm:w-auto"
               style={{ fontWeight: 900 }}
             >
@@ -1014,7 +1015,7 @@ export default function StudentDashboard({
                   </div>
 
                   <Link
-                    href={`/checkout/package/${pkg.id}`}
+                    href={packageCheckoutHref(pkg)}
                     className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#691D1B] px-4 py-3 text-center text-sm text-white hover:bg-[#4A1412]"
                     style={{ fontWeight: 900 }}
                   >
@@ -1271,7 +1272,7 @@ export default function StudentDashboard({
         </div>
         {latestEnrollment && (
           <Link
-            href={`/course/${latestEnrollment.course_id}/learn`}
+            href={courseLearnHref(latestEnrollment.course, latestEnrollment.course_id)}
             className="inline-flex flex-shrink-0 items-center gap-1 text-sm text-[#691D1B]"
             style={{ fontWeight: 800 }}
           >
@@ -1290,7 +1291,7 @@ export default function StudentDashboard({
           {materialItems.map((material) => (
             <Link
               key={material.id}
-              href={`/course/${material.course_id}/learn`}
+              href={courseLearnHref(material.course, material.course_title || material.title)}
               className="flex items-center gap-3 px-4 py-4 transition-colors hover:bg-[#F7F2E7] sm:gap-4 sm:px-5"
             >
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#F8EDED] text-[#691D1B]">
