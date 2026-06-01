@@ -734,7 +734,7 @@ export function TutorMaterialUpload({
 
             {/* ── Uploaded History ───────────────────────────── */}
             <div className="lg:col-span-2 flex flex-col gap-5">
-              <div className="self-start overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
+              <div className="w-full overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
                 <div className="p-5 border-b border-[#F7F2E7] flex items-center justify-between">
                   <div>
                     <h3 className="text-gray-900" style={{ fontWeight: 700 }}>Materi Terupload</h3>

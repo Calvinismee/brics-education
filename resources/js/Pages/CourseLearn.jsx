@@ -191,12 +191,35 @@ export default function CourseLearn({
   const [videoPreview, setVideoPreview] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileSidebarMounted, setMobileSidebarMounted] = useState(false);
   const [subtesOpen, setSubtesOpen] = useState(true);
   const [progressMap, setProgressMap] = useState(() => progressRecordsToMap(progressRecords));
   const sidebarScrollRef = useRef(null);
 
   const courseTitle = course?.title || 'Bundling Tryout UTBK-SNBT';
   const categoryName = getCategoryName(course);
+
+  useEffect(() => {
+    if (sidebarOpen) {
+      setMobileSidebarMounted(true);
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => setMobileSidebarMounted(false), 300);
+
+    return () => window.clearTimeout(timeout);
+  }, [sidebarOpen]);
+
+  useEffect(() => {
+    if (!mobileSidebarMounted) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileSidebarMounted]);
 
   useEffect(() => {
     setProgressMap(progressRecordsToMap(progressRecords));
@@ -443,19 +466,6 @@ export default function CourseLearn({
               </p>
             </div>
 
-            <Link
-              href={profileEditHref}
-              onClick={closeAndSaveSidebar}
-              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition-transform hover:scale-105"
-              style={{
-                background: '#FFE882',
-                color: '#691D1B',
-              }}
-              title="Edit Profil"
-              aria-label="Edit Profil"
-            >
-              <User className="h-4 w-4" />
-            </Link>
           </div>
 
           <div className="mt-4">
@@ -671,19 +681,6 @@ export default function CourseLearn({
                     </p>
                   </div>
 
-                  <Link
-                    href={profileEditHref}
-                    onClick={closeAndSaveSidebar}
-                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition-transform hover:scale-105"
-                    style={{
-                      background: '#FFE882',
-                      color: '#691D1B',
-                    }}
-                    title="Edit Profil"
-                    aria-label="Edit Profil"
-                  >
-                    <User className="h-4 w-4" />
-                  </Link>
                 </div>
 
                 <div className="mt-4">
@@ -830,16 +827,21 @@ export default function CourseLearn({
           </div>
         </aside>
 
-        {sidebarOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden">
+        {mobileSidebarMounted && (
+          <div
+            className={`fixed inset-0 z-50 transition-opacity duration-300 ease-out lg:hidden ${sidebarOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
+            aria-hidden={!sidebarOpen}
+          >
             <button
               type="button"
-              className="absolute inset-0 bg-black/40"
+              className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ease-out ${sidebarOpen ? 'opacity-100' : 'opacity-0'}`}
               onClick={() => setSidebarOpen(false)}
               aria-label="Tutup sidebar"
             />
 
-            <div className="relative h-full w-[min(20rem,85vw)]">
+            <div
+              className={`relative h-full w-[min(20rem,85vw)] transition-transform duration-300 ease-out motion-reduce:transition-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+            >
               <button
                 type="button"
                 onClick={() => setSidebarOpen(false)}
@@ -1578,7 +1580,6 @@ export default function CourseLearn({
           </div>
         );
       })()}
-
     </div>
   );
 }

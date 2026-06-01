@@ -126,13 +126,6 @@ function getInitials(name) {
     .toUpperCase();
 }
 
-function formatGender(gender) {
-  if (gender === 'male') return 'Laki-laki';
-  if (gender === 'female') return 'Perempuan';
-
-  return '-';
-}
-
 function getCategoryName(course) {
   if (!course?.category) return 'Tryout SNBT';
   if (typeof course.category === 'string') return course.category;
@@ -180,129 +173,6 @@ function getInitialDashboardTab() {
   return dashboardTabs.includes(tab) ? tab : 'beranda';
 }
 
-function getInitialProfileEditing() {
-  if (typeof window === 'undefined') return false;
-
-  const params = new URLSearchParams(window.location.search);
-
-  return params.get('tab') === 'profil' && params.get('edit') === '1';
-}
-
-function ProfileEditorForm({ user, onCancel, onSaved }) {
-  const profileForm = useForm({
-    name: user?.name ?? '',
-    gender: user?.gender ?? '',
-    phone: user?.phone ?? '',
-    school_origin: user?.school_origin ?? '',
-  });
-
-  const submit = (event) => {
-    event.preventDefault();
-
-    profileForm.patch(route('profile.update'), {
-      preserveScroll: true,
-      onSuccess: onSaved,
-    });
-  };
-
-  return (
-    <form onSubmit={submit} className="space-y-5">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <label className="space-y-2 rounded-xl border border-[#D8D7BE] p-4 md:col-span-2">
-          <span className="text-sm font-bold text-gray-700">Nama Lengkap</span>
-          <input
-            type="text"
-            value={profileForm.data.name}
-            onChange={(event) => profileForm.setData('name', event.target.value)}
-            disabled={profileForm.processing}
-            className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
-            placeholder="Masukkan nama lengkap"
-            autoComplete="name"
-            required
-          />
-          {profileForm.errors.name && (
-            <p className="text-xs font-semibold text-red-600">{profileForm.errors.name}</p>
-          )}
-        </label>
-
-        <label className="space-y-2 rounded-xl border border-[#D8D7BE] p-4">
-          <span className="text-sm font-bold text-gray-700">Jenis Kelamin</span>
-          <select
-            value={profileForm.data.gender}
-            onChange={(event) => profileForm.setData('gender', event.target.value)}
-            disabled={profileForm.processing}
-            className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
-          >
-            <option value="">Pilih jenis kelamin</option>
-            <option value="male">Laki-laki</option>
-            <option value="female">Perempuan</option>
-          </select>
-          {profileForm.errors.gender && (
-            <p className="text-xs font-semibold text-red-600">{profileForm.errors.gender}</p>
-          )}
-        </label>
-
-        <label className="space-y-2 rounded-xl border border-[#D8D7BE] p-4">
-          <span className="text-sm font-bold text-gray-700">No Telepon/WhatsApp</span>
-          <input
-            type="tel"
-            value={profileForm.data.phone}
-            onChange={(event) => profileForm.setData('phone', event.target.value)}
-            disabled={profileForm.processing}
-            className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
-            placeholder="Contoh: 081234567890"
-            autoComplete="tel"
-          />
-          <p className="text-xs text-gray-500">
-            Contoh format: 081234567890 atau +6281234567890.
-          </p>
-          {profileForm.errors.phone && (
-            <p className="text-xs font-semibold text-red-600">{profileForm.errors.phone}</p>
-          )}
-        </label>
-
-        <label className="space-y-2 rounded-xl border border-[#D8D7BE] p-4 md:col-span-2">
-          <span className="text-sm font-bold text-gray-700">Sekolah Asal</span>
-          <input
-            type="text"
-            value={profileForm.data.school_origin}
-            onChange={(event) => profileForm.setData('school_origin', event.target.value)}
-            disabled={profileForm.processing}
-            className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
-            placeholder="Masukkan nama sekolah asal"
-            autoComplete="organization"
-          />
-          {profileForm.errors.school_origin && (
-            <p className="text-xs font-semibold text-red-600">{profileForm.errors.school_origin}</p>
-          )}
-        </label>
-      </div>
-
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={profileForm.processing}
-          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#D8D7BE] px-4 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:bg-[#F7F2E7] disabled:opacity-60 sm:w-auto"
-        >
-          Batal
-        </button>
-
-        <button
-          type="submit"
-          disabled={profileForm.processing}
-          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-[#4A1412] disabled:opacity-70 sm:w-auto"
-          style={{ background: '#691D1B' }}
-        >
-          <StagedLoadingContent loading={profileForm.processing} loadingLabel="Menyimpan..." longLoadingLabel="Masih menyimpan profil...">
-            Simpan Profil
-          </StagedLoadingContent>
-        </button>
-      </div>
-    </form>
-  );
-}
-
 export default function StudentDashboard({
   user,
   enrollments = [],
@@ -316,13 +186,41 @@ export default function StudentDashboard({
 }) {
   const [activeTab, setActiveTab] = useState(getInitialDashboardTab);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileSidebarMounted, setMobileSidebarMounted] = useState(false);
   const [subtesOpen, setSubtesOpen] = useState(true);
-  const [profileEditing, setProfileEditing] = useState(getInitialProfileEditing);
+  const profileForm = useForm({
+    name: user?.name ?? '',
+    gender: user?.gender ?? '',
+    phone: user?.phone ?? '',
+    school_origin: user?.school_origin ?? '',
+  });
   const [progressMap, setProgressMap] = useState({});
   const [calendarNow, setCalendarNow] = useState(() => new Date());
   const [scheduleNow, setScheduleNow] = useState(() => new Date());
   const [selectedScheduleDateKey, setSelectedScheduleDateKey] = useState(null);
   const sidebarScrollRef = useRef(null);
+
+  useEffect(() => {
+    if (sidebarOpen) {
+      setMobileSidebarMounted(true);
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => setMobileSidebarMounted(false), 300);
+
+    return () => window.clearTimeout(timeout);
+  }, [sidebarOpen]);
+
+  useEffect(() => {
+    if (!mobileSidebarMounted) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileSidebarMounted]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setScheduleNow(new Date()), 30000);
@@ -546,21 +444,22 @@ export default function StudentDashboard({
     updateDashboardTabUrl('subtes');
   };
 
-  const openProfileEditor = () => {
-    setSidebarOpen(false);
-    setActiveTab('profil');
-    setProfileEditing(true);
-    updateDashboardTabUrl('profil', { edit: true });
+  const resetProfileForm = () => {
+    profileForm.setData({
+      name: user?.name ?? '',
+      gender: user?.gender ?? '',
+      phone: user?.phone ?? '',
+      school_origin: user?.school_origin ?? '',
+    });
+    profileForm.clearErrors();
   };
 
-  const cancelProfileEditor = () => {
-    setProfileEditing(false);
-    updateDashboardTabUrl('profil');
-  };
+  const submitProfileEditor = (event) => {
+    event.preventDefault();
 
-  const finishProfileEditor = () => {
-    setProfileEditing(false);
-    updateDashboardTabUrl('profil');
+    profileForm.patch(route('profile.update'), {
+      preserveScroll: true,
+    });
   };
 
   const materialStatusText = (item) => {
@@ -665,19 +564,6 @@ export default function StudentDashboard({
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={openProfileEditor}
-              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition-transform hover:scale-105"
-              style={{
-                background: '#FFE882',
-                color: '#691D1B',
-              }}
-              title="Edit Profil"
-              aria-label="Edit Profil"
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
           </div>
 
           <div className="mt-4">
@@ -850,9 +736,9 @@ export default function StudentDashboard({
           {!hasActivePackage && (
             <button
               type="button"
-              onClick={openProfileEditor}
+              onClick={() => changeTab('profil')}
               className="group relative hidden max-w-[18rem] items-center gap-3 rounded-2xl border border-[#D8D7BE] bg-[#F7F2E7] px-3.5 py-2 transition-colors hover:bg-[#EFE8D8] md:flex"
-              title="Edit Profil"
+              title="Profil"
             >
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
@@ -883,7 +769,7 @@ export default function StudentDashboard({
                 }}
               >
                 <Pencil className="h-3.5 w-3.5" />
-                Edit
+                Profil
               </span>
             </button>
           )}
@@ -1724,107 +1610,138 @@ export default function StudentDashboard({
     </>
   );
 
-  const ProfilPage = () => (
+  const renderProfilPage = () => (
     <>
-      <Topbar title="Edit Profil" subtitle="Informasi akun siswa" />
+      <Topbar title="Profil" subtitle="Informasi akun siswa" />
       <StatusBar />
 
       <main className="px-4 py-5 sm:px-5 sm:py-6 lg:px-6">
         <section className="overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-sm">
-          <div className="border-b border-[#F7F2E7] px-4 py-4 sm:px-5">
-            <h2 className="text-lg text-[#691D1B]" style={{ fontWeight: 900 }}>
+          <div className="border-b border-[#F7F2E7] px-4 py-4 sm:px-5" style={{ background: '#691D1B' }}>
+            <h2 className="text-lg text-white" style={{ fontWeight: 900 }}>
               Profil Saya
             </h2>
-            <p className="text-sm text-gray-500">
-              Informasi akun siswa yang sedang login.
+            <p className="text-sm" style={{ color: '#FFE882' }}>
+              Informasi akun siswa yang sedang login
             </p>
           </div>
 
-          <div className="p-4 sm:p-5">
-            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
-              <div
-                className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full text-xl"
-                style={{
-                  background: '#FFE882',
-                  color: '#691D1B',
-                  fontWeight: 900,
-                }}
-              >
-                {getInitials(user?.name)}
+          <form onSubmit={submitProfileEditor}>
+            <div className="grid grid-cols-1 gap-6 p-4 sm:p-6 lg:grid-cols-3">
+              <div className="flex flex-col items-center justify-start gap-3">
+                <div
+                  className="flex h-24 w-24 items-center justify-center rounded-full text-2xl"
+                  style={{
+                    background: '#691D1B',
+                    color: '#FFE882',
+                    fontWeight: 900,
+                  }}
+                >
+                  {getInitials(profileForm.data.name)}
+                </div>
+                <div className="max-w-full text-center">
+                  <p className="truncate text-sm text-gray-900" style={{ fontWeight: 800 }}>
+                    {profileForm.data.name || 'Siswa Brics'}
+                  </p>
+                  <p className="truncate text-xs text-gray-400">
+                    {user?.email || 'Akun siswa BRICS Education'}
+                  </p>
+                </div>
               </div>
 
-              <div className="min-w-0">
-                <h3 className="mb-1 break-words text-xl text-gray-900" style={{ fontWeight: 900 }}>
-                  {user?.name || 'Siswa Brics'}
-                </h3>
-                <p className="break-words text-sm text-gray-500">
-                  {user?.email || 'Akun siswa BRICS Education'}
-                </p>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:col-span-2">
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-sm font-bold text-gray-700">Nama Lengkap</span>
+                  <input
+                    type="text"
+                    value={profileForm.data.name}
+                    onChange={(event) => profileForm.setData('name', event.target.value)}
+                    disabled={profileForm.processing}
+                    className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+                    placeholder="Masukkan nama lengkap"
+                    autoComplete="name"
+                    required
+                  />
+                  {profileForm.errors.name && (
+                    <p className="text-xs font-semibold text-red-600">{profileForm.errors.name}</p>
+                  )}
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-bold text-gray-700">Jenis Kelamin</span>
+                  <select
+                    value={profileForm.data.gender}
+                    onChange={(event) => profileForm.setData('gender', event.target.value)}
+                    disabled={profileForm.processing}
+                    className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+                  >
+                    <option value="">Pilih jenis kelamin</option>
+                    <option value="male">Laki-laki</option>
+                    <option value="female">Perempuan</option>
+                  </select>
+                  {profileForm.errors.gender && (
+                    <p className="text-xs font-semibold text-red-600">{profileForm.errors.gender}</p>
+                  )}
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-bold text-gray-700">No Telepon/WhatsApp</span>
+                  <input
+                    type="tel"
+                    value={profileForm.data.phone}
+                    onChange={(event) => profileForm.setData('phone', event.target.value.replace(/\D/g, ''))}
+                    disabled={profileForm.processing}
+                    className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+                    placeholder="Contoh: 081234567890"
+                    autoComplete="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                  />
+                  {profileForm.errors.phone && (
+                    <p className="text-xs font-semibold text-red-600">{profileForm.errors.phone}</p>
+                  )}
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-sm font-bold text-gray-700">Sekolah Asal</span>
+                  <input
+                    type="text"
+                    value={profileForm.data.school_origin}
+                    onChange={(event) => profileForm.setData('school_origin', event.target.value)}
+                    disabled={profileForm.processing}
+                    className="w-full rounded-xl border border-[#D8D7BE] bg-[#FDFCF8] px-4 py-3 text-sm outline-none transition-colors focus:border-[#691D1B]"
+                    placeholder="Masukkan nama sekolah asal"
+                    autoComplete="organization"
+                  />
+                  {profileForm.errors.school_origin && (
+                    <p className="text-xs font-semibold text-red-600">{profileForm.errors.school_origin}</p>
+                  )}
+                </label>
               </div>
             </div>
 
-            {profileEditing ? (
-              <ProfileEditorForm
-                user={user}
-                onCancel={cancelProfileEditor}
-                onSaved={finishProfileEditor}
-              />
-            ) : (
-              <>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="rounded-xl border border-[#D8D7BE] p-4">
-                    <p className="mb-2 text-sm text-gray-500">Nama Lengkap</p>
-                    <p className="text-sm text-gray-900" style={{ fontWeight: 800 }}>
-                      {user?.name || '-'}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-[#D8D7BE] p-4">
-                    <p className="mb-2 text-sm text-gray-500">Jenis Kelamin</p>
-                    <p className="text-sm text-gray-900" style={{ fontWeight: 800 }}>
-                      {formatGender(user?.gender)}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-[#D8D7BE] p-4">
-                    <p className="mb-2 text-sm text-gray-500">No Telepon/WhatsApp</p>
-                    <p className="text-sm text-gray-900" style={{ fontWeight: 800 }}>
-                      {user?.phone || '-'}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-[#D8D7BE] p-4">
-                    <p className="mb-2 text-sm text-gray-500">Sekolah Asal</p>
-                    <p className="text-sm text-gray-900" style={{ fontWeight: 800 }}>
-                      {user?.school_origin || '-'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={openProfileEditor}
-                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm text-white transition-colors hover:bg-[#4A1412] sm:w-auto"
-                    style={{ background: '#691D1B', fontWeight: 900 }}
-                  >
-                    <Pencil className="h-4 w-4" />
-                    Edit Profil
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={logout}
-                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#691D1B] px-4 py-2.5 text-sm text-[#691D1B] transition-colors hover:bg-[#691D1B] hover:text-white sm:w-auto"
-                    style={{ fontWeight: 900 }}
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Keluar
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+            <div className="flex flex-col gap-3 border-t border-[#D8D7BE] px-4 py-4 sm:flex-row sm:justify-end sm:px-6" style={{ background: '#F7F2E7' }}>
+              <button
+                type="button"
+                onClick={resetProfileForm}
+                disabled={profileForm.processing}
+                className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[#D8D7BE] px-4 py-2.5 text-sm text-gray-600 transition-colors hover:bg-white disabled:opacity-60"
+                style={{ fontWeight: 700 }}
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={profileForm.processing}
+                className="inline-flex min-h-10 items-center justify-center rounded-xl px-5 py-2.5 text-sm transition-all hover:opacity-90 disabled:opacity-70"
+                style={{ background: '#691D1B', color: '#FFE882', fontWeight: 800 }}
+              >
+                <StagedLoadingContent loading={profileForm.processing} loadingLabel="Menyimpan..." longLoadingLabel="Masih menyimpan profil...">
+                  Simpan Perubahan
+                </StagedLoadingContent>
+              </button>
+            </div>
+          </form>
         </section>
       </main>
     </>
@@ -1838,35 +1755,6 @@ export default function StudentDashboard({
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >
-      <style>
-        {`
-          @keyframes studentDrawerSlideIn {
-            from { transform: translateX(-100%); }
-            to { transform: translateX(0); }
-          }
-
-          @keyframes studentDrawerFadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-
-          .student-drawer-panel {
-            animation: studentDrawerSlideIn 240ms ease-out both;
-          }
-
-          .student-drawer-backdrop {
-            animation: studentDrawerFadeIn 180ms ease-out both;
-          }
-
-          @media (prefers-reduced-motion: reduce) {
-            .student-drawer-panel,
-            .student-drawer-backdrop {
-              animation: none;
-            }
-          }
-        `}
-      </style>
-
       <div className="flex min-h-screen">
         {showStudentSidebar && (
           <aside className="hidden w-64 flex-shrink-0 lg:block">
@@ -1876,16 +1764,21 @@ export default function StudentDashboard({
           </aside>
         )}
 
-        {showStudentSidebar && sidebarOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden">
+        {showStudentSidebar && mobileSidebarMounted && (
+          <div
+            className={`fixed inset-0 z-50 transition-opacity duration-300 ease-out lg:hidden ${sidebarOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
+            aria-hidden={!sidebarOpen}
+          >
             <button
               type="button"
-              className="student-drawer-backdrop absolute inset-0 bg-black/40"
+              className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ease-out ${sidebarOpen ? 'opacity-100' : 'opacity-0'}`}
               onClick={() => setSidebarOpen(false)}
               aria-label="Tutup sidebar"
             />
 
-            <div className="student-drawer-panel relative h-full w-[min(20rem,85vw)]">
+            <div
+              className={`relative h-full w-[min(20rem,85vw)] transition-transform duration-300 ease-out motion-reduce:transition-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+            >
               <button
                 type="button"
                 onClick={() => setSidebarOpen(false)}
@@ -1905,7 +1798,7 @@ export default function StudentDashboard({
           {activeTab === 'katalog' && <KatalogPage />}
           {activeTab === 'subtes' && <SubtesPage />}
           {activeTab === 'jadwal' && <JadwalPage />}
-          {activeTab === 'profil' && <ProfilPage />}
+          {activeTab === 'profil' && renderProfilPage()}
         </div>
       </div>
 

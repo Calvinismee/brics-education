@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 
@@ -23,12 +23,25 @@ export function TutorMobileDrawer({
   active = "dashboard",
   selectedClassId = null,
 }) {
+  const [shouldRender, setShouldRender] = useState(open);
+
   useEffect(() => {
-    if (!open) return undefined;
+    if (open) {
+      setShouldRender(true);
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => setShouldRender(false), 300);
+
+    return () => window.clearTimeout(timeout);
+  }, [open]);
+
+  useEffect(() => {
+    if (!shouldRender) return undefined;
 
     const previousOverflow = document.body.style.overflow;
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && open) {
         onClose?.();
       }
     };
@@ -40,20 +53,27 @@ export function TutorMobileDrawer({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open, onClose]);
+  }, [open, onClose, shouldRender]);
 
-  if (!open) return null;
+  if (!shouldRender) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden lg:hidden" role="dialog" aria-modal="true">
+    <div
+      className={`fixed inset-0 z-50 overflow-hidden transition-opacity duration-300 ease-out lg:hidden ${open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
+      role="dialog"
+      aria-modal="true"
+      aria-hidden={!open}
+    >
       <button
         type="button"
-        className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
+        className={`absolute inset-0 bg-black/45 backdrop-blur-[2px] transition-opacity duration-300 ease-out ${open ? "opacity-100" : "opacity-0"}`}
         onClick={onClose}
         aria-label="Tutup menu tutor"
       />
 
-      <div className="relative h-dvh w-[min(21rem,92vw)] max-w-[calc(100vw-0.75rem)] shadow-2xl">
+      <div
+        className={`relative h-dvh w-[min(21rem,92vw)] max-w-[calc(100vw-0.75rem)] shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none ${open ? "translate-x-0" : "-translate-x-full"}`}
+      >
         <button
           type="button"
           onClick={onClose}
