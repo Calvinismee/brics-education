@@ -172,18 +172,7 @@ export default function AdminLayout({ children, title, subtitle }) {
                             <div className="text-sm leading-tight text-white/75">Administrator</div>
                         </div>
                     </div>
-                    <div className="mt-4 flex items-center justify-between text-xs">
-                        <span className="text-white/80">Akses Panel</span>
-                        <span className="rounded-full bg-[#FFE882]/20 px-2 py-0.5 text-[#FFE882]" style={{ fontWeight: 900 }}>
-                            Admin
-                        </span>
-                    </div>
-                    <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/20">
-                        <div
-                            className="h-full rounded-full"
-                            style={{ width: '100%', background: '#FFE882' }}
-                        />
-                    </div>
+                    
                 </div>
             </div>
 
