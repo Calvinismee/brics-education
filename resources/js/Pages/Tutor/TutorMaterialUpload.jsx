@@ -20,6 +20,79 @@ const initialsFor = (name) => String(name || "Tutor UTBK")
   .slice(0, 2)
   .toUpperCase();
 
+const fileMetaLabel = (file) => {
+  const extension = String(file?.name ?? "").split(".").pop()?.toUpperCase();
+
+  return extension ? `File ${extension} terlampir` : "File terlampir";
+};
+
+const optimisticTitleForType = (title, type) => {
+  if (type === "module") return `${title} - Modul`;
+  if (type === "quiz") return `${title} - Bank Soal`;
+
+  return title;
+};
+
+const buildOptimisticUploadedItems = ({
+  baselineCount,
+  course,
+  title,
+  youtubeUrl,
+  moduleFile,
+  quizFile,
+}) => {
+  const now = Date.now();
+  const common = {
+    status: "pending",
+    course: course?.title,
+    course_id: course?.id,
+    uploaded_by_current_tutor: true,
+    can_delete: false,
+    created_at: new Date(now).toISOString(),
+    optimistic: true,
+    baselineCount,
+  };
+  const items = [];
+
+  if (youtubeUrl.trim()) {
+    items.push({
+      ...common,
+      id: `optimistic-${now}-video`,
+      name: optimisticTitleForType(title, "video"),
+      title: optimisticTitleForType(title, "video"),
+      meta: "Link video YouTube",
+      url: youtubeUrl.trim(),
+      type: "video",
+    });
+  }
+
+  if (moduleFile) {
+    items.push({
+      ...common,
+      id: `optimistic-${now}-module`,
+      name: optimisticTitleForType(title, "module"),
+      title: optimisticTitleForType(title, "module"),
+      meta: fileMetaLabel(moduleFile),
+      url: "#",
+      type: "module",
+    });
+  }
+
+  if (quizFile) {
+    items.push({
+      ...common,
+      id: `optimistic-${now}-quiz`,
+      name: optimisticTitleForType(title, "quiz"),
+      title: optimisticTitleForType(title, "quiz"),
+      meta: fileMetaLabel(quizFile),
+      url: "#",
+      type: "quiz",
+    });
+  }
+
+  return items;
+};
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -42,6 +115,7 @@ export function TutorMaterialUpload({
   const tutorName = user?.name ?? "Tutor UTBK";
   const tutorInitials = initialsFor(tutorName);
   const [activeNav, setActiveNav] = useState("upload");
+  const [optimisticUploadedItems, setOptimisticUploadedItems] = useState([]);
 
   // ── Form state ──
   const [judul, setJudul] = useState("");
@@ -68,7 +142,10 @@ export function TutorMaterialUpload({
   }));
 
   // ── Uploaded history ──
-  const uploadedItems = serverItems;
+  const uploadedItems = [
+    ...optimisticUploadedItems.filter((item) => serverItems.length <= item.baselineCount),
+    ...serverItems,
+  ];
 
   const navItems = [
     { key: "dashboard", label: "Dashboard",    icon: <Home className="w-5 h-5" />,    to: "/tutor/dashboard" },
@@ -102,6 +179,15 @@ export function TutorMaterialUpload({
     const selectedCourse = courseList.find((course) => course.title === kursus) ?? courseList[0];
 
     if (selectedCourse) {
+      const optimisticBatch = buildOptimisticUploadedItems({
+        baselineCount: serverItems.length,
+        course: selectedCourse,
+        title: judul.trim(),
+        youtubeUrl,
+        moduleFile: modulUploadFile,
+        quizFile: quizUploadFile,
+      });
+
       setIsUploading(true);
       router.post(
         "/tutor/upload",
@@ -118,6 +204,7 @@ export function TutorMaterialUpload({
           preserveScroll: true,
           onStart: () => setIsUploading(true),
           onSuccess: () => {
+            setOptimisticUploadedItems((items) => [...optimisticBatch, ...items]);
             setJudul("");
             setDeskripsi("");
             setYoutubeUrl("");
@@ -127,6 +214,11 @@ export function TutorMaterialUpload({
             setQuizUploadFile(null);
             setSubmitted(true);
             setTimeout(() => setSubmitted(false), 3000);
+            router.reload({
+              only: ["uploadedItems", "stats"],
+              preserveState: true,
+              preserveScroll: true,
+            });
           },
           onFinish: () => setIsUploading(false),
         }
@@ -146,6 +238,7 @@ export function TutorMaterialUpload({
 
   const materialHref = (meta) => {
     if (!meta) return "#";
+    if (meta === "#" || meta.startsWith("#")) return "#";
     if (meta.startsWith("http") || meta.startsWith("/")) return meta;
     return `https://${meta}`;
   };
@@ -573,14 +666,16 @@ export function TutorMaterialUpload({
                             {sc.icon}{sc.label}
                           </span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => deleteMaterial(item)}
-                          className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
-                          title="Hapus materi"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                        {!item.optimistic && (
+                          <button
+                            type="button"
+                            onClick={() => deleteMaterial(item)}
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
+                            title="Hapus materi"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     );
                   })}

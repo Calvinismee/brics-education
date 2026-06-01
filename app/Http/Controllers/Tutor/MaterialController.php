@@ -29,7 +29,8 @@ class MaterialController extends Controller
         $materials = Material::query()
             ->with('course:id,title')
             ->whereIn('course_id', $courseIds)
-            ->latest()
+            ->latest('created_at')
+            ->latest('id')
             ->get()
             ->map(function (Material $material) use ($courseIds, $user) {
                 $fileUrl = $material->file_url;
