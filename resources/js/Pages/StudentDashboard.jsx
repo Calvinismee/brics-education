@@ -1,7 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, router, useForm } from '@inertiajs/react';
 import {
-  Bell,
   BookOpen,
   CalendarDays,
   ChevronDown,
@@ -21,8 +20,11 @@ import {
   Package as PackageIcon,
   X,
 } from 'lucide-react';
+import { DashboardNotificationBell } from '@/Components/DashboardNotificationBell';
 import { StagedLoadingContent } from '@/Components/ui/LoadingStates';
 import { courseLearnHref, packageCheckoutHref, transactionStatusHref } from '@/utils/slug';
+
+const studentSidebarScrollKey = 'brics-student-sidebar-scroll-top';
 
 function asArray(value) {
   if (Array.isArray(value)) return value;
@@ -37,22 +39,6 @@ function formatPrice(price) {
   }
 
   return String(price || '-');
-}
-
-function formatDate(dateString) {
-  if (!dateString) return '-';
-
-  const date = parseScheduleDate(dateString);
-
-  if (!date) {
-    return dateString;
-  }
-
-  return date.toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
 }
 
 function formatTime(dateString) {
@@ -203,12 +189,10 @@ export default function StudentDashboard({
   scheduleWeek = null,
   scheduleStats = {},
   materials = [],
-  notifications: serverNotifications = [],
 }) {
   const [activeTab, setActiveTab] = useState(getInitialDashboardTab);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [subtesOpen, setSubtesOpen] = useState(true);
-  const [notificationOpen, setNotificationOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const profileForm = useForm({
     name: user?.name ?? '',
@@ -220,6 +204,7 @@ export default function StudentDashboard({
   const [calendarNow, setCalendarNow] = useState(() => new Date());
   const [scheduleNow, setScheduleNow] = useState(() => new Date());
   const [selectedScheduleDateKey, setSelectedScheduleDateKey] = useState(null);
+  const sidebarScrollRef = useRef(null);
 
   useEffect(() => {
     const interval = window.setInterval(() => setScheduleNow(new Date()), 30000);
@@ -271,9 +256,6 @@ export default function StudentDashboard({
     (item) => item.payment_status === 'pending'
   );
   const pendingPackageTransactions = pendingTransactions.filter((item) => item.package_id || item.package?.id);
-  const notificationItems = Array.isArray(serverNotifications)
-    ? serverNotifications
-    : Object.values(serverNotifications ?? {});
   const materialItems = Array.isArray(materials) ? materials : Object.values(materials ?? {});
   const weekDays = useMemo(() => {
     const serverDays = asArray(scheduleDays);
@@ -409,65 +391,6 @@ export default function StudentDashboard({
       Math.max(learningItems.length, 1)
   );
 
-  const fallbackNotifications = hasActivePackage
-    ? [
-      {
-        id: 1,
-        title: 'Paket aktif',
-        message: `${currentPackageName} sedang aktif dan bisa kamu akses dari menu Subtes UTBK.`,
-        type: 'course',
-        time: 'Terbaru',
-      },
-      {
-        id: 2,
-        title: 'Jadwal pembelajaran',
-        message:
-          schedules.length > 0
-            ? `${schedules.length} jadwal tersedia untuk course aktifmu.`
-            : 'Belum ada jadwal terbaru.',
-        type: 'schedule',
-        time: 'Hari ini',
-      },
-      {
-        id: 3,
-        title: 'Status pembayaran',
-        message:
-          pendingTransactions.length > 0
-            ? `${pendingTransactions.length} transaksi masih pending.`
-            : 'Tidak ada transaksi pending.',
-        type: 'payment',
-        time: 'Info',
-      },
-    ]
-    : [
-      {
-        id: 1,
-        title: 'Pilih paket',
-        message: 'Beli paket belajar untuk membuka akses subtes, materi, dan jadwal.',
-        type: 'payment',
-        time: 'Info',
-      },
-      {
-        id: 2,
-        title: 'Status pembayaran',
-        message:
-          pendingPackageTransactions.length > 0
-            ? `${pendingPackageTransactions.length} transaksi paket masih pending.`
-            : 'Belum ada paket aktif.',
-        type: 'payment',
-        time: 'Info',
-      },
-    ];
-  const notifications = notificationItems.length > 0
-    ? notificationItems.map((notification) => ({
-      id: notification.id,
-      title: notification.title || 'Notifikasi',
-      message: notification.message || 'Ada informasi baru untuk akun belajarmu.',
-      type: notification.is_read ? 'info' : 'course',
-      time: notification.created_at ? formatDate(notification.created_at) : 'Terbaru',
-    }))
-    : fallbackNotifications;
-
   const logout = () => {
     router.post(route('logout'));
   };
@@ -502,7 +425,6 @@ export default function StudentDashboard({
       school_origin: user?.school_origin ?? '',
     });
     profileForm.clearErrors();
-    setNotificationOpen(false);
     setSidebarOpen(false);
     setProfileEditorOpen(true);
   };
@@ -529,6 +451,27 @@ export default function StudentDashboard({
       : 'Materi belum tersedia';
   };
 
+  const saveSidebarScroll = (element = sidebarScrollRef.current) => {
+    if (typeof window === 'undefined' || !element) return;
+
+    sessionStorage.setItem(studentSidebarScrollKey, String(element.scrollTop));
+  };
+
+  const restoreSidebarScroll = (element) => {
+    if (typeof window === 'undefined' || !element) return;
+
+    const scrollTop = Number(sessionStorage.getItem(studentSidebarScrollKey) ?? 0);
+
+    if (Number.isFinite(scrollTop) && scrollTop > 0) {
+      element.scrollTop = scrollTop;
+    }
+  };
+
+  const setSidebarScrollElement = (element) => {
+    sidebarScrollRef.current = element;
+    restoreSidebarScroll(element);
+  };
+
   const SidebarMenuButton = ({ active, icon: Icon, label, onClick }) => (
     <button
       type="button"
@@ -548,6 +491,8 @@ export default function StudentDashboard({
 
   const renderSidebarContent = () => (
     <div
+      ref={setSidebarScrollElement}
+      onScroll={(event) => saveSidebarScroll(event.currentTarget)}
       className="h-full flex flex-col text-white overflow-y-scroll overflow-x-hidden"
       style={{
         background: '#741A18',
@@ -749,64 +694,6 @@ export default function StudentDashboard({
     </div>
   );
 
-  const NotificationDropdown = () => (
-    <div className="absolute right-0 top-12 z-50 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-[#D8D7BE] bg-white shadow-xl">
-      <div className="px-4 py-3 border-b border-[#F7F2E7]">
-        <h3 className="text-[#691D1B] text-base" style={{ fontWeight: 900 }}>
-          Notifikasi
-        </h3>
-        <p className="text-xs text-gray-500">
-          Informasi terbaru dari akun belajarmu.
-        </p>
-      </div>
-
-      <div className="divide-y divide-[#F7F2E7]">
-        {notifications.map((notification) => (
-          <button
-            key={notification.id}
-            type="button"
-            onClick={() => {
-              if (notification.type === 'schedule') {
-                changeTab('jadwal');
-              }
-
-              if (notification.type === 'course') {
-                changeTab('subtes');
-              }
-
-              setNotificationOpen(false);
-            }}
-            className="w-full px-4 py-3 text-left hover:bg-[#F7F2E7] transition-colors"
-          >
-            <p className="text-sm text-gray-900" style={{ fontWeight: 800 }}>
-              {notification.title}
-            </p>
-            <p className="text-xs text-gray-500 leading-relaxed mt-1">
-              {notification.message}
-            </p>
-            <p
-              className="text-[11px] text-[#691D1B] mt-2"
-              style={{ fontWeight: 800 }}
-            >
-              {notification.time}
-            </p>
-          </button>
-        ))}
-      </div>
-
-      <div className="px-4 py-3 bg-[#F7F2E7]">
-        <button
-          type="button"
-          onClick={() => setNotificationOpen(false)}
-          className="w-full text-sm text-[#691D1B]"
-          style={{ fontWeight: 800 }}
-        >
-          Tutup
-        </button>
-      </div>
-    </div>
-  );
-
   const Topbar = ({ title, subtitle }) => (
     <header className="bg-white border-b border-[#D8D7BE] sticky top-0 z-40 shadow-sm">
       <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5 lg:px-6 lg:py-3.5">
@@ -836,21 +723,10 @@ export default function StudentDashboard({
         </div>
 
         <div className="flex flex-shrink-0 items-center gap-2 sm:gap-3">
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setNotificationOpen((value) => !value)}
-              className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-[#D8D7BE] bg-[#F7F2E7] transition-colors hover:bg-[#EFE8D8] sm:h-11 sm:w-11"
-              aria-label="Buka notifikasi"
-            >
-              <Bell className="w-5 h-5 text-gray-700" />
-              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-black">
-                {notifications.length}
-              </span>
-            </button>
-
-            {notificationOpen && <NotificationDropdown />}
-          </div>
+          <DashboardNotificationBell
+            markAllHref="/notifications/mark-all-as-read"
+            historyLabel="Riwayat terbaru siswa"
+          />
 
           {!hasActivePackage && (
             <button
@@ -904,22 +780,28 @@ export default function StudentDashboard({
         <span className="min-w-0 text-sm font-bold text-gray-900">
           {hasActivePackage ? `${currentPackageName} — Aktif` : 'Belum ada paket aktif'}
         </span>
-        <span className="text-gray-400 hidden sm:inline">|</span>
-        <span className="text-sm text-gray-500">
-          {hasActivePackage ? 'Valid hingga 30 Juni 2025' : 'Pilih paket untuk membuka akses belajar'}
-        </span>
+        {!hasActivePackage && (
+          <>
+            <span className="text-gray-400 hidden sm:inline">|</span>
+            <span className="text-sm text-gray-500">
+              Pilih paket untuk membuka akses belajar
+            </span>
+          </>
+        )}
       </div>
 
-      <span
-        className="inline-flex self-start sm:self-auto px-3.5 py-1 rounded-full text-xs"
-        style={{
-          background: '#FFE882',
-          color: '#691D1B',
-          fontWeight: 900,
-        }}
-      >
-        {hasActivePackage ? '63 hari' : 'Pilih Paket'}
-      </span>
+      {!hasActivePackage && (
+        <span
+          className="inline-flex self-start sm:self-auto px-3.5 py-1 rounded-full text-xs"
+          style={{
+            background: '#FFE882',
+            color: '#691D1B',
+            fontWeight: 900,
+          }}
+        >
+          Pilih Paket
+        </span>
+      )}
     </div>
   );
 

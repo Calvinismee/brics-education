@@ -36,17 +36,17 @@ class ProgressController extends Controller
             'status' => 'nullable|string',
         ]);
 
-        $record = ProgressRecord::updateOrCreate(
-            [
-                'user_id' => $user->id,
-                'course_id' => $validated['course_id'],
-                'material_id' => $validated['material_id'] ?? null,
-            ],
-            [
-                'percent' => $validated['percent'] ?? 0,
-                'status' => $validated['status'] ?? 'started',
-            ]
-        );
+        $record = ProgressRecord::firstOrNew([
+            'user_id' => $user->id,
+            'course_id' => $validated['course_id'],
+            'material_id' => $validated['material_id'] ?? null,
+        ]);
+
+        $record->fill([
+            'percent' => max((int) ($record->percent ?? 0), (int) ($validated['percent'] ?? 0)),
+            'status' => $validated['status'] ?? $record->status ?? 'started',
+        ]);
+        $record->save();
 
         return response()->json($record, 201);
     }

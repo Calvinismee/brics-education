@@ -2,8 +2,8 @@ import { Link, router } from "@inertiajs/react";
 import { useState } from "react";
 import {
   Home, BookOpen, Upload, Users, LogOut, Calendar, Video, FileText,
-  Bell, ArrowLeft, Search, Filter, TrendingUp, Star, Clock,
-  CheckCircle, AlertCircle, MoreVertical, ChevronDown, ChevronRight,
+  ArrowLeft, Search, Filter, TrendingUp, Clock,
+  CheckCircle, AlertCircle, MoreVertical, ChevronDown,
   Paperclip, Eye, Download,
   Megaphone, Send,
   Trash2,
@@ -60,8 +60,6 @@ export function TutorClassMonitoring({
   );
   const filtered = [...searchedStudents].sort((a, b) => {
     if (studentSort === "progress-desc") return (b.progress ?? 0) - (a.progress ?? 0);
-    if (studentSort === "score-desc") return (b.score ?? 0) - (a.score ?? 0);
-    if (studentSort === "attendance-desc") return (b.attendance ?? 0) - (a.attendance ?? 0);
     return String(a.name ?? "").localeCompare(String(b.name ?? ""));
   });
   const studentsPerPage = 8;
@@ -135,9 +133,6 @@ export function TutorClassMonitoring({
     );
   };
 
-  const avgScore      = students.length ? Math.round(students.reduce((a, s) => a + s.score,      0) / students.length) : 0;
-  const avgAttendance = students.length ? Math.round(students.reduce((a, s) => a + s.attendance, 0) / students.length) : 0;
-
   return (
     <div className="min-h-screen flex" style={{ background: "#F7F2E7", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
 
@@ -177,12 +172,10 @@ export function TutorClassMonitoring({
         <div className="flex-1 overflow-auto px-4 py-5 sm:p-6 space-y-5 sm:space-y-6">
 
           {/* ── Stats ─────────────────────────────────────────── */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {[
               { label: "Total Siswa",    value: String(cls.students ?? 0), icon: <Users       className="w-5 h-5" /> },
               { label: "Progres Kelas",  value: `${cls.progress ?? 0}%`,   icon: <TrendingUp  className="w-5 h-5" /> },
-              { label: "Nilai Rata-rata",value: `${avgScore}/100`,        icon: <Star        className="w-5 h-5" /> },
-              { label: "Kehadiran",      value: `${avgAttendance}%`,      icon: <CheckCircle className="w-5 h-5" /> },
             ].map((stat) => (
               <div key={stat.label} className="bg-white rounded-xl p-4 shadow-sm border border-[#D8D7BE]">
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-3" style={{ background: "#691D1B15", color: "#691D1B" }}>
@@ -234,8 +227,6 @@ export function TutorClassMonitoring({
                         {[
                           { key: "name-asc", label: "Nama A-Z" },
                           { key: "progress-desc", label: "Progress tertinggi" },
-                          { key: "score-desc", label: "Nilai tertinggi" },
-                          { key: "attendance-desc", label: "Kehadiran tertinggi" },
                         ].map((option) => (
                           <button
                             key={option.key}
@@ -261,7 +252,7 @@ export function TutorClassMonitoring({
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-[#F7F2E7]">
-                      {["Siswa", "Progres", "Nilai", "Hadir", "Aktif", ""].map((h) => (
+                      {["Siswa", "Progres", "Aktif", ""].map((h) => (
                         <th
                           key={h}
                           className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wide"
@@ -293,20 +284,6 @@ export function TutorClassMonitoring({
                             </div>
                             <span className="text-xs" style={{ color: getProgressColor(s.progress), fontWeight: 600 }}>{s.progress}%</span>
                           </div>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <span className="text-sm" style={{ fontWeight: 700, color: s.score >= 80 ? "#16a34a" : s.score >= 60 ? "#d97706" : "#ef4444" }}>
-                            {s.score}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <span className="text-xs px-2 py-0.5 rounded-full" style={{
-                            background: s.attendance >= 90 ? "#22c55e15" : s.attendance >= 75 ? "#f59e0b15" : "#ef444415",
-                            color: s.attendance >= 90 ? "#16a34a" : s.attendance >= 75 ? "#d97706" : "#ef4444",
-                            fontWeight: 600,
-                          }}>
-                            {s.attendance}%
-                          </span>
                         </td>
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-1 text-xs text-gray-400">
@@ -368,18 +345,13 @@ export function TutorClassMonitoring({
                       )}
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="rounded-xl bg-[#F7F2E7] p-2">
+                    <div className="rounded-xl bg-[#F7F2E7] p-3">
+                      <div className="mb-2 flex items-center justify-between gap-3">
                         <p className="text-[11px] text-gray-400">Progres</p>
                         <p className="text-sm" style={{ color: getProgressColor(s.progress), fontWeight: 800 }}>{s.progress}%</p>
                       </div>
-                      <div className="rounded-xl bg-[#F7F2E7] p-2">
-                        <p className="text-[11px] text-gray-400">Nilai</p>
-                        <p className="text-sm" style={{ color: s.score >= 80 ? "#16a34a" : s.score >= 60 ? "#d97706" : "#ef4444", fontWeight: 800 }}>{s.score}</p>
-                      </div>
-                      <div className="rounded-xl bg-[#F7F2E7] p-2">
-                        <p className="text-[11px] text-gray-400">Hadir</p>
-                        <p className="text-sm" style={{ color: s.attendance >= 75 ? "#16a34a" : "#ef4444", fontWeight: 800 }}>{s.attendance}%</p>
+                      <div className="h-2 rounded-full bg-white">
+                        <div className="h-2 rounded-full" style={{ width: `${s.progress}%`, background: getProgressColor(s.progress) }} />
                       </div>
                     </div>
 

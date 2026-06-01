@@ -1,8 +1,7 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { Link, router, useForm } from '@inertiajs/react';
 import {
   ArrowLeft,
-  Bell,
   BookOpen,
   CalendarDays,
   CheckCircle2,
@@ -19,12 +18,14 @@ import {
   Pencil,
   Play,
   Star,
-  User,
   Video,
   X,
 } from 'lucide-react';
+import { DashboardNotificationBell } from '@/Components/DashboardNotificationBell';
 import { StagedLoadingContent } from '@/Components/ui/LoadingStates';
 import { courseLearnHref } from '@/utils/slug';
+
+const studentSidebarScrollKey = 'brics-student-sidebar-scroll-top';
 
 function getInitials(name) {
   if (!name) return 'SI';
@@ -43,20 +44,17 @@ function getCategoryName(course) {
   return course.category.name || 'Paket Intensif UTBK';
 }
 
-function formatDate(dateString) {
-  if (!dateString) return '-';
+function progressRecordsToMap(records) {
+  const map = {};
+  const rows = Array.isArray(records) ? records : Object.values(records ?? {});
 
-  const date = new Date(dateString);
-
-  if (Number.isNaN(date.getTime())) {
-    return dateString;
-  }
-
-  return date.toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
+  rows.forEach((record) => {
+    if (record?.course_id) {
+      map[record.course_id] = Number(record.percent ?? 0);
+    }
   });
+
+  return map;
 }
 
 function getMaterialLabel(type) {
@@ -187,6 +185,7 @@ export default function CourseLearn({
   materials = [],
   enrollment,
   enrollments = [],
+  progressRecords = [],
 }) {
   const [activeMaterialIndex, setActiveMaterialIndex] = useState(null);
   const [activeResourceTab, setActiveResourceTab] = useState('video');
@@ -194,7 +193,9 @@ export default function CourseLearn({
   const [filePreview, setFilePreview] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [subtesOpen, setSubtesOpen] = useState(true);
+  const [progressMap, setProgressMap] = useState(() => progressRecordsToMap(progressRecords));
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
+  const sidebarScrollRef = useRef(null);
   const profileForm = useForm({
     name: user?.name ?? '',
     gender: user?.gender ?? '',
@@ -204,6 +205,19 @@ export default function CourseLearn({
 
   const courseTitle = course?.title || 'Bundling Tryout UTBK-SNBT';
   const categoryName = getCategoryName(course);
+
+  useEffect(() => {
+    setProgressMap(progressRecordsToMap(progressRecords));
+  }, [progressRecords]);
+
+  useEffect(() => {
+    fetch('/student/progress')
+      .then((res) => res.json())
+      .then((data) => {
+        setProgressMap(progressRecordsToMap(data.courses));
+      })
+      .catch(() => {});
+  }, []);
 
   const normalizedMaterials = useMemo(() => {
     return [...materials]
@@ -215,11 +229,23 @@ export default function CourseLearn({
       }));
   }, [materials]);
 
+  const currentCourseProgress = Number(progressMap[course?.id] ?? 0);
+
   // Track progress (after normalizedMaterials is defined)
   useEffect(() => {
-    if (!course?.id || normalizedMaterials.length === 0) return;
-    const materialsViewed = activeMaterialIndex !== null ? activeMaterialIndex + 1 : 0;
+    if (!course?.id || normalizedMaterials.length === 0 || activeMaterialIndex === null) return;
+
+    const activeTrackedMaterial = normalizedMaterials[activeMaterialIndex];
+    if (!activeTrackedMaterial) return;
+
+    const materialsViewed = activeMaterialIndex + 1;
     const percent = Math.round((materialsViewed / normalizedMaterials.length) * 100);
+    const nextPercent = Math.max(currentCourseProgress, percent);
+
+    setProgressMap((current) => ({
+      ...current,
+      [course.id]: Math.max(Number(current[course.id] ?? 0), nextPercent),
+    }));
 
     // Get CSRF token from meta tag
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -232,12 +258,12 @@ export default function CourseLearn({
       },
       body: JSON.stringify({
         course_id: course.id,
-        material_id: materials[activeMaterialIndex]?.id || null,
-        percent,
+        material_id: activeTrackedMaterial.id,
+        percent: nextPercent,
         status: 'in_progress',
       }),
     }).catch(() => {});
-  }, [activeMaterialIndex, course?.id, materials, normalizedMaterials.length]);
+  }, [activeMaterialIndex, course?.id, currentCourseProgress, normalizedMaterials]);
 
   const hasMaterials = normalizedMaterials.length > 0;
   const videoMaterials = normalizedMaterials.filter(
@@ -260,7 +286,13 @@ export default function CourseLearn({
     (material) => material.type === 'bank_soal' || material.type === 'quiz'
   );
 
-  const completedCount = activeMaterialIndex !== null ? activeMaterialIndex + 1 : 0;
+  const completedCount = Math.min(
+    normalizedMaterials.length,
+    Math.max(
+      activeMaterialIndex !== null ? activeMaterialIndex + 1 : 0,
+      Math.round((currentCourseProgress / 100) * normalizedMaterials.length)
+    )
+  );
   const courseColors = ['#691D1B', '#0F7A45', '#2447C6', '#D5A018', '#7C3AED', '#C2410C', '#0F766E'];
   const activeEnrollments = Array.isArray(enrollments) ? enrollments : Object.values(enrollments ?? {});
   const sidebarCourseItems = activeEnrollments.length > 0
@@ -273,7 +305,7 @@ export default function CourseLearn({
         id: item.course_id,
         title: enrolledCourse.title || `Course ${index + 1}`,
         description: enrolledCourse.description || 'Course aktif yang sudah terdaftar di akun siswa.',
-        progress: 0,
+        progress: Number(progressMap[item.course_id] ?? 0),
         color,
         active: Number(item.course_id) === Number(course?.id),
         href: courseLearnHref(enrolledCourse, item.course_id),
@@ -286,7 +318,7 @@ export default function CourseLearn({
         id: course?.id ?? 'current',
         title: courseTitle,
         description: course?.description || 'Course aktif yang sudah terdaftar di akun siswa.',
-        progress: hasMaterials ? 20 : 0,
+        progress: Number(progressMap[course?.id] ?? 0),
         color: '#691D1B',
         active: true,
         href: courseLearnHref(course),
@@ -319,6 +351,32 @@ export default function CourseLearn({
     if (profileForm.processing) return;
 
     setProfileEditorOpen(false);
+  };
+
+  const saveSidebarScroll = (element = sidebarScrollRef.current) => {
+    if (typeof window === 'undefined' || !element) return;
+
+    sessionStorage.setItem(studentSidebarScrollKey, String(element.scrollTop));
+  };
+
+  const restoreSidebarScroll = (element) => {
+    if (typeof window === 'undefined' || !element) return;
+
+    const scrollTop = Number(sessionStorage.getItem(studentSidebarScrollKey) ?? 0);
+
+    if (Number.isFinite(scrollTop) && scrollTop > 0) {
+      element.scrollTop = scrollTop;
+    }
+  };
+
+  const setSidebarScrollElement = (element) => {
+    sidebarScrollRef.current = element;
+    restoreSidebarScroll(element);
+  };
+
+  const closeAndSaveSidebar = () => {
+    saveSidebarScroll();
+    setSidebarOpen(false);
   };
 
   const submitProfileEditor = (event) => {
@@ -496,6 +554,8 @@ export default function CourseLearn({
 
   const renderSidebarContent = () => (
     <div
+      ref={setSidebarScrollElement}
+      onScroll={(event) => saveSidebarScroll(event.currentTarget)}
       className="h-full flex flex-col text-white overflow-y-scroll overflow-x-hidden"
       style={{
         background: '#741A18',
@@ -549,12 +609,9 @@ export default function CourseLearn({
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setSidebarOpen(false);
-                openProfileEditor();
-              }}
+            <Link
+              href="/dashboard?tab=profil"
+              onClick={closeAndSaveSidebar}
               className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition-transform hover:scale-105"
               style={{
                 background: '#FFE882',
@@ -564,7 +621,7 @@ export default function CourseLearn({
               aria-label="Edit Profil"
             >
               <Pencil className="h-4 w-4" />
-            </button>
+            </Link>
           </div>
 
           <div className="mt-4">
@@ -591,7 +648,7 @@ export default function CourseLearn({
       <nav className="flex-1 px-3.5 py-4 space-y-2">
         <Link
           href="/dashboard"
-          onClick={() => setSidebarOpen(false)}
+          onClick={closeAndSaveSidebar}
           className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-colors hover:bg-white/10"
           style={{ fontWeight: 800 }}
         >
@@ -601,7 +658,7 @@ export default function CourseLearn({
 
         <Link
           href="/dashboard?tab=katalog"
-          onClick={() => setSidebarOpen(false)}
+          onClick={closeAndSaveSidebar}
           className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-colors hover:bg-white/10"
           style={{ fontWeight: 800 }}
         >
@@ -613,8 +670,8 @@ export default function CourseLearn({
           type="button"
           onClick={() => setSubtesOpen((value) => !value)}
           aria-expanded={subtesOpen}
-          className="flex min-h-[42px] w-full items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-[#691D1B]"
-          style={{ background: '#FFE882', fontWeight: 800 }}
+          className="flex min-h-[42px] w-full items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-colors hover:bg-white/10"
+          style={{ fontWeight: 800 }}
         >
           <span className="flex min-w-0 items-center gap-3 text-sm">
             <BookOpen className="h-4 w-4 flex-shrink-0" />
@@ -633,7 +690,7 @@ export default function CourseLearn({
               <Link
                 key={item.id}
                 href={item.href}
-                onClick={() => setSidebarOpen(false)}
+                onClick={closeAndSaveSidebar}
                 className={`group block w-full rounded-lg px-2 py-2 text-left transition-colors ${
                   item.active ? 'bg-white/10' : 'hover:bg-white/10'
                 }`}
@@ -678,29 +735,26 @@ export default function CourseLearn({
 
         <Link
           href="/dashboard?tab=jadwal"
-          onClick={() => setSidebarOpen(false)}
+          onClick={closeAndSaveSidebar}
           className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-all hover:translate-x-0.5 hover:bg-white/10 hover:text-white"
           style={{ fontWeight: 800 }}
         >
           <CalendarDays className="h-4 w-4 flex-shrink-0" />
           <span className="min-w-0 flex-1 truncate text-sm">Jadwal</span>
         </Link>
-      </nav>
 
-      <div className="px-3.5 py-4 border-t border-white/10 space-y-2 mt-auto">
-        <button
-          type="button"
-          onClick={() => {
-            setSidebarOpen(false);
-            openProfileEditor();
-          }}
+        <Link
+          href="/dashboard?tab=profil"
+          onClick={closeAndSaveSidebar}
           className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-colors hover:bg-white/10"
           style={{ fontWeight: 800 }}
         >
-          <User className="h-4 w-4 flex-shrink-0" />
-          <span className="min-w-0 flex-1 truncate text-sm">Edit Profil</span>
-        </button>
+          <Pencil className="h-4 w-4 flex-shrink-0" />
+          <span className="min-w-0 flex-1 truncate text-sm">Profil</span>
+        </Link>
+      </nav>
 
+      <div className="px-3.5 py-4 border-t border-white/10 space-y-2 mt-auto">
         <button
           type="button"
           onClick={() => {
@@ -727,9 +781,11 @@ export default function CourseLearn({
     >
       <div className="flex min-h-screen">
         <aside className="hidden w-64 flex-shrink-0 lg:block">
-          <div
-            className="sticky top-0 h-screen flex flex-col text-white overflow-y-scroll overflow-x-hidden"
-            style={{
+            <div
+              ref={setSidebarScrollElement}
+              onScroll={(event) => saveSidebarScroll(event.currentTarget)}
+              className="sticky top-0 h-screen flex flex-col text-white overflow-y-scroll overflow-x-hidden"
+              style={{
               background: '#741A18',
               scrollbarGutter: 'stable',
             }}
@@ -781,9 +837,9 @@ export default function CourseLearn({
                     </p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={openProfileEditor}
+                  <Link
+                    href="/dashboard?tab=profil"
+                    onClick={closeAndSaveSidebar}
                     className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition-transform hover:scale-105"
                     style={{
                       background: '#FFE882',
@@ -793,7 +849,7 @@ export default function CourseLearn({
                     aria-label="Edit Profil"
                   >
                     <Pencil className="h-4 w-4" />
-                  </button>
+                  </Link>
                 </div>
 
                 <div className="mt-4">
@@ -820,6 +876,7 @@ export default function CourseLearn({
             <nav className="flex-1 px-3.5 py-4 space-y-2">
               <Link
                 href="/dashboard"
+                onClick={closeAndSaveSidebar}
                 className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-colors hover:bg-white/10"
                 style={{ fontWeight: 800 }}
               >
@@ -829,6 +886,7 @@ export default function CourseLearn({
 
               <Link
                 href="/dashboard?tab=katalog"
+                onClick={closeAndSaveSidebar}
                 className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-colors hover:bg-white/10"
                 style={{ fontWeight: 800 }}
               >
@@ -840,8 +898,8 @@ export default function CourseLearn({
                 type="button"
                 onClick={() => setSubtesOpen((value) => !value)}
                 aria-expanded={subtesOpen}
-                className="flex min-h-[42px] w-full items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-[#691D1B]"
-                style={{ background: '#FFE882', fontWeight: 800 }}
+                className="flex min-h-[42px] w-full items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-colors hover:bg-white/10"
+                style={{ fontWeight: 800 }}
               >
                 <span className="flex min-w-0 items-center gap-3 text-sm">
                   <BookOpen className="h-4 w-4 flex-shrink-0" />
@@ -860,6 +918,7 @@ export default function CourseLearn({
                     <Link
                       key={item.id}
                       href={item.href}
+                      onClick={closeAndSaveSidebar}
                       className={`group block w-full rounded-lg px-2 py-2 text-left transition-colors ${
                         item.active ? 'bg-white/10' : 'hover:bg-white/10'
                       }`}
@@ -903,26 +962,27 @@ export default function CourseLearn({
               )}
 
               <Link
-                href="/dashboard"
+                href="/dashboard?tab=jadwal"
+                onClick={closeAndSaveSidebar}
                 className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-all hover:translate-x-0.5 hover:bg-white/10 hover:text-white"
                 style={{ fontWeight: 800 }}
               >
                 <CalendarDays className="h-4 w-4 flex-shrink-0" />
                 <span className="min-w-0 flex-1 truncate text-sm">Jadwal</span>
               </Link>
-            </nav>
 
-            <div className="px-3.5 py-4 border-t border-white/10 space-y-2 mt-auto">
-              <button
-                type="button"
-                onClick={openProfileEditor}
+              <Link
+                href="/dashboard?tab=profil"
+                onClick={closeAndSaveSidebar}
                 className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-white/90 transition-colors hover:bg-white/10"
                 style={{ fontWeight: 800 }}
               >
-                <User className="h-4 w-4 flex-shrink-0" />
-                <span className="min-w-0 flex-1 truncate text-sm">Edit Profil</span>
-              </button>
+                <Pencil className="h-4 w-4 flex-shrink-0" />
+                <span className="min-w-0 flex-1 truncate text-sm">Profil</span>
+              </Link>
+            </nav>
 
+            <div className="px-3.5 py-4 border-t border-white/10 space-y-2 mt-auto">
               <button
                 type="button"
                 onClick={logout}
@@ -1000,10 +1060,10 @@ export default function CourseLearn({
               </div>
 
               <div className="flex flex-shrink-0 items-center gap-3">
-                <div className="relative hidden sm:block">
-                  <Bell className="w-6 h-6 text-gray-700" />
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full" />
-                </div>
+                <DashboardNotificationBell
+                  markAllHref="/notifications/mark-all-as-read"
+                  historyLabel="Riwayat terbaru siswa"
+                />
               </div>
             </div>
           </header>
@@ -1013,10 +1073,6 @@ export default function CourseLearn({
               <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
               <span className="text-gray-900 text-sm font-bold">
                 {courseTitle} — {enrollment?.status || 'active'}
-              </span>
-              <span className="text-gray-400 hidden sm:inline">|</span>
-              <span className="text-sm text-gray-500">
-                Aktif sejak {formatDate(enrollment?.enrolled_at)}
               </span>
             </div>
 
