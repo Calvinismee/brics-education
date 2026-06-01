@@ -2,13 +2,14 @@ import { Link, router } from "@inertiajs/react";
 import { useState } from "react";
 import {
   Home, BookOpen, Upload, Users, LogOut, Calendar, Video, FileText,
-  Plus, X, CheckCircle, Clock, AlertCircle, ArrowLeft, Bell,
+  X, CheckCircle, Clock, AlertCircle, ArrowLeft, Bell,
   Link2, Paperclip, ChevronDown, Star, Info,
 } from "lucide-react";
 import { BricsLogo } from "@/Components/BricsLogo";
 import { TutorSidebar } from "@/Components/TutorSidebar";
 import { TutorNotificationBell } from "@/Components/TutorNotificationBell";
 import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobileNavigation";
+import { Spinner } from "@/Components/ui/LoadingStates";
 
 const asArray = (value) => Array.isArray(value) ? value : Object.values(value ?? {});
 
@@ -54,6 +55,7 @@ export function TutorMaterialUpload({
   const [modulDragging, setModulDragging] = useState(false);
   const [quizDragging, setQuizDragging] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [contentError, setContentError] = useState(false);
   const [classDropdownOpen, setClassDropdownOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -100,6 +102,7 @@ export function TutorMaterialUpload({
     const selectedCourse = courseList.find((course) => course.title === kursus) ?? courseList[0];
 
     if (selectedCourse) {
+      setIsUploading(true);
       router.post(
         "/tutor/upload",
         {
@@ -113,6 +116,7 @@ export function TutorMaterialUpload({
         {
           forceFormData: true,
           preserveScroll: true,
+          onStart: () => setIsUploading(true),
           onSuccess: () => {
             setJudul("");
             setDeskripsi("");
@@ -124,6 +128,7 @@ export function TutorMaterialUpload({
             setSubmitted(true);
             setTimeout(() => setSubmitted(false), 3000);
           },
+          onFinish: () => setIsUploading(false),
         }
       );
 
@@ -506,12 +511,21 @@ export function TutorMaterialUpload({
                   {/* Submit button */}
                   <button
                     onClick={handleSubmit}
-                    disabled={!hasAssignedCourses || !judul.trim()}
+                    disabled={isUploading || !hasAssignedCourses || !judul.trim()}
                     className="w-full py-3.5 flex items-center justify-center gap-2 text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
                     style={{ background: "#691D1B", color: "#FFE882", fontWeight: 700 }}
                   >
-                    <Upload className="w-4 h-4" />
-                    Kirim untuk Review
+                    {isUploading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Spinner size="xs" color="#FFE882" />
+                        Mengupload materi...
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        <Upload className="w-4 h-4" />
+                        Kirim untuk Review
+                      </span>
+                    )}
                   </button>
                 </div>
 
@@ -526,14 +540,6 @@ export function TutorMaterialUpload({
                     <h3 className="text-gray-900" style={{ fontWeight: 700 }}>Materi Terupload</h3>
                     <p className="text-xs text-gray-400">{uploadedItems.length} item tersimpan</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => document.getElementById("material-title")?.focus()}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs text-white rounded-lg hover:bg-[#4A1412] transition-colors"
-                    style={{ background: "#691D1B", fontWeight: 600 }}
-                  >
-                    <Plus className="w-4 h-4" /> Tambah
-                  </button>
                 </div>
 
                 <div className="max-h-[360px] divide-y divide-[#F7F2E7] overflow-y-auto overscroll-contain sm:max-h-[420px]">
