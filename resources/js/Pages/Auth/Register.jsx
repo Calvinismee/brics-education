@@ -42,7 +42,7 @@ export default function Register() {
       <div className="flex-1 flex items-center justify-center px-6 py-10">
         <div className="w-full max-w-md">
           <div className="lg:hidden mb-8 flex justify-center">
-            <BricsLogo size="md" />
+            <BricsLogo size="sm" />
           </div>
 
           <Link
