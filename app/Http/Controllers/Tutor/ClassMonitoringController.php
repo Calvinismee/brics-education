@@ -183,8 +183,6 @@ class ClassMonitoringController extends Controller
             'stats' => [
                 'courses' => $enrollments->count(),
                 'avgProgress' => (int) round($progressByCourse->avg() ?? 0),
-                'avgScore' => 0,
-                'avgAttendance' => 0,
             ],
         ]);
     }

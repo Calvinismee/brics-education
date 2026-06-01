@@ -8,22 +8,10 @@ class TutorSettings
     {
         return [
             'notifications' => [
-                'materialReview' => true,
                 'classReminder' => true,
-                'studentQuestion' => true,
-                'weeklyReport' => false,
             ],
             'teaching' => [
-                'defaultSessionDuration' => 90,
-                'autoPublishApprovedMaterial' => true,
                 'showProgressWarnings' => true,
-            ],
-            'privacy' => [
-                'showEmailToStudents' => false,
-                'showRating' => true,
-            ],
-            'appearance' => [
-                'theme' => 'system',
             ],
         ];
     }
@@ -33,7 +21,15 @@ class TutorSettings
         $savedSettings = is_array($user?->tutor_settings ?? null)
             ? $user->tutor_settings
             : [];
+        $settings = array_replace_recursive(static::defaults(), $savedSettings);
 
-        return array_replace_recursive(static::defaults(), $savedSettings);
+        return [
+            'notifications' => [
+                'classReminder' => (bool) $settings['notifications']['classReminder'],
+            ],
+            'teaching' => [
+                'showProgressWarnings' => (bool) $settings['teaching']['showProgressWarnings'],
+            ],
+        ];
     }
 }

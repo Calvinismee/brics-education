@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,9 +22,14 @@ class NewPasswordController extends Controller
      */
     public function create(Request $request): Response
     {
+        $user = User::query()->where('email', (string) $request->query('email'))->first();
+        $role = $user ? $this->roleFor($user) : 'student';
+
         return Inertia::render('Auth/ResetPassword', [
             'email' => $request->email,
             'token' => $request->route('token'),
+            'role' => $role,
+            'loginUrl' => $this->loginUrl($role),
         ]);
     }
 
@@ -43,27 +49,58 @@ class NewPasswordController extends Controller
         // Here we will attempt to reset the user's password. If it is successful we
         // will update the password on an actual user model and persist it to the
         // database. Otherwise we will parse the error and return the response.
+        $resetUser = null;
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
-            function ($user) use ($request) {
+            function ($user) use ($request, &$resetUser) {
                 $user->forceFill([
                     'password' => Hash::make($request->password),
                     'remember_token' => Str::random(60),
                 ])->save();
 
+                $resetUser = $user;
+
                 event(new PasswordReset($user));
             }
         );
 
-        // If the password was successfully reset, we will redirect the user back to
-        // the application's home authenticated view. If there is an error we can
-        // redirect them back to where they came from with their error message.
         if ($status == Password::PASSWORD_RESET) {
-            return redirect()->route('login')->with('status', __($status));
+            return redirect()
+                ->route($this->loginRouteName($resetUser))
+                ->with('status', 'Password berhasil diperbarui. Silakan masuk dengan password baru.');
         }
 
         throw ValidationException::withMessages([
             'email' => [trans($status)],
         ]);
+    }
+
+    private function loginRouteName(?User $user): string
+    {
+        return match ($user ? $this->roleFor($user) : 'student') {
+            'admin' => 'login.admin',
+            'tutor' => 'login.tutor',
+            default => 'login',
+        };
+    }
+
+    private function loginUrl(string $role): string
+    {
+        return route(match ($role) {
+            'admin' => 'login.admin',
+            'tutor' => 'login.tutor',
+            default => 'login',
+        });
+    }
+
+    private function roleFor(User $user): string
+    {
+        if ($user->isAdmin()) {
+            return 'admin';
+        }
+
+        return in_array(strtolower(User::roleNameFor($user->role_id)), ['tutor', 'mentor'], true)
+            ? 'tutor'
+            : 'student';
     }
 }

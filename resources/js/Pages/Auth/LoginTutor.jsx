@@ -1,5 +1,5 @@
 import React from 'react';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { BookOpen, Eye, EyeOff } from 'lucide-react';
 import LoginPanel from '@/Components/LoginPanel';
 import BricsLogo from '@/Components/BricsLogo';
@@ -7,7 +7,7 @@ import { LoadingButton } from '@/Components/ui/LoadingStates';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
-export default function LoginTutor() {
+export default function LoginTutor({ status }) {
   const { data, setData, post, processing, errors, reset } = useForm({
     email: '',
     password: '',
@@ -52,6 +52,12 @@ export default function LoginTutor() {
           </div>
 
           <form onSubmit={submit}>
+            {status && (
+              <p className="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                {status}
+              </p>
+            )}
+
             <div className="mb-4">
               <label className="block text-sm text-gray-700 mb-2" style={{ fontWeight: 600 }}>Email / Username</label>
               <input
@@ -84,7 +90,7 @@ export default function LoginTutor() {
                 <input type="checkbox" checked={data.remember} onChange={(e) => setData('remember', e.target.checked)} className="w-4 h-4 rounded" style={{ accentColor: 'var(--brics-maroon)' }} />
                 <span className="text-sm text-gray-600">Ingat saya</span>
               </label>
-              <a href="#" className="text-sm hover:underline" style={{ fontWeight: 600, color: 'var(--brics-maroon)' }}>Lupa kata sandi?</a>
+              <Link href={route('password.request', { role: 'tutor' })} className="text-sm hover:underline" style={{ fontWeight: 600, color: 'var(--brics-maroon)' }}>Lupa kata sandi?</Link>
             </div>
 
             {processing ? (

@@ -14,7 +14,7 @@ import {
 
 const GOOGLE_SCRIPT_URL = 'https://accounts.google.com/gsi/client';
 
-export default function LoginSiswa({ googleClientId }) {
+export default function LoginSiswa({ googleClientId, status }) {
   const [showPassword, setShowPassword] = useState(false);
   const [googleScriptReady, setGoogleScriptReady] = useState(false);
   const [googleButtonReady, setGoogleButtonReady] = useState(false);
@@ -196,6 +196,12 @@ export default function LoginSiswa({ googleClientId }) {
               </p>
             )}
 
+            {status && (
+              <p className="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                {status}
+              </p>
+            )}
+
             {googleClientId ? (
               <div className="relative mb-6">
                 <div
@@ -329,7 +335,7 @@ export default function LoginSiswa({ googleClientId }) {
                 </label>
 
                 <Link
-                  href={route('password.request')}
+                  href={route('password.request', { role: 'student' })}
                   className="text-sm hover:underline"
                   style={{
                     color: '#691D1B',

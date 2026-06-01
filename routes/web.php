@@ -464,9 +464,14 @@ Route::get('/student/schedules', function () {
 
 Route::get('/login', fn () => Inertia::render('Auth/LoginSiswa', [
     'googleClientId' => config('services.google.client_id'),
+    'status' => session('status'),
 ]))->name('login');
-Route::get('/login/tutor', fn () => Inertia::render('Auth/LoginTutor'))->name('login.tutor');
-Route::get('/login/admin', fn () => Inertia::render('Auth/LoginAdmin'))->name('login.admin');
+Route::get('/login/tutor', fn () => Inertia::render('Auth/LoginTutor', [
+    'status' => session('status'),
+]))->name('login.tutor');
+Route::get('/login/admin', fn () => Inertia::render('Auth/LoginAdmin', [
+    'status' => session('status'),
+]))->name('login.admin');
 
 Route::middleware(['auth', 'verified', 'admin'])
     ->prefix('admin')

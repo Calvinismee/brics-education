@@ -8,6 +8,7 @@ use App\Models\Enrollment;
 use App\Models\Material;
 use App\Models\Notification;
 use App\Models\Schedule;
+use App\Support\AdminNotificationCache;
 use App\Support\DatabaseBoolean;
 use App\Support\TutorCourseResolver;
 use Illuminate\Http\RedirectResponse;
@@ -42,6 +43,7 @@ class NotificationController extends Controller
         abort_unless((int) $notification->user_id === (int) $request->user()->id, 403);
 
         $notification->update(['is_read' => DatabaseBoolean::value(true)]);
+        AdminNotificationCache::forgetForUser((int) $request->user()->id);
 
         return back();
     }
@@ -52,6 +54,7 @@ class NotificationController extends Controller
             ->where('user_id', $request->user()->id)
             ->where('is_read', DatabaseBoolean::value(false))
             ->update(['is_read' => DatabaseBoolean::value(true)]);
+        AdminNotificationCache::forgetForUser((int) $request->user()->id);
 
         return back();
     }
