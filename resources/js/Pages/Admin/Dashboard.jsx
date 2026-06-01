@@ -6,7 +6,6 @@ import {
     Activity,
     Users,
     UserCheck,
-    UserX,
     GraduationCap,
 } from 'lucide-react';
 
@@ -20,6 +19,8 @@ const fallbackMonthLabels = () => {
         return formatter.format(month);
     });
 };
+
+const hiddenSummaryLabels = new Set(['Pengguna Aktif', 'Tidak Aktif']);
 
 function StatCard({ label, value, icon, color }) {
     return (
@@ -66,15 +67,16 @@ export default function Dashboard({ userStats = [], growthData = [], growthLabel
     const roles = ['All', ...Array.from(new Set(topUsersList.map((u) => u.role)))];
     const filteredTopUsers = topUsersList.filter((u) => roleFilter === 'All' || u.role === roleFilter);
 
-    const statsWithIcons = (userStats || []).map((stat, idx) => {
-        const iconMap = [
-            { icon: <Users className="h-6 w-6" />, color: 'var(--brics-maroon)' },
-            { icon: <UserPlus className="h-6 w-6" />, color: 'var(--brics-maroon)' },
-            { icon: <Activity className="h-6 w-6" />, color: 'var(--brics-maroon)' },
-            { icon: <UserX className="h-6 w-6" />, color: '#6b7280' },
-        ];
-        return { ...stat, ...iconMap[idx] || iconMap[0] };
-    });
+    const statsWithIcons = (userStats || [])
+        .filter((stat) => !hiddenSummaryLabels.has(stat.label))
+        .map((stat, idx) => {
+            const iconMap = [
+                { icon: <Users className="h-6 w-6" />, color: 'var(--brics-maroon)' },
+                { icon: <UserPlus className="h-6 w-6" />, color: 'var(--brics-maroon)' },
+            ];
+
+            return { ...stat, ...iconMap[idx] || iconMap[0] };
+        });
 
     return (
         <AdminLayout title="Dashboard Admin" subtitle="Ringkasan data pengguna platform BRICS Education.">
@@ -86,7 +88,7 @@ export default function Dashboard({ userStats = [], growthData = [], growthLabel
                     <p className="text-sm text-gray-500">Ringkasan data pengguna platform BRICS Education</p>
                 </div>
 
-                <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+                <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-2">
                     {statsWithIcons.map((stat) => (
                         <StatCard key={stat.label} {...stat} />
                     ))}

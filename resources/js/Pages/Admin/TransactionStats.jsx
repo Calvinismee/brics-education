@@ -1,9 +1,9 @@
 import { Head } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
-import { TrendingUp, DollarSign, CreditCard, AlertCircle, CheckCircle, XCircle, Clock, TimerOff } from 'lucide-react';
+import { DollarSign, CreditCard, CheckCircle, XCircle, Clock, TimerOff } from 'lucide-react';
 
-export default function TransactionStats({ stats = [], summary = {}, paymentMethods = [], successRate = 0, recentTransactions = [] }) {
-    const { monthlyRevenue = [], averageTransaction = 0, transactionGrowth = 0, totalRevenue = 0 } = summary;
+export default function TransactionStats({ stats = [], summary = {}, paymentMethods = [], recentTransactions = [] }) {
+    const { monthlyRevenue = [], averageTransaction = 0, totalRevenue = 0 } = summary;
     const chartData = stats.length > 0 ? stats : monthlyRevenue;
 
     const maxValue = chartData.length > 0 ? Math.max(...chartData.map((item) => Number(item.amount) || 0), 1) : 1;
@@ -39,8 +39,6 @@ export default function TransactionStats({ stats = [], summary = {}, paymentMeth
     const overviewCards = [
         { label: 'Total Pendapatan', value: formatCurrency(totalRevenue), icon: <DollarSign className="h-6 w-6" /> },
         { label: 'Rata-rata Transaksi/Bulan', value: formatCurrency(averageTransaction), icon: <CreditCard className="h-6 w-6" /> },
-        { label: 'Tingkat Keberhasilan', value: `${successRate}%`, icon: <TrendingUp className="h-6 w-6" /> },
-        { label: 'Pertumbuhan', value: `${transactionGrowth.toFixed(1)}%`, icon: <AlertCircle className="h-6 w-6" /> },
     ];
 
     return (
@@ -49,7 +47,7 @@ export default function TransactionStats({ stats = [], summary = {}, paymentMeth
 
             <div className="p-4 lg:p-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 {/* Overview Cards */}
-                <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                     {overviewCards.map((card, idx) => (
                         <div key={idx} className="rounded-2xl border border-[#D8D7BE] bg-white p-5 shadow-sm">
                             <div className="mb-4 flex items-center justify-between">
