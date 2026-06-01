@@ -12,6 +12,10 @@ import { TutorMobileDrawer, TutorMobileMenuButton } from "@/Components/TutorMobi
 import { Spinner } from "@/Components/ui/LoadingStates";
 
 const asArray = (value) => Array.isArray(value) ? value : Object.values(value ?? {});
+const maxMaterialFileSizeMb = 50;
+const maxMaterialFileSizeBytes = maxMaterialFileSizeMb * 1024 * 1024;
+
+const materialFileSizeLabel = (file) => `${(file.size / 1048576).toFixed(1)} MB`;
 
 const initialsFor = (name) => String(name || "Tutor UTBK")
   .split(" ")
@@ -24,6 +28,39 @@ const fileMetaLabel = (file) => {
   const extension = String(file?.name ?? "").split(".").pop()?.toUpperCase();
 
   return extension ? `File ${extension} terlampir` : "File terlampir";
+};
+
+const validateMaterialFile = (file, label) => {
+  if (!file) return "";
+
+  if (file.size > maxMaterialFileSizeBytes) {
+    return `${label} terlalu besar (${materialFileSizeLabel(file)}). Maksimal ${maxMaterialFileSizeMb} MB.`;
+  }
+
+  return "";
+};
+
+const normalizeYoutubeUrl = (url) => {
+  const trimmed = url.trim();
+
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+
+  return `https://${trimmed}`;
+};
+
+const isYoutubeUrl = (url) => {
+  const normalized = normalizeYoutubeUrl(url);
+
+  if (!normalized) return true;
+
+  try {
+    const host = new URL(normalized).hostname.replace(/^www\./, "");
+
+    return host === "youtube.com" || host.endsWith(".youtube.com") || host === "youtu.be";
+  } catch {
+    return false;
+  }
 };
 
 const optimisticTitleForType = (title, type) => {
@@ -102,6 +139,7 @@ export function TutorMaterialUpload({
   courses = [],
   tutorClasses: serverTutorClasses = [],
   uploadedItems: serverUploadedItems = [],
+  errors = {},
 }) {
   const rawCourses = asArray(courses).length > 0 ? asArray(courses) : asArray(serverTutorClasses);
   const courseList = rawCourses.map((course) => ({
@@ -131,6 +169,8 @@ export function TutorMaterialUpload({
   const [submitted, setSubmitted] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [contentError, setContentError] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [hideServerUploadError, setHideServerUploadError] = useState(false);
   const [classDropdownOpen, setClassDropdownOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -162,28 +202,59 @@ export function TutorMaterialUpload({
     rejected: { label: "Ditolak",         bg: "#ef444415", color: "#ef4444", icon: <AlertCircle className="w-3.5 h-3.5" /> },
   };
 
-  const isValidYoutube = (url) =>
-    url === "" || /youtube\.com|youtu\.be/.test(url);
-
   const hasVideo  = youtubeUrl.trim().length > 0;
   const hasModul  = modulFile !== null;
   const hasQuiz   = quizFile !== null;
   const hasAny    = hasVideo || hasModul || hasQuiz;
+  const serverUploadError = hideServerUploadError
+    ? ""
+    : errors.module_file || errors.quiz_file || errors.content || errors.youtube_url || errors.title || errors.course_id || "";
+  const visibleUploadError = uploadError || serverUploadError;
+
+  const handleYoutubeChange = (value) => {
+    setYoutubeUrl(value);
+    setUploadError("");
+    setHideServerUploadError(true);
+    if (contentError) setContentError(false);
+  };
+
+  const setMaterialFile = (file, setLabel, setUploadFile, label) => {
+    const validationError = validateMaterialFile(file, label);
+
+    if (validationError) {
+      setUploadError(validationError);
+      setLabel(null);
+      setUploadFile(null);
+      return false;
+    }
+
+    setLabel(`${file.name} • ${materialFileSizeLabel(file)}`);
+    setUploadFile(file);
+    setContentError(false);
+    setUploadError("");
+    setHideServerUploadError(true);
+    return true;
+  };
 
   function handleSubmit() {
     if (!hasAssignedCourses) return;
     if (!judul.trim()) return;
     if (!hasAny) { setContentError(true); return; }
+    if (hasVideo && !isYoutubeUrl(youtubeUrl)) {
+      setUploadError("Masukkan link YouTube yang valid.");
+      return;
+    }
     setContentError(false);
 
     const selectedCourse = courseList.find((course) => course.title === kursus) ?? courseList[0];
 
     if (selectedCourse) {
+      const normalizedYoutubeUrl = normalizeYoutubeUrl(youtubeUrl);
       const optimisticBatch = buildOptimisticUploadedItems({
         baselineCount: serverItems.length,
         course: selectedCourse,
         title: judul.trim(),
-        youtubeUrl,
+        youtubeUrl: normalizedYoutubeUrl,
         moduleFile: modulUploadFile,
         quizFile: quizUploadFile,
       });
@@ -195,14 +266,18 @@ export function TutorMaterialUpload({
           course_id: selectedCourse.id,
           title: judul,
           description: deskripsi,
-          youtube_url: youtubeUrl,
+          youtube_url: normalizedYoutubeUrl,
           module_file: modulUploadFile,
           quiz_file: quizUploadFile,
         },
         {
           forceFormData: true,
           preserveScroll: true,
-          onStart: () => setIsUploading(true),
+          onStart: () => {
+            setIsUploading(true);
+            setUploadError("");
+            setHideServerUploadError(true);
+          },
           onSuccess: () => {
             setOptimisticUploadedItems((items) => [...optimisticBatch, ...items]);
             setJudul("");
@@ -219,6 +294,25 @@ export function TutorMaterialUpload({
               preserveState: true,
               preserveScroll: true,
             });
+          },
+          onError: (formErrors) => {
+            if (formErrors.module_file) {
+              setModulFile(null);
+              setModulUploadFile(null);
+            }
+
+            if (formErrors.quiz_file) {
+              setQuizFile(null);
+              setQuizUploadFile(null);
+            }
+
+            setUploadError(
+              formErrors.module_file
+              || formErrors.quiz_file
+              || formErrors.youtube_url
+              || formErrors.content
+              || "Upload gagal. Periksa konten yang diisi, lalu coba lagi."
+            );
           },
           onFinish: () => setIsUploading(false),
         }
@@ -326,6 +420,15 @@ export function TutorMaterialUpload({
                   </div>
                 )}
 
+                {visibleUploadError && (
+                  <div className="flex items-start gap-2 px-4 py-3 rounded-xl" style={{ background: "#ef444412", border: "1px solid #ef444440" }}>
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#ef4444" }} />
+                    <span className="text-sm" style={{ color: "#ef4444", fontWeight: 600 }}>
+                      {visibleUploadError}
+                    </span>
+                  </div>
+                )}
+
                 {/* ① Info Umum */}
                 <section>
                   <div className="flex items-center gap-2 mb-3">
@@ -417,28 +520,28 @@ export function TutorMaterialUpload({
                       <input
                         type="url"
                         value={youtubeUrl}
-                        onChange={(e) => { setYoutubeUrl(e.target.value); if (contentError) setContentError(false); }}
+                        onChange={(e) => handleYoutubeChange(e.target.value)}
                         placeholder="https://www.youtube.com/watch?v=... atau https://youtu.be/..."
                         className="flex-1 text-sm text-gray-800 outline-none bg-transparent"
                         style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
                       />
                       {youtubeUrl && (
-                        <button onClick={() => setYoutubeUrl("")} className="flex-shrink-0 text-gray-400 hover:text-red-400 transition-colors">
+                        <button type="button" onClick={() => handleYoutubeChange("")} className="flex-shrink-0 text-gray-400 hover:text-red-400 transition-colors">
                           <X className="w-4 h-4" />
                         </button>
                       )}
                     </div>
-                    {youtubeUrl && !isValidYoutube(youtubeUrl) && (
+                    {youtubeUrl && !isYoutubeUrl(youtubeUrl) && (
                       <div className="px-4 py-2 border-t border-[#D8D7BE] flex items-center gap-2">
                         <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#ef4444" }} />
                         <span className="text-xs" style={{ color: "#ef4444" }}>URL tidak terdeteksi sebagai link YouTube yang valid.</span>
                       </div>
                     )}
-                    {youtubeUrl && isValidYoutube(youtubeUrl) && (
+                    {youtubeUrl && isYoutubeUrl(youtubeUrl) && (
                       <div className="px-4 py-2 border-t border-[#D8D7BE] flex items-center gap-2" style={{ background: "#22c55e08" }}>
                         <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#16a34a" }} />
                         <span className="text-xs" style={{ color: "#16a34a", fontWeight: 600 }}>Link YouTube valid</span>
-                        <a href={youtubeUrl} target="_blank" rel="noreferrer"
+                        <a href={normalizeYoutubeUrl(youtubeUrl)} target="_blank" rel="noreferrer"
                           className="ml-auto flex items-center gap-1 text-xs hover:underline"
                           style={{ color: "#691D1B", fontWeight: 600 }}>
                           <Link2 className="w-3 h-3" /> Pratinjau
@@ -482,13 +585,15 @@ export function TutorMaterialUpload({
                         onDrop={(e) => {
                           e.preventDefault(); setModulDragging(false);
                           const f = e.dataTransfer.files[0];
-                          if (f) { setModulFile(`${f.name} • ${(f.size / 1048576).toFixed(1)} MB`); setModulUploadFile(f); setContentError(false); }
+                          if (f) setMaterialFile(f, setModulFile, setModulUploadFile, "Modul");
                         }}
                       >
                         <input type="file" className="hidden" accept=".pdf,.docx,.pptx"
                           onChange={(e) => {
                             const f = e.target.files?.[0];
-                            if (f) { setModulFile(`${f.name} • ${(f.size / 1048576).toFixed(1)} MB`); setModulUploadFile(f); setContentError(false); }
+                            if (f && !setMaterialFile(f, setModulFile, setModulUploadFile, "Modul")) {
+                              e.target.value = "";
+                            }
                           }}
                         />
                         {hasModul ? (
@@ -535,13 +640,15 @@ export function TutorMaterialUpload({
                         onDrop={(e) => {
                           e.preventDefault(); setQuizDragging(false);
                           const f = e.dataTransfer.files[0];
-                          if (f) { setQuizFile(`${f.name} • ${(f.size / 1048576).toFixed(1)} MB`); setQuizUploadFile(f); setContentError(false); }
+                          if (f) setMaterialFile(f, setQuizFile, setQuizUploadFile, "Bank soal");
                         }}
                       >
                         <input type="file" className="hidden" accept=".pdf,.docx,.pptx"
                           onChange={(e) => {
                             const f = e.target.files?.[0];
-                            if (f) { setQuizFile(`${f.name} • ${(f.size / 1048576).toFixed(1)} MB`); setQuizUploadFile(f); setContentError(false); }
+                            if (f && !setMaterialFile(f, setQuizFile, setQuizUploadFile, "Bank soal")) {
+                              e.target.value = "";
+                            }
                           }}
                         />
                         {hasQuiz ? (

@@ -102,6 +102,13 @@ class MaterialController extends Controller
             'youtube_url' => ['nullable', 'url', 'max:1024'],
             'module_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,ppt,pptx', 'max:51200'],
             'quiz_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,ppt,pptx', 'max:51200'],
+        ], [
+            'module_file.uploaded' => 'File modul gagal diupload. Pastikan ukuran file maksimal 50 MB dan batas upload server production sudah minimal 120 MB.',
+            'module_file.max' => 'File modul maksimal 50 MB.',
+            'module_file.mimes' => 'File modul harus berupa PDF, DOC, DOCX, PPT, atau PPTX.',
+            'quiz_file.uploaded' => 'File bank soal gagal diupload. Pastikan ukuran file maksimal 50 MB dan batas upload server production sudah minimal 120 MB.',
+            'quiz_file.max' => 'File bank soal maksimal 50 MB.',
+            'quiz_file.mimes' => 'File bank soal harus berupa PDF, DOC, DOCX, PPT, atau PPTX.',
         ]);
 
         if (
