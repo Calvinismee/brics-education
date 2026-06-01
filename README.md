@@ -22,6 +22,9 @@ Developed by:
   - [GitHub Workflow Feature Development](#github-workflow-feature-development)
   - [Quick Start](#quick-start)
   - [Permanent Material Storage](#permanent-material-storage)
+  - [Password Reset Email](#password-reset-email)
+  - [Scheduled Tutor Reminders](#scheduled-tutor-reminders)
+  - [Production Deployment Checklist](#production-deployment-checklist)
   - [Testing Guide](#testing-guide)
   - [Supabase Database Setup](#supabase-database-setup)
 
@@ -197,9 +200,79 @@ post_max_size = 120M
 
 If the deployment platform uses Nginx or another reverse proxy, also set its request body limit to at least `120 MB` (for Nginx: `client_max_body_size 120M;`). Redeploy after changing PHP or proxy limits.
 
+## Password Reset Email <a id="password-reset-email"></a>
+
+Student, tutor, and admin accounts can request a password reset link from their respective login page. Laravel stores the short-lived token in `password_reset_tokens`, sends an email, updates the hashed password after the token is confirmed, and redirects the user back to the correct role-specific login page.
+
+Local development uses `MAIL_MAILER=log`, so reset links are written to `storage/logs/laravel.log`. For production, configure a real SMTP provider:
+
+```env
+APP_URL=https://<your-app-domain>
+MAIL_MAILER=smtp
+MAIL_SCHEME=smtp
+MAIL_HOST=<your-smtp-host>
+MAIL_PORT=587
+MAIL_USERNAME=<your-smtp-username>
+MAIL_PASSWORD=<your-smtp-password>
+MAIL_FROM_ADDRESS=no-reply@<your-app-domain>
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+After changing deployment environment variables, run:
+
+```bash
+php artisan optimize:clear
+```
+
+The sender address must be accepted by the selected email provider. Some providers require domain or sender verification before email delivery is enabled.
+
+## Scheduled Tutor Reminders <a id="scheduled-tutor-reminders"></a>
+
+Tutors can enable or disable an automatic notification reminder from the tutor settings page. When enabled, the scheduler creates an in-app notification 10 minutes before each live class or consultation. No additional database migration is required because reminders use the existing `notifications` table.
+
+Run Laravel's scheduler every minute in production:
+
+```cron
+* * * * * cd /path/to/brics-education && php artisan schedule:run >> /dev/null 2>&1
+```
+
+For deployment platforms that provide a persistent worker instead of cron, run:
+
+```bash
+php artisan schedule:work
+```
+
+To trigger the reminder check manually:
+
+```bash
+php artisan tutor:send-class-reminders
+```
+
+## Production Deployment Checklist <a id="production-deployment-checklist"></a>
+
+Before opening the deployed application to users:
+
+1. Keep `DB_SEARCH_PATH=public` in the production environment. The `testing` schema is only for automated tests.
+2. Configure the production SMTP values described in [Password Reset Email](#password-reset-email). Reset links cannot reach real users while `MAIL_MAILER=log`.
+3. Configure Cloudflare R2 values described in [Permanent Material Storage](#permanent-material-storage).
+4. Apply database migrations and clear stale cached configuration:
+
+```bash
+php artisan migrate --force
+php artisan optimize:clear
+```
+
+5. Configure exactly one scheduler process using cron `php artisan schedule:run` every minute or a persistent `php artisan schedule:work` worker. This is required for tutor class reminders.
+6. Verify the deployed configuration:
+
+```bash
+php artisan schedule:list
+php artisan tutor:send-class-reminders
+```
+
 ## Testing Guide <a id="testing-guide"></a>
 
-This project uses Pest on top of PHPUnit. Automated tests must run against a local PostgreSQL test database, not Supabase or production data.
+This project uses Pest on top of PHPUnit. Automated tests use Laravel `RefreshDatabase`, so they must never run against the application `public` schema. Tests can use either a local PostgreSQL test database or the isolated `testing` schema on Supabase.
 
 ### Test Database Setup <a id="test-database-setup"></a>
 
@@ -219,6 +292,22 @@ If your local PostgreSQL username is not `postgres`, or if it needs a password, 
 
 The test suite uses Laravel `RefreshDatabase`, so migrations are rebuilt automatically while tests run.
 
+### Supabase Test Schema <a id="supabase-test-schema"></a>
+
+To run the tests with the Supabase credentials already configured in `.env`, create a dedicated schema once from the Supabase SQL Editor:
+
+```sql
+create schema if not exists testing;
+```
+
+Then run Pest with the Supabase-specific configuration:
+
+```bash
+./vendor/bin/pest -c phpunit.supabase.xml
+```
+
+`phpunit.supabase.xml` reuses the Supabase host, port, database, username, and password from `.env`, but forces `DB_SEARCH_PATH=testing`. A guard in `tests/TestCase.php` blocks remote tests before migration if the connection points to the `public` schema. Do not rename the schema or bypass this guard.
+
 ### Running Tests <a id="running-tests"></a>
 
 Clear cached configuration before running tests:
@@ -233,7 +322,19 @@ Run the full test suite:
 composer test
 ```
 
-Run only admin-related tests:
+Run the full test suite with the isolated Supabase schema:
+
+```bash
+./vendor/bin/pest -c phpunit.supabase.xml
+```
+
+Run only password reset and tutor reminder tests with Supabase:
+
+```bash
+./vendor/bin/pest -c phpunit.supabase.xml tests/Feature/Auth/PasswordResetTest.php tests/Feature/Tutor/TutorSettingsReminderTest.php
+```
+
+Run only admin-related local tests:
 
 ```bash
 php artisan test --filter=Admin
@@ -257,7 +358,7 @@ Place tests based on their scope:
 
 - `tests/Feature/Admin`: admin HTTP, route, controller, database, and Inertia response tests.
 - `tests/Feature/Auth`: authentication and profile behavior.
-- `tests/Unit`: small isolated checks or documented pending cases.
+- `tests/Feature/Tutor`: tutor workflow, schedule, material, and reminder tests.
 
 Use shared helper functions from `tests/Pest.php` to keep test setup consistent:
 
@@ -278,18 +379,11 @@ test('TC_ADMIN_TRX_003 admin dapat filter transaksi berdasarkan status', functio
 });
 ```
 
-If a planned test case cannot be automated yet because the route, controller, model, or validation does not exist, keep it as a `todo()` entry in:
-
-```text
-tests/Unit/AdminPendingTestCasesTest.php
-```
-
 When a pending feature becomes testable:
 
 1. Add or update the feature test.
-2. Remove the matching `todo()` entry.
-3. Run `php artisan test --filter=Admin`.
-4. Run `composer test` before merging.
+2. Run the related filtered tests.
+3. Run the full suite before merging.
 
 ## Supabase Database Setup <a id="supabase-database-setup"></a>
 
@@ -311,11 +405,14 @@ DB_PORT=5432
 DB_DATABASE=<database-name>
 DB_USERNAME=<username>
 DB_PASSWORD=<supabase-db-password>
+DB_SSLMODE=require
+DB_SEARCH_PATH=public
 ```
 
 Important:
 
 - Do not commit real database credentials.
 - Supabase direct host is often IPv6-only. Use Session Pooler for IPv4-compatible access.
+- Keep deployment on `DB_SEARCH_PATH=public`. The `testing` schema is only for automated tests.
 
 ### Happy Engineering, y'all !!

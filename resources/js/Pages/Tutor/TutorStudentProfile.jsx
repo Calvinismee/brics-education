@@ -3,8 +3,6 @@ import { useState } from "react";
 import {
   ArrowLeft,
   BookOpen,
-  Calendar,
-  CheckCircle,
   Clock,
   Mail,
   TrendingUp,
@@ -99,12 +97,10 @@ export default function TutorStudentProfile({
             </div>
           </section>
 
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="grid gap-4 sm:grid-cols-2">
             {[
               { label: "Course Tutor", value: stats.courses ?? enrollmentItems.length, icon: BookOpen },
               { label: "Progress", value: `${stats.avgProgress ?? 0}%`, icon: TrendingUp },
-              { label: "Nilai", value: stats.avgScore ?? 0, icon: CheckCircle },
-              { label: "Kehadiran", value: `${stats.avgAttendance ?? 0}%`, icon: Calendar },
             ].map((item) => {
               const Icon = item.icon;
 

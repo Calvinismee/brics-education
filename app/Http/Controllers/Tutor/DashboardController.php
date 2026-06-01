@@ -249,20 +249,12 @@ class DashboardController extends Controller
     public function updateSettings(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'notifications.materialReview' => ['required', 'boolean'],
             'notifications.classReminder' => ['required', 'boolean'],
-            'notifications.studentQuestion' => ['required', 'boolean'],
-            'notifications.weeklyReport' => ['required', 'boolean'],
-            'teaching.defaultSessionDuration' => ['required', 'integer', 'min:30', 'max:240'],
-            'teaching.autoPublishApprovedMaterial' => ['required', 'boolean'],
             'teaching.showProgressWarnings' => ['required', 'boolean'],
-            'privacy.showEmailToStudents' => ['required', 'boolean'],
-            'privacy.showRating' => ['required', 'boolean'],
-            'appearance.theme' => ['required', 'string', Rule::in(['system', 'light', 'dark'])],
         ]);
 
         $request->user()->update([
-            'tutor_settings' => array_replace_recursive(TutorSettings::defaults(), $validated),
+            'tutor_settings' => $validated,
         ]);
 
         return back()->with('success', 'Settings tutor berhasil disimpan.');

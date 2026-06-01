@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\TutorClassReminder;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Inspiring;
@@ -12,3 +13,13 @@ Artisan::command('inspire', function () {
 Schedule::call(function () {
     DB::select('SELECT 1');
 })->daily();
+
+Artisan::command('tutor:send-class-reminders', function () {
+    $createdCount = app(TutorClassReminder::class)->sendDueReminders();
+
+    $this->info("{$createdCount} pengingat kelas tutor dikirim.");
+})->purpose('Kirim pengingat 10 menit sebelum live class dan konsultasi tutor');
+
+Schedule::command('tutor:send-class-reminders')
+    ->everyMinute()
+    ->withoutOverlapping();

@@ -70,6 +70,26 @@ test('TC_TUTOR_PESERTA_002 tutor melihat daftar peserta kosong', function () {
             ->where('stats.totalStudents', 0));
 });
 
+test('TC_TUTOR_PESERTA_003 profil siswa hanya menampilkan data yang dipantau web', function () {
+    [$course, $tutor] = tutorCourseScenario();
+    $student = studentUser([
+        'name' => 'Siswa Profil Tutor',
+        'email' => 'siswa-profil@example.test',
+    ]);
+    activeEnrollmentForTutorTest($student, $course);
+
+    $this->actingAs($tutor)
+        ->get(route('tutor.students.show', Str::slug($student->name)))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Tutor/TutorStudentProfile')
+            ->where('student.name', 'Siswa Profil Tutor')
+            ->where('stats', [
+                'courses' => 1,
+                'avgProgress' => 0,
+            ]));
+});
+
 test('TC_TUTOR_JADWAL_001 tutor dapat melihat jadwal kelas yang diampu', function () {
     [$course, $tutor] = tutorCourseScenario();
     tutorScheduleForTest($tutor, $course);

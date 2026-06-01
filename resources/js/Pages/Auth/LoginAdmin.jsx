@@ -7,7 +7,7 @@ import { LoadingButton } from '@/Components/ui/LoadingStates';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
-export default function LoginAdmin() {
+export default function LoginAdmin({ status }) {
   const { data, setData, post, processing, errors, reset } = useForm({
     email: '',
     password: '',
@@ -57,6 +57,12 @@ export default function LoginAdmin() {
           </div>
 
           <form onSubmit={submit}>
+            {status && (
+              <p className="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                {status}
+              </p>
+            )}
+
             <div className="mb-4">
               <label className="block text-sm text-gray-700 mb-2" style={{ fontWeight: 600 }}>Username / Email</label>
               <input type="text" placeholder="admin@bricsedu.id" value={data.email} onChange={(e) => setData('email', e.target.value)} className="w-full px-4 py-3 border-2 rounded-xl bg-white focus:outline-none text-sm transition-colors" style={{ borderColor: 'var(--brics-beige)' }} />
@@ -75,7 +81,7 @@ export default function LoginAdmin() {
                 <input type="checkbox" checked={data.remember} onChange={(e) => setData('remember', e.target.checked)} className="w-4 h-4 rounded" style={{ accentColor: 'var(--brics-maroon)' }} />
                 <span className="text-sm text-gray-600">Ingat saya</span>
               </label>
-              <a href="#" className="text-sm hover:underline" style={{ fontWeight: 600, color: 'var(--brics-maroon)' }}>Lupa kata sandi?</a>
+              <Link href={route('password.request', { role: 'admin' })} className="text-sm hover:underline" style={{ fontWeight: 600, color: 'var(--brics-maroon)' }}>Lupa kata sandi?</Link>
             </div>
 
             {processing ? (
