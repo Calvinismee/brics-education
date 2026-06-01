@@ -62,7 +62,7 @@ const formatDateLabel = (value) => {
     }).format(new Date(`${key}T00:00:00`));
 };
 
-export default function Schedule({ schedules = [], stats = {}, tutors = [], courses = [] }) {
+export default function Schedule({ schedules = [], stats = {}, tutors = [], courses = [], packages = [] }) {
     const scheduleList = Array.isArray(schedules?.data) ? schedules.data : schedules;
     const [view, setView] = useState('list');
     const [showForm, setShowForm] = useState(false);
@@ -71,6 +71,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
     const [deleteTarget, setDeleteTarget] = useState(null);
     const form = useForm({
         course_id: '',
+        package_id: '',
         tutor_id: '',
         type: 'live',
         schedule_date: '',
@@ -110,6 +111,9 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
         form.setData({
             ...form.data,
             type: nextType,
+            course_id: nextType === 'tryout' ? '' : form.data.course_id,
+            package_id: nextType === 'tryout' ? form.data.package_id : '',
+            tutor_id: nextType === 'tryout' ? '' : form.data.tutor_id,
             meeting_link: scheduleTypeConfig(nextType).needsMeeting ? form.data.meeting_link : '',
             action_link: scheduleTypeConfig(nextType).needsActionLink ? form.data.action_link : '',
         });
@@ -126,6 +130,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
         setEditingScheduleId(null);
         form.setData({
             course_id: '',
+            package_id: '',
             tutor_id: '',
             type: 'live',
             schedule_date: '',
@@ -143,6 +148,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
         setEditingScheduleId(schedule.id);
         form.setData({
             course_id: schedule.course_id ? String(schedule.course_id) : '',
+            package_id: schedule.package_id ? String(schedule.package_id) : '',
             tutor_id: schedule.tutor_id || '',
             type: schedule.type || 'live',
             schedule_date: formatDateKey(schedule.schedule_date),
@@ -212,10 +218,6 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
     );
     const monthKey = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}`;
     const monthSchedules = normalizedSchedules.filter((schedule) => formatDateKey(schedule.schedule_date).startsWith(monthKey));
-    const editingSchedule = editingScheduleId
-        ? normalizedSchedules.find((schedule) => schedule.id === editingScheduleId)
-        : null;
-
     return (
         <AdminLayout title="Jadwal Kelas" subtitle="Kelola jadwal kelas online dan offline.">
             <Head title="Jadwal Kelas" />
@@ -279,7 +281,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-[#D8D7BE] bg-[#F7F2E7]">
-                                        {['Mata Pelajaran', 'Tipe', 'Target', 'Tutor', 'Jadwal', 'Waktu', 'Link', 'Aksi'].map((heading) => (
+                                        {['Course / Paket', 'Tipe', 'Target', 'Tutor', 'Jadwal', 'Waktu', 'Link', 'Aksi'].map((heading) => (
                                             <th
                                                 key={heading}
                                                 className="px-5 py-3 text-left text-xs uppercase tracking-wide text-gray-500"
@@ -409,7 +411,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                                     <div key={schedule.id} className="rounded-lg px-2 py-1" style={{ background: type.bg, color: type.color }}>
                                                         <p className="truncate font-semibold">{schedule.course}</p>
                                                         <p className="truncate text-[11px] opacity-75">
-                                                            {type.label} • {schedule.start_time} - {schedule.end_time}
+                                                            {type.label} &bull; {schedule.time}
                                                         </p>
                                                     </div>
                                                 );
@@ -434,14 +436,27 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                             <form onSubmit={handleSubmit} className="flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div>
-                                        <label className="mb-2 block text-sm font-semibold text-gray-700">Mata Pelajaran</label>
+                                        <label className="mb-2 block text-sm font-semibold text-gray-700">
+                                            {form.data.type === 'tryout' ? 'Paket Tryout' : 'Mata Pelajaran'}
+                                        </label>
                                         <p className="mb-2 text-xs text-gray-500">
-                                            {editingScheduleId ? 'Mata pelajaran dikunci saat edit jadwal.' : 'Pilih course SNBT yang dijadwalkan.'}
+                                            {form.data.type === 'tryout'
+                                                ? 'Tryout dijadwalkan untuk seluruh siswa pada paket yang dipilih.'
+                                                : 'Pilih course SNBT yang dijadwalkan.'}
                                         </p>
-                                        {editingScheduleId ? (
-                                            <div className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm text-gray-700">
-                                                {editingSchedule?.course || '-'}
-                                            </div>
+                                        {form.data.type === 'tryout' ? (
+                                            <select
+                                                value={form.data.package_id}
+                                                onChange={(event) => form.setData('package_id', event.target.value)}
+                                                className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
+                                            >
+                                                <option value="">Pilih paket</option>
+                                                {(packages || []).map((item) => (
+                                                    <option key={item.id} value={item.id}>
+                                                        {item.name}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         ) : (
                                             <select
                                                 value={form.data.course_id}
@@ -461,15 +476,13 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                     <div>
                                         <label className="mb-2 block text-sm font-semibold text-gray-700">Tutor</label>
                                         <p className="mb-2 text-xs text-gray-500">
-                                            {editingScheduleId
-                                                ? 'Tutor dikunci saat edit jadwal.'
-                                                : form.data.type === 'tryout'
-                                                    ? 'Tutor tidak wajib dipilih untuk tryout siswa.'
-                                                    : 'Pilih tutor pengampu untuk jadwal ini.'}
+                                            {form.data.type === 'tryout'
+                                                ? 'Tryout berlaku untuk paket dan tidak memerlukan tutor pengampu.'
+                                                : 'Pilih tutor pengampu untuk jadwal ini.'}
                                         </p>
-                                        {editingScheduleId ? (
+                                        {form.data.type === 'tryout' ? (
                                             <div className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm text-gray-700">
-                                                {editingSchedule?.tutor || '-'}
+                                                Tidak memerlukan tutor
                                             </div>
                                         ) : (
                                             <>
@@ -478,7 +491,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                                     onChange={(event) => form.setData('tutor_id', event.target.value)}
                                                     className="w-full rounded-lg border-2 border-[#D8D7BE] bg-[#F7F2E7] px-4 py-3 text-sm focus:border-[#691D1B] focus:outline-none"
                                                 >
-                                                    <option value="">{form.data.type === 'tryout' ? 'Tanpa tutor' : 'Pilih tutor'}</option>
+                                                    <option value="">Pilih tutor</option>
                                                     {availableTutors.map((tutor) => (
                                                         <option key={tutor.id} value={tutor.id}>
                                                             {tutor.name}
@@ -523,7 +536,7 @@ export default function Schedule({ schedules = [], stats = {}, tutors = [], cour
                                     </div>
                                 </div>
 
-                                {form.data.type === 'student_deadline' ? (
+                                {['deadline', 'review', 'student_deadline'].includes(form.data.type) ? (
                                     <div>
                                         <label className="mb-2 block text-sm font-semibold text-gray-700">Jam Deadline</label>
                                         <input

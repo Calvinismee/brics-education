@@ -321,6 +321,12 @@ class DashboardController extends Controller
 
     private function timeRange(Schedule $schedule): string
     {
+        if (Schedule::hasDeadlineOnly($this->eventType($schedule))) {
+            return $this->eventType($schedule) === Schedule::TYPE_REVIEW
+                ? 'Review '.$schedule->end_time?->format('H:i')
+                : 'Deadline '.$schedule->end_time?->format('H:i');
+        }
+
         return $schedule->start_time?->format('H:i').' - '.$schedule->end_time?->format('H:i');
     }
 

@@ -207,7 +207,7 @@ export default function StudentSchedules({ user, schedules = [] }) {
                         </h3>
 
                         <p className="break-words text-sm text-gray-500 mb-3">
-                          {schedule.course?.title || 'Course'}
+                          {schedule.package?.name || schedule.course?.title || 'Program UTBK'}
                         </p>
 
                         <div className="flex flex-col gap-2 text-sm text-gray-600 sm:flex-row sm:flex-wrap sm:gap-4">

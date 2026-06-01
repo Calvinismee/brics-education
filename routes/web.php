@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\Admin\TutorHistoryController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\MaterialFileController;
 use App\Http\Controllers\NotificationController as UserNotificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
@@ -40,13 +41,29 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 if (! function_exists('studentScheduleWeekPayload')) {
-    function studentScheduleWeekPayload($courseIds): array
+    function studentScheduleWeekPayload($courseIds, $packageIds = []): array
     {
         $weekStart = Carbon::now()->startOfWeek(Carbon::MONDAY)->startOfDay();
         $weekEnd = Carbon::now()->endOfWeek(Carbon::SUNDAY)->endOfDay();
+        $courseIds = collect($courseIds)->filter()->unique()->values();
+        $packageIds = collect($packageIds)->filter()->unique()->values();
 
-        $scheduleEvents = Schedule::with(['course.category', 'mentor'])
-            ->whereIn('course_id', $courseIds)
+        $scheduleEvents = Schedule::with(['course.category', 'package:id,name', 'mentor'])
+            ->where(function ($query) use ($courseIds, $packageIds) {
+                if ($courseIds->isNotEmpty()) {
+                    $query->whereIn('course_id', $courseIds);
+                }
+
+                if ($packageIds->isNotEmpty()) {
+                    $courseIds->isNotEmpty()
+                        ? $query->orWhereIn('package_id', $packageIds)
+                        : $query->whereIn('package_id', $packageIds);
+                }
+
+                if ($courseIds->isEmpty() && $packageIds->isEmpty()) {
+                    $query->whereRaw('1 = 0');
+                }
+            })
             ->visibleToStudent()
             ->whereBetween('start_time', [$weekStart, $weekEnd])
             ->orderBy('start_time')
@@ -74,6 +91,8 @@ if (! function_exists('studentScheduleWeekPayload')) {
                     'title' => $schedule->title,
                     'course' => $schedule->course,
                     'course_id' => $schedule->course_id,
+                    'package' => $schedule->package,
+                    'package_id' => $schedule->package_id,
                     'mentor' => $schedule->mentor,
                     'mentor_name' => $schedule->mentor?->name,
                     'type' => $type,
@@ -145,6 +164,12 @@ Route::get('/', function () {
 Route::get('/tutors', function () {
     return Inertia::render('Tutors');
 })->name('tutors');
+
+Route::get('/materials/{material}/file/{filename?}', MaterialFileController::class)
+    ->middleware('signed')
+    ->whereNumber('material')
+    ->where('filename', '[^/]+')
+    ->name('materials.file');
 
 Route::get('/course/{courseSlug}', function (string $courseSlug) {
     $course = Course::resolveRouteSlug($courseSlug) ?? abort(404);
@@ -290,8 +315,11 @@ Route::get('/dashboard', function () {
     $activeCourseIds = $enrollments
         ->where('status', 'active')
         ->pluck('course_id');
+    $activePackageIds = $enrollments
+        ->where('status', 'active')
+        ->pluck('package_id');
 
-    $schedulePayload = studentScheduleWeekPayload($activeCourseIds);
+    $schedulePayload = studentScheduleWeekPayload($activeCourseIds, $activePackageIds);
 
     $materials = Material::with('course:id,title')
         ->whereIn('course_id', $activeCourseIds)
@@ -416,11 +444,14 @@ Route::get('/student/schedules', function () {
         return redirect()->route('login');
     }
 
-    $activeCourseIds = Enrollment::where('user_id', $user->id)
+    $activeEnrollments = Enrollment::where('user_id', $user->id)
         ->where('status', 'active')
-        ->pluck('course_id');
+        ->get(['course_id', 'package_id']);
 
-    $schedulePayload = studentScheduleWeekPayload($activeCourseIds);
+    $schedulePayload = studentScheduleWeekPayload(
+        $activeEnrollments->pluck('course_id'),
+        $activeEnrollments->pluck('package_id')
+    );
 
     return Inertia::render('StudentSchedules', [
         'user' => $user,

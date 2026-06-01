@@ -154,11 +154,12 @@ class AdminNotifier
 
     private static function scheduleMessage(Schedule $schedule, string $action): string
     {
-        $schedule->loadMissing(['course', 'mentor']);
+        $schedule->loadMissing(['course', 'package', 'mentor']);
 
-        $courseTitle = $schedule->course?->title ?? $schedule->title ?? 'Course';
+        $courseTitle = $schedule->package?->name ?? $schedule->course?->title ?? $schedule->title ?? 'Course';
         $mentorName = $schedule->mentor?->name ?? 'Tutor belum ditentukan';
-        $date = $schedule->start_time?->format('d M Y H:i') ?? 'waktu belum ditentukan';
+        $scheduleTime = Schedule::hasDeadlineOnly($schedule->type) ? $schedule->end_time : $schedule->start_time;
+        $date = $scheduleTime?->format('d M Y H:i') ?? 'waktu belum ditentukan';
 
         return "Jadwal {$courseTitle} {$action} untuk {$date} bersama {$mentorName}.";
     }

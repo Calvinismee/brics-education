@@ -53,8 +53,11 @@ class Schedule extends Model
 
     public const ACTION_LINK_TYPES = [self::TYPE_STUDENT_DEADLINE, self::TYPE_TRYOUT];
 
+    public const DEADLINE_ONLY_TYPES = [self::TYPE_TUTOR_DEADLINE, self::TYPE_REVIEW, self::TYPE_STUDENT_DEADLINE];
+
     protected $fillable = [
         'course_id',
+        'package_id',
         'mentor_id',
         'title',
         'type',
@@ -78,6 +81,11 @@ class Schedule extends Model
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
+    }
+
+    public function package(): BelongsTo
+    {
+        return $this->belongsTo(Package::class);
     }
 
     public function mentor(): BelongsTo
@@ -112,5 +120,10 @@ class Schedule extends Model
     public static function needsActionLink(?string $type): bool
     {
         return in_array($type, self::ACTION_LINK_TYPES, true);
+    }
+
+    public static function hasDeadlineOnly(?string $type): bool
+    {
+        return in_array($type, self::DEADLINE_ONLY_TYPES, true);
     }
 }

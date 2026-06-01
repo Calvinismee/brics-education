@@ -164,6 +164,116 @@ test('TC_ADMIN_JADWAL_002 jadwal gagal dibuat jika waktu kosong', function () {
         ->assertSessionHasErrors(['schedule_date', 'start_time', 'end_time']);
 });
 
+test('TC_ADMIN_JADWAL_003 deadline tutor disimpan sebagai satu waktu deadline', function () {
+    // Dokumentasi: deadline upload tutor hanya memerlukan tanggal dan jam deadline; expected start/end tersimpan pada titik waktu yang sama.
+    $admin = adminUser();
+    $course = courseRecord(['title' => 'Penalaran Umum']);
+    $tutor = tutorUser(['mentor_course_id' => $course['id']]);
+
+    $response = $this->actingAs($admin)->post(route('admin.schedule.store'), [
+        'course_id' => $course['id'],
+        'tutor_id' => $tutor->id,
+        'type' => 'deadline',
+        'schedule_date' => '2026-06-05',
+        'deadline_time' => '21:00',
+    ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('admin.schedule', absolute: false));
+
+    $this->assertDatabaseHas('schedules', [
+        'course_id' => $course['id'],
+        'mentor_id' => $tutor->id,
+        'type' => 'deadline',
+        'audience' => 'tutor',
+        'start_time' => '2026-06-05 21:00:00',
+        'end_time' => '2026-06-05 21:00:00',
+    ]);
+});
+
+test('TC_ADMIN_JADWAL_004 tryout paket tampil untuk siswa yang terdaftar pada paket', function () {
+    // Dokumentasi: admin menjadwalkan satu tryout paket; expected record tidak terikat subtes dan siswa paket melihat jadwal yang sama.
+    $admin = adminUser();
+    $student = studentUser();
+    $course = courseRecord(['title' => 'Penalaran Umum']);
+    $package = packageRecord([
+        'name' => 'Paket Intensif SNBT',
+        'courses' => [$course],
+    ]);
+    $scheduleDate = now('Asia/Jakarta')->startOfWeek()->addDay()->format('Y-m-d');
+
+    DB::table('enrollments')->insert([
+        'user_id' => $student->id,
+        'course_id' => $course['id'],
+        'package_id' => $package->id,
+        'status' => 'active',
+        'enrolled_at' => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $response = $this->actingAs($admin)->post(route('admin.schedule.store'), [
+        'package_id' => $package->id,
+        'type' => 'tryout',
+        'schedule_date' => $scheduleDate,
+        'start_time' => '09:00',
+        'end_time' => '11:00',
+        'action_link' => 'https://tryout.example.test/paket-intensif',
+    ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('admin.schedule', absolute: false));
+
+    $this->assertDatabaseHas('schedules', [
+        'course_id' => null,
+        'package_id' => $package->id,
+        'mentor_id' => null,
+        'title' => 'Tryout Paket Intensif SNBT',
+        'type' => 'tryout',
+        'audience' => 'student',
+        'action_link' => 'https://tryout.example.test/paket-intensif',
+    ]);
+
+    $this->actingAs($student)
+        ->get(route('student.schedules'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('StudentSchedules')
+            ->has('schedules', 1)
+            ->where('schedules.0.type', 'tryout')
+            ->where('schedules.0.package.id', $package->id));
+});
+
+test('TC_ADMIN_JADWAL_005 review materi tutor disimpan sebagai satu waktu review', function () {
+    // Dokumentasi: pengingat review materi tutor hanya memerlukan tanggal dan jam review; expected start/end tersimpan pada titik waktu yang sama.
+    $admin = adminUser();
+    $course = courseRecord(['title' => 'Pemahaman Bacaan dan Menulis']);
+    $tutor = tutorUser(['mentor_course_id' => $course['id']]);
+
+    $response = $this->actingAs($admin)->post(route('admin.schedule.store'), [
+        'course_id' => $course['id'],
+        'tutor_id' => $tutor->id,
+        'type' => 'review',
+        'schedule_date' => '2026-06-06',
+        'deadline_time' => '15:30',
+    ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('admin.schedule', absolute: false));
+
+    $this->assertDatabaseHas('schedules', [
+        'course_id' => $course['id'],
+        'mentor_id' => $tutor->id,
+        'type' => 'review',
+        'audience' => 'tutor',
+        'start_time' => '2026-06-06 15:30:00',
+        'end_time' => '2026-06-06 15:30:00',
+    ]);
+});
+
 test('TC_ADMIN_LAPORAN_001 admin dapat melihat laporan transaksi yang tersedia', function () {
     // Dokumentasi: admin membuka route laporan/export yang tersedia; expected halaman laporan export ter-render.
     $admin = adminUser();

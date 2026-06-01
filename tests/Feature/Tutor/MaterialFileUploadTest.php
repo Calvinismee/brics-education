@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Material;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -58,4 +59,33 @@ test('TC_TUTOR_UPLOAD_002 tutor gagal embed video jika link tidak valid', functi
     $this->assertDatabaseMissing('materials', [
         'title' => 'Video Invalid Tutor',
     ]);
+});
+
+test('TC_TUTOR_UPLOAD_003 file materi dibuka melalui URL aplikasi yang signed', function () {
+    Storage::fake('public');
+
+    [$course, $tutor] = tutorCourseScenario();
+
+    $this->actingAs($tutor)->post(route('tutor.materials.store'), [
+        'course_id' => $course['id'],
+        'title' => 'Modul Signed URL',
+        'module_file' => UploadedFile::fake()->create('modul-signed.pdf', 64, 'application/pdf'),
+    ])->assertSessionHasNoErrors();
+
+    $material = Material::query()->where('title', 'Modul Signed URL - Modul')->firstOrFail();
+    $fileUrl = $material->file_url;
+
+    expect($fileUrl)
+        ->toContain('/materials/'.$material->id.'/file/')
+        ->toContain('expires=')
+        ->toContain('signature=');
+
+    $this->get($fileUrl)
+        ->assertOk()
+        ->assertHeader('Content-Disposition', 'inline; filename="'.basename($material->file_path).'"');
+
+    $this->get(route('materials.file', [
+        'material' => $material,
+        'filename' => basename($material->file_path),
+    ]))->assertForbidden();
 });

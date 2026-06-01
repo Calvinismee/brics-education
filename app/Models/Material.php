@@ -5,7 +5,9 @@ namespace App\Models;
 use App\Support\AdminNotifier;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 class Material extends Model
 {
@@ -38,13 +40,21 @@ class Material extends Model
         return Attribute::get(fn ($value, array $attributes) => self::publicUrlFor(
             $attributes['storage_disk'] ?? null,
             $attributes['file_path'] ?? null,
-            $value
+            $value,
+            $this->getKey()
         ));
     }
 
-    public static function publicUrlFor(?string $disk, ?string $path, ?string $fallback = null): ?string
+    public static function publicUrlFor(?string $disk, ?string $path, ?string $fallback = null, ?int $materialId = null): ?string
     {
         if ($disk && $path) {
+            if ($materialId && Route::has('materials.file')) {
+                return URL::temporarySignedRoute('materials.file', now()->addHours(6), [
+                    'material' => $materialId,
+                    'filename' => basename($path),
+                ]);
+            }
+
             if ($disk === 'public') {
                 return '/storage/'.ltrim($path, '/');
             }

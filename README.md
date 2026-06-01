@@ -149,7 +149,7 @@ For production deployment on platforms where app files can be reset during redep
 MATERIALS_FILESYSTEM_DISK=s3
 AWS_ACCESS_KEY_ID=<storage-access-key>
 AWS_SECRET_ACCESS_KEY=<storage-secret-key>
-AWS_DEFAULT_REGION=<storage-region>
+AWS_DEFAULT_REGION=auto
 AWS_BUCKET=<bucket-name>
 AWS_URL=<public-bucket-url>
 AWS_ENDPOINT=<s3-compatible-endpoint>
@@ -167,21 +167,35 @@ AWS_ENDPOINT=https://<your-cloudflare-account-id>.r2.cloudflarestorage.com
 AWS_USE_PATH_STYLE_ENDPOINT=false
 ```
 
-`AWS_URL` must be the public bucket URL, for example a custom domain such as `https://files.example.com` or the R2 public development URL. Use a custom domain for production because some networks may block or rewrite `r2.dev` public URLs. Keep the bucket public, or configure signed URL support before switching it to private. Students, tutors, and admins read the same stored material URL, so files remain accessible as long as the object storage bucket remains available.
+Set `APP_URL` to the deployed HTTPS website URL. Uploaded materials are stored permanently in R2, but PDF, DOC, and PPT previews are served through a temporary signed application URL. This keeps admin, tutor, and student previews independent from the public `r2.dev` URL.
+
+`AWS_URL` is still used for assets that need a direct public URL, such as uploaded tutor profile photos. Use an R2 custom domain such as `https://files.example.com` in production. Cloudflare documents `r2.dev` as a rate-limited development endpoint, so do not rely on it for production traffic.
 
 Cloudflare R2 setup checklist:
 
 1. Open Cloudflare Dashboard.
 2. Go to Storage & databases > R2.
 3. Create a bucket named `materials`.
-4. Open the bucket settings and enable public access. Prefer a custom domain for production; use the R2 public development URL only for quick testing.
-5. Copy that public bucket URL into `AWS_URL`.
+4. Connect a custom domain for production assets. Enable the R2 public development URL only for quick testing.
+5. Copy the custom domain, or the temporary development URL while testing, into `AWS_URL`.
 6. Go back to R2 Overview > Manage API Tokens.
 7. Create an API token with Object Read & Write access, scoped only to the `materials` bucket.
 8. Copy the Access Key ID into `AWS_ACCESS_KEY_ID`.
 9. Copy the Secret Access Key into `AWS_SECRET_ACCESS_KEY`. Cloudflare only shows this once.
 10. Copy your S3 API endpoint, usually `https://<your-cloudflare-account-id>.r2.cloudflarestorage.com`, into `AWS_ENDPOINT`.
-11. In deployment, run `php artisan config:clear` after changing env values.
+11. Set `APP_URL` to the deployed HTTPS website URL.
+12. In deployment, run `php artisan optimize:clear` after changing env values.
+
+### Production Upload Limits <a id="production-upload-limits"></a>
+
+Tutor upload supports a module and a question bank file of up to `50 MB` each in one request. The repository includes `public/.user.ini` for PHP-FPM deployments:
+
+```ini
+upload_max_filesize = 50M
+post_max_size = 120M
+```
+
+If the deployment platform uses Nginx or another reverse proxy, also set its request body limit to at least `120 MB` (for Nginx: `client_max_body_size 120M;`). Redeploy after changing PHP or proxy limits.
 
 ## Testing Guide <a id="testing-guide"></a>
 
