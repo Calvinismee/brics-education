@@ -12,6 +12,7 @@ use App\Support\DatabaseBoolean;
 use App\Support\TutorCourseResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -112,36 +113,67 @@ class MaterialController extends Controller
             ]);
         }
 
-        $createdMaterials = [];
+        $storedFiles = [];
 
-        if (filled($validated['youtube_url'] ?? null)) {
-            $createdMaterials[] = $this->createMaterial($request, $validated, 'video', null, $validated['youtube_url']);
-        }
+        try {
+            $moduleFile = null;
+            $quizFile = null;
 
-        if ($request->hasFile('module_file')) {
-            $storedFile = $this->storeMaterialFile($request->file('module_file'), 'materials/modules');
-            $createdMaterials[] = $this->createMaterial(
-                $request,
-                $validated,
-                'module',
-                $storedFile['url'],
-                $validated['description'] ?? null,
-                $storedFile['disk'],
-                $storedFile['path']
-            );
-        }
+            if ($request->hasFile('module_file')) {
+                $moduleFile = $this->storeMaterialFile($request->file('module_file'), 'materials/modules');
+                $storedFiles[] = $moduleFile;
+            }
 
-        if ($request->hasFile('quiz_file')) {
-            $storedFile = $this->storeMaterialFile($request->file('quiz_file'), 'materials/quizzes');
-            $createdMaterials[] = $this->createMaterial(
-                $request,
-                $validated,
-                'quiz',
-                $storedFile['url'],
-                $validated['description'] ?? null,
-                $storedFile['disk'],
-                $storedFile['path']
-            );
+            if ($request->hasFile('quiz_file')) {
+                $quizFile = $this->storeMaterialFile($request->file('quiz_file'), 'materials/quizzes');
+                $storedFiles[] = $quizFile;
+            }
+
+            $createdMaterials = DB::transaction(function () use ($request, $validated, $moduleFile, $quizFile) {
+                $materials = [];
+
+                if (filled($validated['youtube_url'] ?? null)) {
+                    $materials[] = $this->createMaterial($request, $validated, 'video', null, $validated['youtube_url']);
+                }
+
+                if ($moduleFile) {
+                    $materials[] = $this->createMaterial(
+                        $request,
+                        $validated,
+                        'module',
+                        $moduleFile['url'],
+                        $validated['description'] ?? null,
+                        $moduleFile['disk'],
+                        $moduleFile['path']
+                    );
+                }
+
+                if ($quizFile) {
+                    $materials[] = $this->createMaterial(
+                        $request,
+                        $validated,
+                        'quiz',
+                        $quizFile['url'],
+                        $validated['description'] ?? null,
+                        $quizFile['disk'],
+                        $quizFile['path']
+                    );
+                }
+
+                return $materials;
+            });
+        } catch (\Throwable $exception) {
+            $this->deleteStoredFiles($storedFiles);
+
+            if ($exception instanceof ValidationException) {
+                throw $exception;
+            }
+
+            report($exception);
+
+            throw ValidationException::withMessages([
+                'content' => 'Upload gagal disimpan. Silakan coba lagi atau hubungi admin jika masalah berlanjut.',
+            ]);
         }
 
         $this->notifyAdmins($request->user(), $createdMaterials);
@@ -153,10 +185,18 @@ class MaterialController extends Controller
     {
         abort_unless($this->tutorCourseIds($request->user())->contains((int) $material->course_id), 403);
 
-        if ($material->storage_disk && $material->file_path) {
-            Storage::disk($material->storage_disk)->delete($material->file_path);
-        } elseif ($material->file_url && str_starts_with($material->file_url, '/storage/')) {
-            Storage::disk('public')->delete(substr($material->file_url, strlen('/storage/')));
+        try {
+            if ($material->storage_disk && $material->file_path) {
+                Storage::disk($material->storage_disk)->delete($material->file_path);
+            } elseif ($material->file_url && str_starts_with($material->file_url, '/storage/')) {
+                Storage::disk('public')->delete(substr($material->file_url, strlen('/storage/')));
+            }
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            throw ValidationException::withMessages([
+                'material' => 'Materi belum dapat dihapus dari storage. Silakan coba lagi.',
+            ]);
         }
 
         $material->delete();
@@ -205,11 +245,21 @@ class MaterialController extends Controller
         $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'bin');
         $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
         $filename = Str::uuid().'-'.Str::slug($originalName ?: 'materi').'.'.$extension;
-        $path = $file->storeAs($directory.'/'.now()->format('Y/m'), $filename, $disk);
+        try {
+            $path = $file->storeAs($directory.'/'.now()->format('Y/m'), $filename, $disk);
 
-        if (! $path) {
+            if (! $path || ! Storage::disk($disk)->exists($path)) {
+                throw new \RuntimeException('File materi tidak ditemukan setelah proses upload.');
+            }
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->deleteStoredFiles(isset($path) && $path ? [[
+                'disk' => $disk,
+                'path' => $path,
+            ]] : []);
+
             throw ValidationException::withMessages([
-                'content' => 'Upload gagal disimpan. Periksa konfigurasi storage.',
+                'content' => 'Upload gagal disimpan ke storage. Silakan coba lagi atau hubungi admin.',
             ]);
         }
 
@@ -218,6 +268,17 @@ class MaterialController extends Controller
             'path' => $path,
             'url' => Material::publicUrlFor($disk, $path),
         ];
+    }
+
+    private function deleteStoredFiles(array $storedFiles): void
+    {
+        foreach ($storedFiles as $storedFile) {
+            try {
+                Storage::disk($storedFile['disk'])->delete($storedFile['path']);
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        }
     }
 
     private function createMaterial(

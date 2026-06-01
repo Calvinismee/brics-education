@@ -1225,7 +1225,7 @@ export default function StudentDashboard({
                     </div>
                     <p className="break-words text-xs text-gray-500 sm:text-sm">
                       {schedule.time || `${formatTime(schedule.start_time)} - ${formatTime(schedule.end_time)}`}
-                      {' '}• {schedule.course?.title || currentPackageName}
+                      {' '}• {schedule.package?.name || schedule.course?.title || currentPackageName}
                     </p>
                   </div>
                 </div>
@@ -1646,7 +1646,7 @@ export default function StudentDashboard({
                     </div>
 
                     <p className="mb-1 break-words text-sm text-gray-500">
-                      {schedule.course?.title || currentPackageName} • {schedule.mentor?.name || (scheduleType(schedule) === 'tryout' ? 'BRICS Education' : 'Tutor Brics')}
+                      {schedule.package?.name || schedule.course?.title || currentPackageName} • {schedule.mentor?.name || (scheduleType(schedule) === 'tryout' ? 'BRICS Education' : 'Tutor Brics')}
                     </p>
 
                     <p className="break-words text-sm text-gray-400">

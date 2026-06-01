@@ -42,7 +42,7 @@ class ContentController extends Controller
 
         $contents->getCollection()->transform(function ($material) {
             $contentLength = strlen(trim(strip_tags((string) ($material->content ?? ''))));
-            $fileUrl = Material::publicUrlFor($material->storage_disk, $material->file_path, $material->file_url);
+            $fileUrl = Material::publicUrlFor($material->storage_disk, $material->file_path, $material->file_url, $material->id);
             $size = $contentLength > 0
                 ? number_format(max(1, round($contentLength / 1024, 1)), 1).' KB'
                 : ($fileUrl ? 'Terlampir' : '-');
