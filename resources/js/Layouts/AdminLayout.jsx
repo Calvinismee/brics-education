@@ -1,10 +1,8 @@
-import { Link, usePage, router } from '@inertiajs/react';
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Link, usePage } from '@inertiajs/react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import {
-    Bell,
     BookOpen,
     Calendar,
-    Check,
     ClipboardCheck,
     FileText,
     History,
@@ -17,7 +15,7 @@ import {
     Users,
     X,
 } from 'lucide-react';
-import { countUnreadNotifications, normalizeNotifications, sortNotifications } from '@/utils/notifications';
+import { DashboardNotificationBell } from '@/Components/DashboardNotificationBell';
 
 const navigationGroups = [
     {
@@ -55,18 +53,12 @@ const initialsFor = (name) => String(name || 'Admin')
     .slice(0, 2)
     .toUpperCase();
 
-export default function AdminLayout({ children, title, subtitle, notifications = [] }) {
+export default function AdminLayout({ children, title, subtitle }) {
     const page = usePage();
     const user = page.props.auth?.user;
     const currentPath = page.url.split('?')[0];
     const sidebarRef = useRef(null);
-    const [showNotifications, setShowNotifications] = useState(false);
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
-    const sharedNotifications = page.props?.notifications ?? notifications;
-    const notificationList = useMemo(
-        () => normalizeNotifications(sharedNotifications),
-        [sharedNotifications],
-    );
 
     const isActive = (href) => {
         const path = new URL(href, window.location.origin).pathname;
@@ -145,22 +137,6 @@ export default function AdminLayout({ children, title, subtitle, notifications =
         }
     };
 
-    const markAsRead = (notificationId) => {
-        router.post(route('admin.notifications.mark-as-read', notificationId), {}, {
-            preserveScroll: true,
-            only: ['notifications'],
-        });
-    };
-
-    const sortedNotificationList = useMemo(
-        () => sortNotifications(notificationList),
-        [notificationList],
-    );
-    const unreadCount = useMemo(
-        () => countUnreadNotifications(notificationList),
-        [notificationList],
-    );
-
     const renderSidebarContent = (closeOnNavigate = false) => (
         <div
             ref={closeOnNavigate ? undefined : setSidebarElement}
@@ -196,18 +172,7 @@ export default function AdminLayout({ children, title, subtitle, notifications =
                             <div className="text-sm leading-tight text-white/75">Administrator</div>
                         </div>
                     </div>
-                    <div className="mt-4 flex items-center justify-between text-xs">
-                        <span className="text-white/80">Akses Panel</span>
-                        <span className="rounded-full bg-[#FFE882]/20 px-2 py-0.5 text-[#FFE882]" style={{ fontWeight: 900 }}>
-                            Admin
-                        </span>
-                    </div>
-                    <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/20">
-                        <div
-                            className="h-full rounded-full"
-                            style={{ width: '100%', background: '#FFE882' }}
-                        />
-                    </div>
+                    
                 </div>
             </div>
 
@@ -321,93 +286,11 @@ export default function AdminLayout({ children, title, subtitle, notifications =
                             </div>
 
                             <div className="flex shrink-0 items-center gap-3">
-                                {/* Notifications Dropdown */}
-                                <div className="relative">
-                                    <button
-                                        onClick={() => setShowNotifications(!showNotifications)}
-                                        className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-[#D8D7BE] bg-[#F7F2E7] text-gray-700 transition hover:bg-[#E8E3D6]"
-                                    >
-                                        <Bell className="h-5 w-5" />
-                                        {unreadCount > 0 && (
-                                            <span className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
-                                                {unreadCount > 9 ? '9+' : unreadCount}
-                                            </span>
-                                        )}
-                                    </button>
-
-                                    {/* Dropdown Menu */}
-                                    {showNotifications && (
-                                        <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-sm rounded-2xl border border-[#D8D7BE] bg-white shadow-lg">
-                                            <div className="flex items-center justify-between border-b border-[#F7F2E7] p-4">
-                                                <h3 className="font-bold text-gray-900">Notifikasi</h3>
-                                                <button onClick={() => setShowNotifications(false)}>
-                                                    <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                                                </button>
-                                            </div>
-
-                                            <div className="max-h-96 overflow-y-auto">
-                                                {sortedNotificationList.length === 0 ? (
-                                                    <div className="p-6 text-center text-sm text-gray-500">
-                                                        Tidak ada notifikasi
-                                                    </div>
-                                                ) : (
-                                                    <div className="divide-y divide-[#F7F2E7]">
-                                                        {sortedNotificationList.map((notification) => (
-                                                            <div
-                                                                key={notification.id}
-                                                                className={`flex items-start justify-between gap-3 p-4 transition hover:bg-[#F7F2E7] ${!notification.is_read ? 'bg-[#F9F7F5]' : ''
-                                                                    }`}
-                                                            >
-                                                                <div className="flex-1 min-w-0">
-                                                                    <h4 className="font-semibold text-gray-900">
-                                                                        {notification.title}
-                                                                    </h4>
-                                                                    <p className="mt-1 text-sm text-gray-600">
-                                                                        {notification.message}
-                                                                    </p>
-                                                                    <p className="mt-2 text-xs text-gray-400">
-                                                                        {new Date(notification.created_at).toLocaleDateString('id-ID', {
-                                                                            month: 'short',
-                                                                            day: 'numeric',
-                                                                            hour: '2-digit',
-                                                                            minute: '2-digit',
-                                                                        })}
-                                                                    </p>
-                                                                </div>
-                                                                <div className="flex flex-col gap-1 items-end flex-shrink-0">
-                                                                    {!notification.is_read && (
-                                                                        <button
-                                                                            onClick={(e) => {
-                                                                                e.preventDefault();
-                                                                                markAsRead(notification.id);
-                                                                            }}
-                                                                            className="flex h-7 w-7 items-center justify-center rounded-md bg-[#691D1B]/10 text-[#691D1B] hover:bg-[#691D1B]/20 transition"
-                                                                            title="Tandai sebagai dibaca"
-                                                                        >
-                                                                            <Check className="h-4 w-4" />
-                                                                        </button>
-                                                                    )}
-                                                                    {!notification.is_read && (
-                                                                        <div className="h-2 w-2 rounded-full bg-[#691D1B]" />
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="border-t border-[#F7F2E7] p-4">
-                                                <Link
-                                                    href={route('admin.notifications')}
-                                                    className="block text-center text-sm font-semibold text-[#691D1B] transition hover:text-[#4A1412]"
-                                                >
-                                                    Lihat Semua Notifikasi
-                                                </Link>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                                <DashboardNotificationBell
+                                    markAllHref={route('admin.notifications.mark-all-as-read')}
+                                    allHref={route('admin.notifications')}
+                                    historyLabel="Riwayat terbaru admin"
+                                />
                             </div>
                         </div>
                     </header>

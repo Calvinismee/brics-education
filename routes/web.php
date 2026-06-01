@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\TutorHistoryController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\MaterialFileController;
+use App\Http\Controllers\NotificationController as UserNotificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Student\ProgressController;
@@ -25,6 +26,7 @@ use App\Models\Enrollment;
 use App\Models\Material;
 use App\Models\Notification;
 use App\Models\Package;
+use App\Models\ProgressRecord;
 use App\Models\Schedule;
 use App\Models\Transaction;
 use App\Models\User;
@@ -34,6 +36,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -252,6 +255,9 @@ Route::post('/checkout', function (Request $request, MidtransService $midtrans) 
 Route::get('/payment-status/{transaction}', [PaymentController::class, 'status'])->middleware('auth')->name('payment.status');
 Route::post('/payment-status/{transaction}/refresh', [PaymentController::class, 'refresh'])->middleware('auth')->name('payment.refresh');
 Route::post('/midtrans/notification', [PaymentController::class, 'notification'])->name('midtrans.notification');
+Route::post('/notifications/mark-all-as-read', [UserNotificationController::class, 'markAllAsRead'])
+    ->middleware('auth')
+    ->name('notifications.mark-all-as-read');
 
 Route::get('/dashboard', function () {
     if (! auth()->check()) {
@@ -406,6 +412,14 @@ Route::get('/course/{courseSlug}/learn', function (string $courseSlug) {
         'materials' => $materials,
         'enrollment' => $enrollment,
         'enrollments' => $enrollments,
+        'progressRecords' => ProgressRecord::where('user_id', $user->id)
+            ->select('course_id', DB::raw('MAX(percent) as percent'))
+            ->groupBy('course_id')
+            ->get()
+            ->map(fn ($record) => [
+                'course_id' => (int) $record->course_id,
+                'percent' => (int) $record->percent,
+            ]),
     ]);
 })->name('course.learn');
 

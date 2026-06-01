@@ -7,9 +7,9 @@ import Dashboard from '@/Pages/Admin/Dashboard';
 const dashboardProps = {
     userStats: [
         { label: 'Total Pengguna', value: '120', change: '+12%' },
-        { label: 'Pengguna Baru', value: '18', change: '+4%' },
-        { label: 'Aktif Hari Ini', value: '42', change: '+6%' },
-        { label: 'Nonaktif', value: '3', change: '-1%' },
+        { label: 'Registrasi Baru', value: '18', change: '+4%' },
+        { label: 'Pengguna Aktif', value: '42', change: '+6%' },
+        { label: 'Tidak Aktif', value: '3', change: '-1%' },
     ],
     growthData: [10, 20, 30, 40, 50, 60],
     growthLabels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
@@ -34,6 +34,9 @@ describe('Admin Dashboard page', () => {
         expect(screen.getByText('Statistik Pengguna')).toBeInTheDocument();
         expect(screen.getByText('Total Pengguna')).toBeInTheDocument();
         expect(screen.getAllByText('120').length).toBeGreaterThan(0);
+        expect(screen.getByText('Registrasi Baru')).toBeInTheDocument();
+        expect(screen.queryByText('Pengguna Aktif')).not.toBeInTheDocument();
+        expect(screen.queryByText('Tidak Aktif')).not.toBeInTheDocument();
         expect(screen.getByText('Pertumbuhan Pengguna')).toBeInTheDocument();
         expect(screen.getByText('Distribusi Pengguna')).toBeInTheDocument();
         expect(screen.getByText('Bima Tutor')).toBeInTheDocument();

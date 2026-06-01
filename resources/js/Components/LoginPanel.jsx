@@ -22,8 +22,8 @@ export function LoginPanel() {
         className="absolute bottom-0 left-0 w-64 h-64 rounded-full opacity-10"
         style={{ background: 'var(--brics-yellow)', transform: 'translate(-30%, 30%)' }}
       />
-      <div className="absolute right-8 top-8 z-10 inline-flex items-center justify-center rounded-3xl bg-[#FFFDF4]/95 p-5 shadow-2xl backdrop-blur-md">
-        <BricsLogo size="lg" />
+      <div className="absolute right-8 top-8 z-10 inline-flex items-center justify-center rounded-2xl bg-[#FFFDF4]/95 p-4 shadow-2xl backdrop-blur-md">
+        <BricsLogo size="md" />
       </div>
 
       <div className="relative z-10">

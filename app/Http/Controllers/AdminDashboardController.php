@@ -10,7 +10,7 @@ use Inertia\Inertia;
 
 class AdminDashboardController extends Controller
 {
-    private const DASHBOARD_CACHE_KEY = 'admin:dashboard:overview:v2';
+    private const DASHBOARD_CACHE_KEY = 'admin:dashboard:overview:v3';
 
     private const DASHBOARD_CACHE_TTL_SECONDS = 300;
 
@@ -41,7 +41,6 @@ class AdminDashboardController extends Controller
         $adminCount = (int) ($metrics->admin_count ?? 0);
         $newRegistrations = (int) ($metrics->new_registrations ?? 0);
         $activeUsers = (int) ($metrics->active_users ?? 0);
-        $inactiveUsers = max(0, $totalUsers - $activeUsers);
         $previousMonthTotal = (int) ($metrics->previous_month_total ?? 0);
 
         $growthPercent = $previousMonthTotal > 0
@@ -82,16 +81,6 @@ class AdminDashboardController extends Controller
                     'label' => 'Registrasi Baru',
                     'value' => number_format($newRegistrations),
                     'change' => '+12.5%',
-                ],
-                [
-                    'label' => 'Pengguna Aktif',
-                    'value' => number_format($activeUsers),
-                    'change' => '+5.1%',
-                ],
-                [
-                    'label' => 'Tidak Aktif',
-                    'value' => number_format($inactiveUsers),
-                    'change' => '-2.3%',
                 ],
             ],
             'growthData' => $growthData,

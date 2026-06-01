@@ -6,7 +6,6 @@ import TransactionStats from '@/Pages/Admin/TransactionStats';
 const summary = {
     totalRevenue: 10000000,
     averageTransaction: 2500000,
-    transactionGrowth: 12.5,
     monthlyRevenue: [
         { period: 'Apr', amount: 4000000 },
         { period: 'Mei', amount: 6000000 },
@@ -49,18 +48,19 @@ function expectCard(label, value) {
 
 describe('Admin TransactionStats page', () => {
     it('renders summary cards, chart data, and payment methods', () => {
-        render(<TransactionStats summary={summary} paymentMethods={paymentMethods} successRate={87} recentTransactions={recentTransactions} />);
+        render(<TransactionStats summary={summary} paymentMethods={paymentMethods} recentTransactions={recentTransactions} />);
 
         expectCard('Total Pendapatan', 'Rp10.000.000');
         expectCard('Rata-rata Transaksi/Bulan', 'Rp2.500.000');
-        expectCard('Tingkat Keberhasilan', '87%');
+        expect(screen.queryByText('Tingkat Keberhasilan')).not.toBeInTheDocument();
+        expect(screen.queryByText('Pertumbuhan')).not.toBeInTheDocument();
         expect(screen.getByText('Pendapatan Bulanan')).toBeInTheDocument();
         expect(screen.getAllByText('Transfer Bank').length).toBeGreaterThan(0);
         expect(screen.getAllByText('QRIS').length).toBeGreaterThan(0);
     });
 
     it('renders recent transactions and labels expired statuses', () => {
-        render(<TransactionStats summary={summary} paymentMethods={paymentMethods} successRate={87} recentTransactions={recentTransactions} />);
+        render(<TransactionStats summary={summary} paymentMethods={paymentMethods} recentTransactions={recentTransactions} />);
 
         expect(screen.getByText('TRX-001')).toBeInTheDocument();
         expect(screen.getByText('Alya Putri')).toBeInTheDocument();

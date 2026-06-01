@@ -36,7 +36,7 @@ export default function LoginAdmin() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="lg:hidden mb-8 flex justify-center">
-            <BricsLogo size="md" />
+            <BricsLogo size="sm" />
           </div>
 
 

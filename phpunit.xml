@@ -30,6 +30,8 @@
         <env name="DB_USERNAME" value="postgres" force="true"/>
         <env name="DB_URL" value="" force="true"/>
         <env name="MAIL_MAILER" value="array"/>
+        <env name="FILESYSTEM_DISK" value="local" force="true"/>
+        <env name="MATERIALS_FILESYSTEM_DISK" value="public" force="true"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>

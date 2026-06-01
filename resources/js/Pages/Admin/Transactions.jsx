@@ -88,6 +88,46 @@ export default function Transactions({ transactions = [], stats = {}, filters = 
         return result;
     }, [transactionList, statusFilter, search, dateFrom, dateTo, sortOrder]);
 
+    const transactionStatCards = useMemo(() => {
+        const cards = [
+            {
+                label: 'Transaksi Berhasil',
+                value: Number(stats.successToday ?? transactionList.filter((transaction) => transaction.status === 'success').length),
+                color: '#16a34a',
+                bg: '#22c55e15',
+            },
+            {
+                label: 'Menunggu Konfirmasi',
+                value: Number(stats.pendingToday ?? transactionList.filter((transaction) => transaction.status === 'pending').length),
+                color: '#d97706',
+                bg: '#f59e0b15',
+            },
+            {
+                label: 'Transaksi Gagal',
+                value: Number(stats.failedToday ?? transactionList.filter((transaction) => transaction.status === 'failed').length),
+                color: '#ef4444',
+                bg: '#ef444415',
+            },
+            {
+                label: 'Kedaluwarsa',
+                value: Number(stats.expiredToday ?? transactionList.filter((transaction) => transaction.status === 'expired').length),
+                color: '#64748b',
+                bg: '#64748b15',
+            },
+        ];
+        const total = cards.reduce((sum, card) => sum + card.value, 0);
+
+        return cards.map((card) => {
+            const percentage = total > 0 ? (card.value / total) * 100 : 0;
+
+            return {
+                ...card,
+                percentage,
+                barWidth: `${Math.min(100, Math.max(0, percentage))}%`,
+            };
+        });
+    }, [stats, transactionList]);
+
     const handleExport = () => {
         const params = new URLSearchParams();
 
@@ -119,17 +159,19 @@ export default function Transactions({ transactions = [], stats = {}, filters = 
 
             <div className="p-4 lg:p-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 <div className="mb-6 grid gap-4 md:grid-cols-4">
-                    {[
-                        { label: 'Transaksi Berhasil', value: `${stats.successToday ?? transactionList.filter((transaction) => transaction.status === 'success').length}`, color: '#16a34a', bg: '#22c55e15' },
-                        { label: 'Menunggu Konfirmasi', value: `${stats.pendingToday ?? transactionList.filter((transaction) => transaction.status === 'pending').length}`, color: '#d97706', bg: '#f59e0b15' },
-                        { label: 'Transaksi Gagal', value: `${stats.failedToday ?? transactionList.filter((transaction) => transaction.status === 'failed').length}`, color: '#ef4444', bg: '#ef444415' },
-                        { label: 'Kedaluwarsa', value: `${stats.expiredToday ?? transactionList.filter((transaction) => transaction.status === 'expired').length}`, color: '#64748b', bg: '#64748b15' },
-                    ].map((stat) => (
+                    {transactionStatCards.map((stat) => (
                         <div key={stat.label} className="rounded-2xl border border-[#D8D7BE] bg-white p-5 shadow-sm">
-                            <div className="mb-1 text-2xl font-extrabold" style={{ color: stat.color }}>{stat.value}</div>
-                            <div className="text-sm text-gray-500">{stat.label}</div>
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <div className="mb-1 text-2xl font-extrabold" style={{ color: stat.color }}>{stat.value}</div>
+                                    <div className="text-sm text-gray-500">{stat.label}</div>
+                                </div>
+                                <div className="rounded-full px-2 py-1 text-xs font-bold" style={{ background: stat.bg, color: stat.color }}>
+                                    {stat.percentage.toFixed(1)}%
+                                </div>
+                            </div>
                             <div className="mt-3 h-1 w-full rounded-full" style={{ background: stat.bg }}>
-                                <div className="h-1 rounded-full" style={{ width: '60%', background: stat.color }} />
+                                <div className="h-1 rounded-full" style={{ width: stat.barWidth, background: stat.color }} />
                             </div>
                         </div>
                     ))}

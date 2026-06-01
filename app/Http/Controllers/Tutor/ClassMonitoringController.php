@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\Material;
+use App\Models\ProgressRecord;
 use App\Models\Schedule;
 use App\Models\User;
 use App\Support\TutorCourseResolver;
 use App\Support\TutorSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -33,23 +35,36 @@ class ClassMonitoringController extends Controller
         $materials = collect();
 
         if ($selectedCourse) {
+            $studentProgress = ProgressRecord::query()
+                ->where('course_id', $selectedCourse->id)
+                ->select('user_id', DB::raw('MAX(percent) as percent'), DB::raw('MAX(updated_at) as last_progress_at'))
+                ->groupBy('user_id')
+                ->get()
+                ->keyBy('user_id');
+
             $students = Enrollment::query()
                 ->with('user:id,name,email')
                 ->where('course_id', $selectedCourse->id)
                 ->where('status', 'active')
                 ->orderByDesc('enrolled_at')
                 ->get()
-                ->map(fn (Enrollment $enrollment) => [
-                    'id' => $enrollment->user?->id,
-                    'slug' => Str::slug($enrollment->user?->name ?? 'siswa'),
-                    'name' => $enrollment->user?->name ?? 'Siswa',
-                    'email' => $enrollment->user?->email ?? '-',
-                    'progress' => 0,
-                    'lastActive' => $enrollment->updated_at?->diffForHumans() ?? '-',
-                    'score' => 0,
-                    'attendance' => 0,
-                    'status' => $enrollment->status,
-                ]);
+                ->map(function (Enrollment $enrollment) use ($studentProgress) {
+                    $studentId = (int) ($enrollment->user?->id ?? 0);
+                    $progress = $studentProgress->get($studentId);
+                    $lastProgressAt = $progress?->last_progress_at
+                        ? Carbon::parse($progress->last_progress_at)
+                        : null;
+
+                    return [
+                        'id' => $enrollment->user?->id,
+                        'slug' => Str::slug($enrollment->user?->name ?? 'siswa'),
+                        'name' => $enrollment->user?->name ?? 'Siswa',
+                        'email' => $enrollment->user?->email ?? '-',
+                        'progress' => (int) ($progress?->percent ?? 0),
+                        'lastActive' => ($lastProgressAt ?? $enrollment->updated_at)?->diffForHumans() ?? '-',
+                        'status' => $enrollment->status,
+                    ];
+                });
 
             $materials = Material::query()
                 ->where('course_id', $selectedCourse->id)
@@ -77,8 +92,7 @@ class ClassMonitoringController extends Controller
             'settings' => TutorSettings::forUser($user),
             'stats' => [
                 'totalStudents' => $students->count(),
-                'avgScore' => (int) round($students->avg('score') ?? 0),
-                'avgAttendance' => (int) round($students->avg('attendance') ?? 0),
+                'avgProgress' => (int) round($students->avg('progress') ?? 0),
                 'materialCount' => $materials->count(),
             ],
         ]);
@@ -119,6 +133,14 @@ class ClassMonitoringController extends Controller
                 'time' => $schedule->start_time?->format('H:i').' - '.$schedule->end_time?->format('H:i'),
             ]);
 
+        $progressByCourse = ProgressRecord::query()
+            ->where('user_id', $student->id)
+            ->whereIn('course_id', $enrolledCourseIds)
+            ->select('course_id', DB::raw('MAX(percent) as percent'))
+            ->groupBy('course_id')
+            ->get()
+            ->pluck('percent', 'course_id');
+
         return Inertia::render('Tutor/TutorStudentProfile', [
             'user' => $user,
             'tutorClasses' => $this->tutorCourses($user)->map(fn (Course $course) => $this->courseSummary($course, $user)),
@@ -128,7 +150,7 @@ class ClassMonitoringController extends Controller
                 'email' => $student->email,
                 'joined_at' => $student->created_at?->locale('id')->translatedFormat('j F Y'),
             ],
-            'enrollments' => $enrollments->map(function (Enrollment $enrollment) use ($user) {
+            'enrollments' => $enrollments->map(function (Enrollment $enrollment) use ($user, $progressByCourse) {
                 $course = $enrollment->course;
                 $materialCount = Material::query()->where('course_id', $enrollment->course_id)->count();
                 $approvedMaterialCount = Material::query()
@@ -149,7 +171,7 @@ class ClassMonitoringController extends Controller
                     ],
                     'materials' => $materialCount,
                     'approvedMaterials' => $approvedMaterialCount,
-                    'progress' => $materialCount > 0 ? (int) round(($approvedMaterialCount / $materialCount) * 100) : 0,
+                    'progress' => (int) ($progressByCourse->get($enrollment->course_id) ?? 0),
                     'sessions' => Schedule::query()
                         ->where('course_id', $enrollment->course_id)
                         ->where('mentor_id', $user->id)
@@ -160,7 +182,7 @@ class ClassMonitoringController extends Controller
             'recentSchedules' => $recentSchedules,
             'stats' => [
                 'courses' => $enrollments->count(),
-                'avgProgress' => 0,
+                'avgProgress' => (int) round($progressByCourse->avg() ?? 0),
                 'avgScore' => 0,
                 'avgAttendance' => 0,
             ],
@@ -193,9 +215,7 @@ class ClassMonitoringController extends Controller
                 ->where('course_id', $course->id)
                 ->where('status', 'active')
                 ->count(),
-            'progress' => $course->materials_count > 0
-                ? (int) round(($course->approved_materials_count / $course->materials_count) * 100)
-                : 0,
+            'progress' => $this->courseAverageProgress($course->id),
             'weeklySchedule' => TutorCourseResolver::currentWeekScheduleLabel($user, $course->id),
             'nextSession' => Schedule::query()
                 ->where('course_id', $course->id)
@@ -205,6 +225,32 @@ class ClassMonitoringController extends Controller
                 ->orderBy('start_time')
                 ->value('start_time'),
         ];
+    }
+
+    private function courseAverageProgress(int $courseId): int
+    {
+        $activeStudentIds = Enrollment::query()
+            ->where('course_id', $courseId)
+            ->where('status', 'active')
+            ->pluck('user_id');
+
+        if ($activeStudentIds->isEmpty()) {
+            return 0;
+        }
+
+        $progressRows = ProgressRecord::query()
+            ->where('course_id', $courseId)
+            ->whereIn('user_id', $activeStudentIds)
+            ->select('user_id', DB::raw('MAX(percent) as percent'))
+            ->groupBy('user_id')
+            ->get()
+            ->pluck('percent', 'user_id');
+
+        return (int) round(
+            $activeStudentIds
+                ->map(fn ($studentId) => (int) ($progressRows->get($studentId) ?? 0))
+                ->avg() ?? 0
+        );
     }
 
     private function materialType(?string $type): string

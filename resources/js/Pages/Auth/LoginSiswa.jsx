@@ -152,7 +152,7 @@ export default function LoginSiswa({ googleClientId }) {
       <div className="flex-1 flex items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
         <div className="w-full max-w-md">
           <div className="lg:hidden mb-8 flex justify-center">
-            <BricsLogo size="md" />
+            <BricsLogo size="sm" />
           </div>
 
           <Link

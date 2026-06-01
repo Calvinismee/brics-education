@@ -35,25 +35,27 @@ class HandleInertiaRequests extends Middleware
         $user = $request->user();
         $role = $user ? strtolower((string) User::roleNameFor($user->role_id)) : null;
         $isTutor = in_array($role, ['tutor', 'mentor'], true);
+        $sharedNotifications = $user
+            ? fn () => [
+                'latest' => Notification::query()
+                    ->where('user_id', $user->id)
+                    ->latest()
+                    ->take(5)
+                    ->get(['id', 'title', 'message', 'is_read', 'created_at']),
+                'unreadCount' => Notification::query()
+                    ->where('user_id', $user->id)
+                    ->where('is_read', DatabaseBoolean::value(false))
+                    ->count(),
+            ]
+            : null;
 
         return [
             ...parent::share($request),
             'auth' => [
                 'user' => $user,
             ],
-            'tutorNotifications' => $isTutor
-                ? fn () => [
-                    'latest' => Notification::query()
-                        ->where('user_id', $user->id)
-                        ->latest()
-                        ->take(5)
-                        ->get(['id', 'title', 'message', 'is_read', 'created_at']),
-                    'unreadCount' => Notification::query()
-                        ->where('user_id', $user->id)
-                        ->where('is_read', DatabaseBoolean::value(false))
-                        ->count(),
-                ]
-                : null,
+            'dashboardNotifications' => $sharedNotifications,
+            'tutorNotifications' => $isTutor ? $sharedNotifications : null,
         ];
     }
 }
