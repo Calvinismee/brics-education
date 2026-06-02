@@ -1,5 +1,6 @@
-import { Link, router, usePage } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import BricsLogo from '@/Components/BricsLogo';
+import PublicNavbar from '@/Components/PublicNavbar';
 import {
   BookOpen,
   Users,
@@ -13,10 +14,8 @@ import {
   CreditCard,
   Layers,
   Package as PackageIcon,
-  Menu,
-  X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { packageCheckoutHref } from '@/utils/slug';
 
 const HERO_IMAGE =
@@ -68,13 +67,6 @@ const benefits = [
   },
 ];
 
-const navItems = [
-  { label: "Beranda", to: "/" },
-  { label: "Katalog", to: "/#katalog" },
-  { label: "Tentang Kami", to: "#tentang" },
-  { label: "Tutor Kami", to: "/tutors" },
-];
-
 function asArray(value) {
   if (Array.isArray(value)) return value;
   return Object.values(value ?? {});
@@ -118,7 +110,6 @@ function formatPrice(price) {
 export default function LandingPage({ packages = [] }) {
   const { auth } = usePage().props;
   const user = auth?.user;
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const packageList = asArray(packages);
 
@@ -155,10 +146,6 @@ export default function LandingPage({ packages = [] }) {
     return () => observer.disconnect();
   }, [packageList.length]);
 
-  const logout = () => {
-    router.post(route("logout"));
-  };
-
   const scrollToTarget = (href, behavior = "smooth") => {
     const url = new URL(href, window.location.origin);
     const targetId = url.hash ? decodeURIComponent(url.hash.slice(1)) : "landing-page-top";
@@ -182,13 +169,7 @@ export default function LandingPage({ packages = [] }) {
     if (isSamePage) {
       event.preventDefault();
       scrollToTarget(href);
-      setIsMobileMenuOpen(false);
     }
-  };
-
-  const handleMobileLinkSuccess = (href) => {
-    setIsMobileMenuOpen(false);
-    scrollToTarget(href);
   };
 
   return (
@@ -303,162 +284,7 @@ export default function LandingPage({ packages = [] }) {
         `}
       </style>
 
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-[#D8D7BE]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-          <Link href="/">
-            <BricsLogo size="lg" />
-          </Link>
-
-          <nav className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.to}
-                onClick={(event) => handleAnchorNavigation(event, item.to)}
-                onSuccess={() => scrollToTarget(item.to)}
-                className="px-4 py-2 text-sm text-gray-700 hover:text-[#691D1B] hover:bg-[#F7F2E7] rounded-md transition-colors"
-                style={{ fontWeight: 500 }}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            {user ? (
-              <>
-                <Link
-                  href="/dashboard"
-                  className="hidden md:inline-flex px-5 py-2 text-sm text-[#691D1B] border border-[#691D1B] rounded-md hover:bg-[#F7F2E7] transition-colors"
-                  style={{ fontWeight: 600 }}
-                >
-                  Dashboard
-                </Link>
-
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="hidden md:inline-flex px-5 py-2 text-sm text-white bg-[#691D1B] rounded-md hover:bg-[#4A1412] transition-colors"
-                  style={{ fontWeight: 600 }}
-                >
-                  Keluar
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  href={route("register")}
-                  className="hidden md:inline-flex px-5 py-2 text-sm text-[#691D1B] border border-[#691D1B] rounded-md hover:bg-[#F7F2E7] transition-colors"
-                  style={{ fontWeight: 600 }}
-                >
-                  Daftar
-                </Link>
-
-                <Link
-                  href={route("login")}
-                  className="hidden md:inline-flex px-5 py-2 text-sm text-white bg-[#691D1B] rounded-md hover:bg-[#4A1412] transition-colors"
-                  style={{ fontWeight: 600 }}
-                >
-                  Masuk
-                </Link>
-              </>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-[#D8D7BE] text-[#691D1B] transition-colors hover:bg-[#F7F2E7] md:hidden"
-              aria-label="Buka menu"
-              aria-expanded={isMobileMenuOpen}
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-
-        <div
-          className={`fixed inset-0 z-50 md:hidden ${isMobileMenuOpen ? "pointer-events-auto" : "pointer-events-none"}`}
-          aria-hidden={!isMobileMenuOpen}
-        >
-          <button
-            type="button"
-            className={`absolute inset-0 bg-black/35 transition-opacity ${isMobileMenuOpen ? "opacity-100" : "opacity-0"}`}
-            onClick={() => setIsMobileMenuOpen(false)}
-            aria-label="Tutup menu"
-          />
-
-          <div
-            className={`absolute right-0 top-0 flex h-full w-[min(82vw,320px)] flex-col bg-white shadow-2xl transition-transform duration-200 ease-out ${
-              isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
-            }`}
-          >
-            <div className="flex items-center justify-between border-b border-[#E7DFC9] px-5 py-4">
-              <BricsLogo size="md" />
-              <button
-                type="button"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-md text-[#691D1B] transition-colors hover:bg-[#F7F2E7]"
-                aria-label="Tutup menu"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <nav className="flex-1 space-y-1 overflow-y-auto px-4 py-4">
-              {navItems.map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.to}
-                  onClick={(event) => handleAnchorNavigation(event, item.to)}
-                  onSuccess={() => handleMobileLinkSuccess(item.to)}
-                  className="block rounded-md px-4 py-3 text-base font-semibold text-gray-800 transition-colors hover:bg-[#F7F2E7] hover:text-[#691D1B]"
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-
-            <div className="border-t border-[#E7DFC9] p-4">
-              {user ? (
-                <div className="grid gap-3">
-                  <Link
-                    href="/dashboard"
-                    onSuccess={() => setIsMobileMenuOpen(false)}
-                    className="rounded-md border border-[#691D1B] px-4 py-3 text-center text-sm font-semibold text-[#691D1B] transition-colors hover:bg-[#F7F2E7]"
-                  >
-                    Dashboard
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={logout}
-                    className="w-full rounded-md bg-[#691D1B] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#4A1412]"
-                  >
-                    Keluar
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  <Link
-                    href={route("register")}
-                    onSuccess={() => setIsMobileMenuOpen(false)}
-                    className="rounded-md border border-[#691D1B] px-4 py-3 text-center text-sm font-semibold text-[#691D1B] transition-colors hover:bg-[#F7F2E7]"
-                  >
-                    Daftar
-                  </Link>
-                  <Link
-                    href={route("login")}
-                    onSuccess={() => setIsMobileMenuOpen(false)}
-                    className="rounded-md bg-[#691D1B] px-4 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-[#4A1412]"
-                  >
-                    Masuk
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <PublicNavbar />
 
       {/* Hero Section */}
       <section className="bg-[#691D1B] relative overflow-hidden">
@@ -491,7 +317,7 @@ export default function LandingPage({ packages = [] }) {
 
               <div className="brics-fade-up brics-fade-up-delay-3 flex flex-wrap gap-4 mb-10">
                 <Link
-                  href={user ? "/dashboard" : route("register")}
+                  href={user ? "/dashboard" : route("login")}
                   className="flex items-center gap-2 px-8 py-4 bg-[#FFE882] text-[#691D1B] rounded-lg hover:bg-yellow-300 transition-colors"
                   style={{ fontWeight: 700 }}
                 >
@@ -785,22 +611,13 @@ export default function LandingPage({ packages = [] }) {
 
               <div className="flex flex-wrap gap-4">
                 <Link
-                  href={user ? "/dashboard" : route("register")}
+                  href={user ? "/dashboard" : route("login")}
                   className="px-8 py-4 bg-[#FFE882] text-[#691D1B] rounded-lg hover:bg-yellow-300 transition-colors"
                   style={{ fontWeight: 700 }}
                 >
-                  {user ? "Masuk Dashboard" : "Daftar Gratis Sekarang"}
+                  {user ? "Masuk Dashboard" : "Mulai Perjalananmu Sekarang!"}
                 </Link>
 
-                {!user && (
-                  <Link
-                    href={route("login")}
-                    className="px-8 py-4 bg-white/10 text-white border border-white/30 rounded-lg hover:bg-white/20 transition-colors"
-                    style={{ fontWeight: 600 }}
-                  >
-                    Sudah punya akun? Masuk
-                  </Link>
-                )}
               </div>
             </div>
 
